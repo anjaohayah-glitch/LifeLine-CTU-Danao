@@ -30,6 +30,7 @@ const ALL_FEATURE_CARDS = [
   { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F" },
   { icon: "👨‍👩‍👧", label: "Family", route: "/family", color: "#6A1B9A" },
   { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020" },
+  { icon: "🗣", label: "Voice Guide", route: "/voiceguide", color: "#1565C0" },
   { icon: "🌊", label: "Flood", tip: "Move to higher ground." },
   { icon: "🌍", label: "Earthquake", tip: "Drop, Cover, Hold." },
   { icon: "🌪", label: "Typhoon", tip: "Stay indoors." },
@@ -39,6 +40,7 @@ const ALL_FEATURE_CARDS = [
 
 export default function Home() {
   const [alertVisible, setAlertVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
   const [announcement, setAnnouncement] = useState(null);
   const [activeNav, setActiveNav] = useState("/home");
   const [isOnline, setIsOnline] = useState(true);
@@ -53,7 +55,14 @@ export default function Home() {
   useEffect(() => {
     const alertRef = ref(db, "emergencyAlert");
     const unsubscribe = onValue(alertRef, (snapshot) => {
-      setAlertVisible(snapshot.val() === true);
+      const data = snapshot.val();
+      if (typeof data === "object" && data !== null) {
+        setAlertVisible(data.active === true);
+        setAlertMessage(data.message || "Emergency alert issued!");
+      } else {
+        setAlertVisible(data === true);
+        setAlertMessage("Emergency alert issued!");
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -158,7 +167,7 @@ export default function Home() {
         {alertVisible && (
           <View style={styles.alertBanner}>
             <Text style={styles.alertTitle}>🚨 EMERGENCY ALERT 🚨</Text>
-            <Text style={styles.alertText}>Typhoon Warning Level 2</Text>
+            <Text style={styles.alertText}>{alertMessage}</Text>
             <Text style={styles.alertSubText}>Stay indoors. Prepare emergency supplies.</Text>
           </View>
         )}
