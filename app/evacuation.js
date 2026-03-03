@@ -1,15 +1,16 @@
+// app/evacuation.js
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import MapView, { Circle, Marker } from "react-native-maps";
+import { COLORS } from "../constants/colors";
 
 const EVACUATION_CENTERS = [
   {
@@ -55,81 +56,79 @@ const EVACUATION_CENTERS = [
 ];
 
 const DANGER_ZONES = [
-  {
-    id: 1,
-    name: "Flood Zone A",
-    latitude: 10.5155,
-    longitude: 124.0290,
-    radius: 300,
-  },
-  {
-    id: 2,
-    name: "Landslide Risk Area",
-    latitude: 10.5200,
-    longitude: 124.0370,
-    radius: 200,
-  },
+  { id: 1, name: "Flood Zone A", latitude: 10.5155, longitude: 124.0290, radius: 300 },
+  { id: 2, name: "Landslide Risk Area", latitude: 10.5200, longitude: 124.0370, radius: 200 },
 ];
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 
 export default function Evacuation() {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [nearestCenter, setNearestCenter] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [MapView, setMapView] = useState(null);
+  const [MapComponents, setMapComponents] = useState(null);
+
+  // 🗺 Load map lazily to prevent crash
+  useEffect(() => {
+    const loadMap = async () => {
+      try {
+        const maps = await import("react-native-maps");
+        setMapView(() => maps.default);
+        setMapComponents({ Marker: maps.Marker, Circle: maps.Circle });
+        setMapReady(true);
+      } catch (error) {
+        console.log("Map load error:", error);
+      }
+    };
+    loadMap();
+  }, []);
 
   // 📍 Get user location
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "Location access is required.");
-        return;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission Denied", "Location access is required.");
+          return;
+        }
+        const location = await Location.getCurrentPositionAsync({});
+        const coords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+        setUserLocation(coords);
+
+        // Find nearest center
+        let nearest = null;
+        let minDistance = Infinity;
+        EVACUATION_CENTERS.forEach((center) => {
+          const distance = getDistance(coords.latitude, coords.longitude, center.latitude, center.longitude);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearest = { ...center, distance: (distance * 1000).toFixed(0) };
+          }
+        });
+        setNearestCenter(nearest);
+      } catch (error) {
+        console.log("Location error:", error);
       }
-      const location = await Location.getCurrentPositionAsync({});
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-      setUserLocation(coords);
-      findNearestCenter(coords);
     })();
   }, []);
 
-  // 📏 Find nearest evacuation center
-  const findNearestCenter = (coords) => {
-    let nearest = null;
-    let minDistance = Infinity;
-
-    EVACUATION_CENTERS.forEach((center) => {
-      const distance = getDistance(
-        coords.latitude,
-        coords.longitude,
-        center.latitude,
-        center.longitude
-      );
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearest = { ...center, distance: (distance * 1000).toFixed(0) };
-      }
-    });
-
-    setNearestCenter(nearest);
-  };
-
-  // 📐 Haversine distance formula (returns km)
-  const getDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  // 🗺 Open Google Maps directions
   const handleDirections = (center) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${center.latitude},${center.longitude}&travelmode=walking`;
     Linking.openURL(url);
@@ -144,49 +143,57 @@ export default function Evacuation() {
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.header}>🗺 Evacuation Map</Text>
+
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>🗺 Evacuation Map</Text>
+        <Text style={styles.headerSub}>Danao City Evacuation Centers</Text>
+      </View>
 
       {/* MAP */}
-      <MapView
-        style={styles.map}
-        initialRegion={initialRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-      >
-        {/* EVACUATION CENTER PINS */}
-        {EVACUATION_CENTERS.map((center) => (
-          <Marker
-            key={center.id}
-            coordinate={{ latitude: center.latitude, longitude: center.longitude }}
-            title={center.name}
-            description={center.description}
-            pinColor={center.type === "primary" ? "#2e7d32" : "#1565C0"}
-            onPress={() => setSelectedCenter(center)}
-          />
-        ))}
-
-        {/* DANGER ZONES */}
-        {DANGER_ZONES.map((zone) => (
-          <Circle
-            key={zone.id}
-            center={{ latitude: zone.latitude, longitude: zone.longitude }}
-            radius={zone.radius}
-            fillColor="rgba(176, 0, 32, 0.2)"
-            strokeColor="rgba(176, 0, 32, 0.8)"
-            strokeWidth={2}
-          />
-        ))}
-      </MapView>
+      {mapReady && MapView && MapComponents ? (
+        <MapView
+          style={styles.map}
+          initialRegion={initialRegion}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+        >
+          {EVACUATION_CENTERS.map((center) => (
+            <MapComponents.Marker
+              key={center.id}
+              coordinate={{ latitude: center.latitude, longitude: center.longitude }}
+              title={center.name}
+              description={center.description}
+              pinColor={center.type === "primary" ? "#2e7d32" : "#1565C0"}
+              onPress={() => setSelectedCenter(center)}
+            />
+          ))}
+          {DANGER_ZONES.map((zone) => (
+            <MapComponents.Circle
+              key={zone.id}
+              center={{ latitude: zone.latitude, longitude: zone.longitude }}
+              radius={zone.radius}
+              fillColor="rgba(176, 0, 32, 0.2)"
+              strokeColor="rgba(176, 0, 32, 0.8)"
+              strokeWidth={2}
+            />
+          ))}
+        </MapView>
+      ) : (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>🗺 Loading Map...</Text>
+        </View>
+      )}
 
       {/* LEGEND */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#2e7d32" }]} />
-          <Text style={styles.legendText}>Primary Center</Text>
+          <Text style={styles.legendText}>Primary</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#1565C0" }]} />
-          <Text style={styles.legendText}>Secondary Center</Text>
+          <Text style={styles.legendText}>Secondary</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#B00020" }]} />
@@ -199,7 +206,7 @@ export default function Evacuation() {
         {/* NEAREST CENTER */}
         {nearestCenter && (
           <View style={styles.nearestCard}>
-            <Text style={styles.nearestTitle}>📍 Nearest Evacuation Center</Text>
+            <Text style={styles.nearestLabel}>📍 Nearest Evacuation Center</Text>
             <Text style={styles.nearestName}>{nearestCenter.name}</Text>
             <Text style={styles.nearestDistance}>~{nearestCenter.distance}m away</Text>
             <TouchableOpacity
@@ -211,7 +218,7 @@ export default function Evacuation() {
           </View>
         )}
 
-        {/* SELECTED CENTER DETAIL */}
+        {/* SELECTED CENTER */}
         {selectedCenter && (
           <View style={styles.selectedCard}>
             <Text style={styles.selectedTitle}>{selectedCenter.name}</Text>
@@ -228,28 +235,29 @@ export default function Evacuation() {
           </View>
         )}
 
-        {/* ALL CENTERS LIST */}
+        {/* ALL CENTERS */}
         <Text style={styles.listTitle}>All Evacuation Centers</Text>
         {EVACUATION_CENTERS.map((center) => (
           <TouchableOpacity
             key={center.id}
             style={styles.centerCard}
-            onPress={() => {
-              setSelectedCenter(center);
-              handleDirections(center);
-            }}
+            onPress={() => setSelectedCenter(center)}
           >
             <View style={styles.centerRow}>
               <Text style={styles.centerName}>{center.name}</Text>
-              <Text style={styles.centerType}>
-                {center.type === "primary" ? "🟢" : "🔵"}
-              </Text>
+              <Text>{center.type === "primary" ? "🟢" : "🔵"}</Text>
             </View>
             <Text style={styles.centerDesc}>{center.description}</Text>
+            <TouchableOpacity
+              style={styles.smallDirections}
+              onPress={() => handleDirections(center)}
+            >
+              <Text style={styles.smallDirectionsText}>🗺 Directions</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         ))}
 
-        {/* DANGER ZONES LIST */}
+        {/* DANGER ZONES */}
         <Text style={styles.listTitle}>⚠️ Danger Zones</Text>
         {DANGER_ZONES.map((zone) => (
           <View key={zone.id} style={styles.dangerCard}>
@@ -258,157 +266,86 @@ export default function Evacuation() {
           </View>
         ))}
 
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  wrapper: { flex: 1, backgroundColor: "#fff" },
   header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#B00020",
-    textAlign: "center",
-    marginTop: 50,
-    marginBottom: 10,
+    backgroundColor: COLORS.primary,
+    paddingTop: 55, paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    marginBottom: 5,
   },
-  map: {
-    width: "100%",
-    height: 300,
+  headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
+  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
+  map: { width: "100%", height: 280 },
+  mapPlaceholder: {
+    width: "100%", height: 280,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center", alignItems: "center",
   },
+  mapPlaceholderText: { fontSize: 18, color: "#999" },
   legend: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 15,
-    paddingVertical: 8,
+    flexDirection: "row", justifyContent: "center",
+    gap: 15, paddingVertical: 8,
     backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1,
-    borderColor: "#eee",
+    borderBottomWidth: 1, borderColor: "#eee",
   },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  legendText: {
-    fontSize: 11,
-    color: "#555",
-  },
-  bottomSheet: {
-    flex: 1,
-    padding: 15,
-  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendDot: { width: 12, height: 12, borderRadius: 6 },
+  legendText: { fontSize: 11, color: "#555" },
+  bottomSheet: { flex: 1, padding: 15 },
   nearestCard: {
-    backgroundColor: "#e8f5e9",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#a5d6a7",
+    backgroundColor: "#e8f5e9", borderRadius: 12,
+    padding: 15, marginBottom: 15,
+    borderWidth: 1, borderColor: "#a5d6a7",
   },
-  nearestTitle: {
-    fontSize: 12,
-    color: "#555",
-    marginBottom: 4,
-  },
-  nearestName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2e7d32",
-  },
-  nearestDistance: {
-    color: "#555",
-    fontSize: 13,
-    marginTop: 2,
-  },
+  nearestLabel: { fontSize: 12, color: "#555", marginBottom: 4 },
+  nearestName: { fontSize: 16, fontWeight: "bold", color: "#2e7d32" },
+  nearestDistance: { color: "#555", fontSize: 13, marginTop: 2 },
   directionsButton: {
-    backgroundColor: "#2e7d32",
-    padding: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
+    backgroundColor: "#2e7d32", padding: 10,
+    borderRadius: 8, alignItems: "center", marginTop: 10,
   },
-  directionsText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  directionsText: { color: "#fff", fontWeight: "bold" },
   selectedCard: {
-    backgroundColor: "#e3f2fd",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#90caf9",
+    backgroundColor: "#e3f2fd", borderRadius: 12,
+    padding: 15, marginBottom: 15,
+    borderWidth: 1, borderColor: "#90caf9",
   },
-  selectedTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1565C0",
-  },
-  selectedDesc: {
-    color: "#555",
-    marginTop: 4,
-  },
-  selectedType: {
-    marginTop: 6,
-    fontSize: 13,
-  },
+  selectedTitle: { fontSize: 16, fontWeight: "bold", color: "#1565C0" },
+  selectedDesc: { color: "#555", marginTop: 4 },
+  selectedType: { marginTop: 6, fontSize: 13 },
   listTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#B00020",
-    marginBottom: 10,
-    marginTop: 5,
+    fontSize: 16, fontWeight: "bold",
+    color: COLORS.primary, marginBottom: 10, marginTop: 5,
   },
   centerCard: {
-    backgroundColor: "#fff0f0",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#ffcccc",
+    backgroundColor: COLORS.surface, borderRadius: 10,
+    padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  centerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  centerRow: { flexDirection: "row", justifyContent: "space-between" },
+  centerName: { fontWeight: "bold", fontSize: 14, flex: 1 },
+  centerDesc: { color: "#666", fontSize: 12, marginTop: 3 },
+  smallDirections: {
+    marginTop: 8, alignSelf: "flex-start",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20,
   },
-  centerName: {
-    fontWeight: "bold",
-    fontSize: 14,
-    flex: 1,
-  },
-  centerType: {
-    fontSize: 16,
-  },
-  centerDesc: {
-    color: "#666",
-    fontSize: 12,
-    marginTop: 3,
-  },
+  smallDirectionsText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
   dangerCard: {
-    backgroundColor: "#fff0f0",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#ffcccc",
+    backgroundColor: "#fff0f0", borderRadius: 10,
+    padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: "#ffcccc",
   },
-  dangerName: {
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  dangerDesc: {
-    color: "#666",
-    fontSize: 12,
-    marginTop: 3,
-  },
+  dangerName: { fontWeight: "bold", fontSize: 14 },
+  dangerDesc: { color: "#666", fontSize: 12, marginTop: 3 },
 });
