@@ -8,10 +8,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import MapView, { Circle, Marker } from "react-native-maps";
 import { COLORS } from "../constants/colors";
 
-// 📍 CTU Danao Safe Zones
 const SAFE_ZONES = [
   {
     id: 1,
@@ -60,38 +58,12 @@ const SAFE_ZONES = [
   },
 ];
 
-// ⚠️ CTU Danao Hazard Zones
 const HAZARD_ZONES = [
-  {
-    id: 1,
-    name: "Flood Risk Area",
-    latitude: 10.5155,
-    longitude: 124.0290,
-    radius: 250,
-    color: "rgba(21, 101, 192, 0.25)",
-    stroke: "rgba(21, 101, 192, 0.8)",
-  },
-  {
-    id: 2,
-    name: "Landslide Risk Area",
-    latitude: 10.5200,
-    longitude: 124.0370,
-    radius: 180,
-    color: "rgba(176, 0, 32, 0.2)",
-    stroke: "rgba(176, 0, 32, 0.8)",
-  },
-  {
-    id: 3,
-    name: "Fire Hazard Zone",
-    latitude: 10.5190,
-    longitude: 124.0310,
-    radius: 150,
-    color: "rgba(230, 81, 0, 0.2)",
-    stroke: "rgba(230, 81, 0, 0.8)",
-  },
+  { id: 1, name: "Flood Risk Area", description: "Low-lying area near river" },
+  { id: 2, name: "Landslide Risk Area", description: "Steep slope near barangay" },
+  { id: 3, name: "Fire Hazard Zone", description: "High density area near market" },
 ];
 
-// 📚 DRRM Awareness Content
 const DRRM_CONTENT = [
   {
     id: 1,
@@ -205,13 +177,7 @@ const DRRM_CONTENT = [
 
 export default function DRRM() {
   const [activeTab, setActiveTab] = useState("map");
-  const [selectedZone, setSelectedZone] = useState(null);
   const [selectedContent, setSelectedContent] = useState(null);
-
-  const getDirections = (zone) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${zone.latitude},${zone.longitude}&travelmode=walking`;
-    Linking.openURL(url);
-  };
 
   return (
     <View style={styles.wrapper}>
@@ -240,141 +206,95 @@ export default function DRRM() {
         ))}
       </View>
 
-      {/* 🗺 MAP TAB */}
+      {/* 🗺 SAFE ZONES TAB */}
       {activeTab === "map" && (
-        <View style={styles.mapWrapper}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: 10.5167,
-              longitude: 124.0333,
-              latitudeDelta: 0.015,
-              longitudeDelta: 0.015,
-            }}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
+        <ScrollView style={styles.container}>
+
+          {/* OPEN MAP BUTTON */}
+          <TouchableOpacity
+            style={styles.openMapCard}
+            onPress={() => Linking.openURL("https://www.google.com/maps/search/?api=1&query=CTU+Danao+Campus+Cebu")}
           >
-            {/* SAFE ZONE MARKERS */}
-            {SAFE_ZONES.map((zone) => (
-              <Marker
-                key={zone.id}
-                coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
-                title={zone.name}
-                description={zone.description}
-                pinColor={zone.type === "primary" ? "#2e7d32" : "#1565C0"}
-                onPress={() => setSelectedZone(zone)}
-              />
-            ))}
-
-            {/* HAZARD ZONES */}
-            {HAZARD_ZONES.map((zone) => (
-              <Circle
-                key={zone.id}
-                center={{ latitude: zone.latitude, longitude: zone.longitude }}
-                radius={zone.radius}
-                fillColor={zone.color}
-                strokeColor={zone.stroke}
-                strokeWidth={2}
-              />
-            ))}
-          </MapView>
-
-          {/* MAP LEGEND */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#2e7d32" }]} />
-              <Text style={styles.legendText}>Safe Zone</Text>
+            <Text style={styles.openMapIcon}>🗺</Text>
+            <View style={styles.openMapContent}>
+              <Text style={styles.openMapTitle}>View CTU Danao on Google Maps</Text>
+              <Text style={styles.openMapDesc}>See campus layout and safe zones</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#1565C0" }]} />
-              <Text style={styles.legendText}>Assembly</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#B00020" }]} />
-              <Text style={styles.legendText}>Hazard</Text>
-            </View>
-          </View>
+            <Text style={styles.openMapArrow}>›</Text>
+          </TouchableOpacity>
 
-          {/* SELECTED ZONE CARD */}
-          {selectedZone && (
-            <View style={styles.zoneCard}>
-              <View style={styles.zoneCardTop}>
-                <View>
-                  <Text style={styles.zoneName}>{selectedZone.name}</Text>
-                  <Text style={styles.zoneDesc}>{selectedZone.description}</Text>
-                  <Text style={styles.zoneCapacity}>👥 Capacity: {selectedZone.capacity}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setSelectedZone(null)}
-                  style={styles.closeButton}
-                >
-                  <Text style={styles.closeText}>✕</Text>
-                </TouchableOpacity>
+          {/* SAFE ZONES */}
+          <Text style={styles.sectionTitle}>📍 CTU Danao Safe Zones</Text>
+          {SAFE_ZONES.map((zone) => (
+            <TouchableOpacity
+              key={zone.id}
+              style={styles.zoneCard}
+              onPress={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${zone.latitude},${zone.longitude}&travelmode=walking`;
+                Linking.openURL(url);
+              }}
+            >
+              <View style={[
+                styles.zoneIconBox,
+                { backgroundColor: zone.type === "primary" ? "#e8f5e9" : "#e3f2fd" }
+              ]}>
+                <Text style={styles.zoneIcon}>
+                  {zone.type === "primary" ? "🏠" : "🚩"}
+                </Text>
               </View>
-              <TouchableOpacity
-                style={styles.directionsButton}
-                onPress={() => getDirections(selectedZone)}
-              >
-                <Text style={styles.directionsText}>🗺 Get Directions</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+              <View style={styles.zoneInfo}>
+                <Text style={styles.zoneName}>{zone.name}</Text>
+                <Text style={styles.zoneDesc}>{zone.description}</Text>
+                <Text style={styles.zoneCapacity}>👥 {zone.capacity}</Text>
+              </View>
+              <Text style={styles.zoneArrow}>🗺</Text>
+            </TouchableOpacity>
+          ))}
 
-          {/* SAFE ZONES LIST */}
-          <ScrollView style={styles.zonesList}>
-            <Text style={styles.zonesTitle}>📍 CTU Danao Safe Zones</Text>
-            {SAFE_ZONES.map((zone) => (
-              <TouchableOpacity
-                key={zone.id}
-                style={styles.zoneListItem}
-                onPress={() => setSelectedZone(zone)}
-              >
-                <View style={[
-                  styles.zoneTypeIcon,
-                  { backgroundColor: zone.type === "primary" ? "#e8f5e9" : "#e3f2fd" }
-                ]}>
-                  <Text style={styles.zoneTypeEmoji}>
-                    {zone.type === "primary" ? "🏠" : "🚩"}
-                  </Text>
-                </View>
-                <View style={styles.zoneListContent}>
-                  <Text style={styles.zoneListName}>{zone.name}</Text>
-                  <Text style={styles.zoneListDesc}>{zone.description}</Text>
-                </View>
-                <Text style={styles.zoneArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
-
-            <Text style={styles.zonesTitle}>⚠️ Hazard Zones</Text>
-            {HAZARD_ZONES.map((zone) => (
-              <View key={zone.id} style={styles.hazardItem}>
-                <View style={styles.hazardDot} />
+          {/* HAZARD ZONES */}
+          <Text style={styles.sectionTitle}>⚠️ Hazard Zones</Text>
+          {HAZARD_ZONES.map((zone) => (
+            <View key={zone.id} style={styles.hazardCard}>
+              <View style={styles.hazardDot} />
+              <View style={styles.hazardInfo}>
                 <Text style={styles.hazardName}>{zone.name}</Text>
+                <Text style={styles.hazardDesc}>{zone.description}</Text>
               </View>
-            ))}
+            </View>
+          ))}
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </View>
+          {/* DRRMO HOTLINE */}
+          <TouchableOpacity
+            style={styles.hotlineCard}
+            onPress={() => Linking.openURL("tel:09177236262")}
+          >
+            <Text style={styles.hotlineIcon}>📞</Text>
+            <View style={styles.hotlineInfo}>
+              <Text style={styles.hotlineTitle}>CTU Danao DRRMO Hotline</Text>
+              <Text style={styles.hotlineNumber}>0917-723-6262</Text>
+              <Text style={styles.hotlineTap}>Tap to call</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
       )}
 
       {/* 📚 DRRM AWARENESS TAB */}
       {activeTab === "awareness" && (
         <View style={{ flex: 1 }}>
           {selectedContent ? (
-            <ScrollView style={styles.contentDetail}>
+            <ScrollView style={styles.container}>
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => setSelectedContent(null)}
               >
                 <Text style={styles.backText}>← Back</Text>
               </TouchableOpacity>
-
               <View style={[styles.contentHeader, { backgroundColor: selectedContent.color }]}>
                 <Text style={styles.contentHeaderIcon}>{selectedContent.icon}</Text>
                 <Text style={styles.contentHeaderTitle}>{selectedContent.title}</Text>
               </View>
-
               {selectedContent.content.map((section, index) => (
                 <View key={index} style={styles.contentSection}>
                   <Text style={[styles.contentHeading, { color: selectedContent.color }]}>
@@ -383,15 +303,13 @@ export default function DRRM() {
                   <Text style={styles.contentText}>{section.text}</Text>
                 </View>
               ))}
-
               <View style={{ height: 40 }} />
             </ScrollView>
           ) : (
-            <ScrollView style={styles.awarenessContainer}>
+            <ScrollView style={styles.container}>
               <Text style={styles.awarenessIntro}>
                 Learn about Disaster Risk Reduction and Management to stay informed and prepared.
               </Text>
-
               {DRRM_CONTENT.map((item) => (
                 <TouchableOpacity
                   key={item.id}
@@ -411,19 +329,18 @@ export default function DRRM() {
                 </TouchableOpacity>
               ))}
 
-              {/* DRRM HOTLINE */}
-              <View style={styles.drrmoCard}>
-                <Text style={styles.drrmoTitle}>📞 CTU Danao DRRMO</Text>
-                <Text style={styles.drrmoDesc}>
-                  For campus emergencies, contact the CTU Danao Disaster Risk Reduction and Management Office immediately.
-                </Text>
-                <TouchableOpacity
-                  style={styles.drrmoButton}
-                  onPress={() => Linking.openURL("tel:0917-723-6262")}
-                >
-                  <Text style={styles.drrmoButtonText}>📞 Call DRRMO: 0917-723-6262</Text>
-                </TouchableOpacity>
-              </View>
+              {/* DRRMO HOTLINE */}
+              <TouchableOpacity
+                style={styles.hotlineCard}
+                onPress={() => Linking.openURL("tel:09177236262")}
+              >
+                <Text style={styles.hotlineIcon}>📞</Text>
+                <View style={styles.hotlineInfo}>
+                  <Text style={styles.hotlineTitle}>CTU Danao DRRMO Hotline</Text>
+                  <Text style={styles.hotlineNumber}>0917-723-6262</Text>
+                  <Text style={styles.hotlineTap}>Tap to call</Text>
+                </View>
+              </TouchableOpacity>
 
               <View style={{ height: 40 }} />
             </ScrollView>
@@ -449,77 +366,74 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1, borderColor: COLORS.border,
-    marginHorizontal: 20, marginTop: 10,
+    marginHorizontal: 20, marginTop: 10, marginBottom: 10,
   },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
   activeTab: { borderBottomWidth: 3, borderBottomColor: COLORS.primary },
   tabText: { fontSize: 14, color: COLORS.textLight },
   activeTabText: { color: COLORS.primary, fontWeight: "bold" },
-  mapWrapper: { flex: 1 },
-  map: { width: "100%", height: 250 },
-  legend: {
-    flexDirection: "row", justifyContent: "center",
-    gap: 15, paddingVertical: 8,
-    backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1, borderColor: COLORS.border,
+  container: { flex: 1, paddingHorizontal: 20 },
+  openMapCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: COLORS.surface, borderRadius: 15,
+    padding: 15, marginBottom: 20, marginTop: 10,
+    borderWidth: 1, borderColor: COLORS.border,
+    elevation: 2,
   },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 12, height: 12, borderRadius: 6 },
-  legendText: { fontSize: 11, color: COLORS.textMid },
+  openMapIcon: { fontSize: 35, marginRight: 12 },
+  openMapContent: { flex: 1 },
+  openMapTitle: { fontWeight: "bold", color: COLORS.primary, fontSize: 14 },
+  openMapDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 3 },
+  openMapArrow: { fontSize: 22, color: "#aaa" },
+  sectionTitle: {
+    fontSize: 16, fontWeight: "bold",
+    color: COLORS.textDark, marginBottom: 10, marginTop: 5,
+  },
   zoneCard: {
-    backgroundColor: "#fff", margin: 15,
-    borderRadius: 15, padding: 15,
-    elevation: 4, shadowColor: "#000",
-    shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 15,
+    padding: 14, marginBottom: 10,
+    elevation: 3, shadowColor: "#000",
+    shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4, borderWidth: 1, borderColor: COLORS.border,
   },
-  zoneCardTop: { flexDirection: "row", justifyContent: "space-between" },
-  zoneName: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, flex: 1 },
-  zoneDesc: { color: COLORS.textMid, fontSize: 12, marginTop: 3 },
-  zoneCapacity: { color: COLORS.textLight, fontSize: 12, marginTop: 3 },
-  closeButton: { padding: 5 },
-  closeText: { color: COLORS.textLight, fontSize: 18 },
-  directionsButton: {
-    backgroundColor: "#2e7d32", padding: 10,
-    borderRadius: 10, alignItems: "center", marginTop: 10,
-  },
-  directionsText: { color: "#fff", fontWeight: "bold" },
-  zonesList: { flex: 1, padding: 15 },
-  zonesTitle: {
-    fontWeight: "bold", fontSize: 15,
-    color: COLORS.primary, marginBottom: 10, marginTop: 5,
-  },
-  zoneListItem: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: COLORS.surface, borderRadius: 12,
-    padding: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  zoneTypeIcon: {
-    width: 40, height: 40, borderRadius: 12,
+  zoneIconBox: {
+    width: 46, height: 46, borderRadius: 14,
     justifyContent: "center", alignItems: "center", marginRight: 12,
   },
-  zoneTypeEmoji: { fontSize: 20 },
-  zoneListContent: { flex: 1 },
-  zoneListName: { fontWeight: "bold", fontSize: 13, color: COLORS.textDark },
-  zoneListDesc: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
-  zoneArrow: { fontSize: 22, color: "#ccc" },
-  hazardItem: {
+  zoneIcon: { fontSize: 22 },
+  zoneInfo: { flex: 1 },
+  zoneName: { fontWeight: "bold", fontSize: 13, color: COLORS.textDark },
+  zoneDesc: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
+  zoneCapacity: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
+  zoneArrow: { fontSize: 20 },
+  hazardCard: {
     flexDirection: "row", alignItems: "center",
-    paddingVertical: 8, paddingHorizontal: 12,
-    backgroundColor: "#fff3f3", borderRadius: 10,
-    marginBottom: 8, borderWidth: 1, borderColor: "#ffcccc",
+    backgroundColor: "#fff3f3", borderRadius: 12,
+    padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: "#ffcccc",
   },
   hazardDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: COLORS.primary, marginRight: 10,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: COLORS.primary, marginRight: 12,
   },
-  hazardName: { color: COLORS.textDark, fontSize: 13 },
-  awarenessContainer: { flex: 1, padding: 20 },
+  hazardInfo: { flex: 1 },
+  hazardName: { fontWeight: "bold", color: COLORS.textDark, fontSize: 13 },
+  hazardDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  hotlineCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: COLORS.primary, borderRadius: 15,
+    padding: 16, marginTop: 15, marginBottom: 10,
+  },
+  hotlineIcon: { fontSize: 35, marginRight: 14 },
+  hotlineInfo: { flex: 1 },
+  hotlineTitle: { color: "rgba(255,255,255,0.85)", fontSize: 12 },
+  hotlineNumber: { color: "#fff", fontWeight: "bold", fontSize: 18, marginTop: 2 },
+  hotlineTap: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 2 },
   awarenessIntro: {
     color: COLORS.textMid, fontSize: 13,
     lineHeight: 20, marginBottom: 20,
-    textAlign: "center",
+    textAlign: "center", marginTop: 10,
   },
   awarenessCard: {
     flexDirection: "row", alignItems: "center",
@@ -538,20 +452,7 @@ const styles = StyleSheet.create({
   awarenessTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark },
   awarenessSub: { color: COLORS.textLight, fontSize: 12, marginTop: 3 },
   awarenessArrow: { fontSize: 24, color: "#ccc" },
-  drrmoCard: {
-    backgroundColor: COLORS.surface, borderRadius: 15,
-    padding: 20, marginTop: 10,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  drrmoTitle: { fontWeight: "bold", fontSize: 16, color: COLORS.primary, marginBottom: 8 },
-  drrmoDesc: { color: COLORS.textMid, fontSize: 13, lineHeight: 20, marginBottom: 15 },
-  drrmoButton: {
-    backgroundColor: COLORS.primary, padding: 14,
-    borderRadius: 12, alignItems: "center",
-  },
-  drrmoButtonText: { color: "#fff", fontWeight: "bold" },
-  contentDetail: { flex: 1, padding: 20 },
-  backButton: { marginBottom: 15 },
+  backButton: { marginBottom: 15, marginTop: 5 },
   backText: { color: COLORS.primary, fontSize: 16, fontWeight: "bold" },
   contentHeader: {
     borderRadius: 15, padding: 20,

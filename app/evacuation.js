@@ -56,8 +56,8 @@ const EVACUATION_CENTERS = [
 ];
 
 const DANGER_ZONES = [
-  { id: 1, name: "Flood Zone A", latitude: 10.5155, longitude: 124.0290, radius: 300 },
-  { id: 2, name: "Landslide Risk Area", latitude: 10.5200, longitude: 124.0370, radius: 200 },
+  { id: 1, name: "Flood Zone A", description: "Low-lying area near river" },
+  { id: 2, name: "Landslide Risk Area", description: "Steep slope near barangay" },
 ];
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -75,28 +75,9 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 
 export default function Evacuation() {
   const [userLocation, setUserLocation] = useState(null);
-  const [selectedCenter, setSelectedCenter] = useState(null);
   const [nearestCenter, setNearestCenter] = useState(null);
-  const [mapReady, setMapReady] = useState(false);
-  const [MapView, setMapView] = useState(null);
-  const [MapComponents, setMapComponents] = useState(null);
+  const [selectedCenter, setSelectedCenter] = useState(null);
 
-  // 🗺 Load map lazily to prevent crash
-  useEffect(() => {
-    const loadMap = async () => {
-      try {
-        const maps = await import("react-native-maps");
-        setMapView(() => maps.default);
-        setMapComponents({ Marker: maps.Marker, Circle: maps.Circle });
-        setMapReady(true);
-      } catch (error) {
-        console.log("Map load error:", error);
-      }
-    };
-    loadMap();
-  }, []);
-
-  // 📍 Get user location
   useEffect(() => {
     (async () => {
       try {
@@ -112,7 +93,6 @@ export default function Evacuation() {
         };
         setUserLocation(coords);
 
-        // Find nearest center
         let nearest = null;
         let minDistance = Infinity;
         EVACUATION_CENTERS.forEach((center) => {
@@ -134,11 +114,14 @@ export default function Evacuation() {
     Linking.openURL(url);
   };
 
-  const initialRegion = {
-    latitude: 10.5190,
-    longitude: 124.0310,
-    latitudeDelta: 0.03,
-    longitudeDelta: 0.03,
+  const openMapView = (center) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${center.latitude},${center.longitude}`;
+    Linking.openURL(url);
+  };
+
+  const openAllCentersMap = () => {
+    const url = `https://www.google.com/maps/search/?api=1&query=evacuation+center+danao+cebu`;
+    Linking.openURL(url);
   };
 
   return (
@@ -146,125 +129,143 @@ export default function Evacuation() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🗺 Evacuation Map</Text>
-        <Text style={styles.headerSub}>Danao City Evacuation Centers</Text>
+        <Text style={styles.headerTitle}>🗺 Evacuation Centers</Text>
+        <Text style={styles.headerSub}>Danao City Evacuation Guide</Text>
       </View>
 
-      {/* MAP */}
-      {mapReady && MapView && MapComponents ? (
-        <MapView
-          style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-        >
-          {EVACUATION_CENTERS.map((center) => (
-            <MapComponents.Marker
-              key={center.id}
-              coordinate={{ latitude: center.latitude, longitude: center.longitude }}
-              title={center.name}
-              description={center.description}
-              pinColor={center.type === "primary" ? "#2e7d32" : "#1565C0"}
-              onPress={() => setSelectedCenter(center)}
-            />
-          ))}
-          {DANGER_ZONES.map((zone) => (
-            <MapComponents.Circle
-              key={zone.id}
-              center={{ latitude: zone.latitude, longitude: zone.longitude }}
-              radius={zone.radius}
-              fillColor="rgba(176, 0, 32, 0.2)"
-              strokeColor="rgba(176, 0, 32, 0.8)"
-              strokeWidth={2}
-            />
-          ))}
-        </MapView>
-      ) : (
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapPlaceholderText}>🗺 Loading Map...</Text>
-        </View>
-      )}
-
-      {/* LEGEND */}
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: "#2e7d32" }]} />
-          <Text style={styles.legendText}>Primary</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: "#1565C0" }]} />
-          <Text style={styles.legendText}>Secondary</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: "#B00020" }]} />
-          <Text style={styles.legendText}>Danger Zone</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.bottomSheet}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
         {/* NEAREST CENTER */}
         {nearestCenter && (
           <View style={styles.nearestCard}>
             <Text style={styles.nearestLabel}>📍 Nearest Evacuation Center</Text>
             <Text style={styles.nearestName}>{nearestCenter.name}</Text>
-            <Text style={styles.nearestDistance}>~{nearestCenter.distance}m away</Text>
-            <TouchableOpacity
-              style={styles.directionsButton}
-              onPress={() => handleDirections(nearestCenter)}
-            >
-              <Text style={styles.directionsText}>🗺 Get Directions</Text>
-            </TouchableOpacity>
+            <Text style={styles.nearestDesc}>{nearestCenter.description}</Text>
+            <Text style={styles.nearestDistance}>~{nearestCenter.distance}m away from you</Text>
+            <View style={styles.nearestButtons}>
+              <TouchableOpacity
+                style={styles.directionsButton}
+                onPress={() => handleDirections(nearestCenter)}
+              >
+                <Text style={styles.directionsText}>🗺 Get Directions</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.viewMapButton}
+                onPress={() => openMapView(nearestCenter)}
+              >
+                <Text style={styles.viewMapText}>📍 View on Map</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* SELECTED CENTER */}
-        {selectedCenter && (
-          <View style={styles.selectedCard}>
-            <Text style={styles.selectedTitle}>{selectedCenter.name}</Text>
-            <Text style={styles.selectedDesc}>{selectedCenter.description}</Text>
-            <Text style={styles.selectedType}>
-              {selectedCenter.type === "primary" ? "🟢 Primary Center" : "🔵 Secondary Center"}
-            </Text>
-            <TouchableOpacity
-              style={styles.directionsButton}
-              onPress={() => handleDirections(selectedCenter)}
-            >
-              <Text style={styles.directionsText}>🗺 Get Directions</Text>
-            </TouchableOpacity>
+        {/* OPEN MAP BUTTON */}
+        <TouchableOpacity style={styles.openMapCard} onPress={openAllCentersMap}>
+          <Text style={styles.openMapIcon}>🗺</Text>
+          <View style={styles.openMapContent}>
+            <Text style={styles.openMapTitle}>View All Centers on Google Maps</Text>
+            <Text style={styles.openMapDesc}>Opens Google Maps with all evacuation centers nearby</Text>
           </View>
-        )}
+          <Text style={styles.openMapArrow}>›</Text>
+        </TouchableOpacity>
 
         {/* ALL CENTERS */}
-        <Text style={styles.listTitle}>All Evacuation Centers</Text>
-        {EVACUATION_CENTERS.map((center) => (
-          <TouchableOpacity
-            key={center.id}
-            style={styles.centerCard}
-            onPress={() => setSelectedCenter(center)}
-          >
-            <View style={styles.centerRow}>
-              <Text style={styles.centerName}>{center.name}</Text>
-              <Text>{center.type === "primary" ? "🟢" : "🔵"}</Text>
+        <Text style={styles.sectionTitle}>🏠 Primary Centers</Text>
+        {EVACUATION_CENTERS.filter(c => c.type === "primary").map((center) => (
+          <View key={center.id} style={styles.centerCard}>
+            <View style={styles.centerTop}>
+              <View style={styles.centerIconBox}>
+                <Text style={styles.centerIcon}>🏠</Text>
+              </View>
+              <View style={styles.centerInfo}>
+                <Text style={styles.centerName}>{center.name}</Text>
+                <Text style={styles.centerDesc}>{center.description}</Text>
+                {userLocation && (
+                  <Text style={styles.centerDistance}>
+                    📏 {(getDistance(userLocation.latitude, userLocation.longitude, center.latitude, center.longitude) * 1000).toFixed(0)}m away
+                  </Text>
+                )}
+              </View>
             </View>
-            <Text style={styles.centerDesc}>{center.description}</Text>
-            <TouchableOpacity
-              style={styles.smallDirections}
-              onPress={() => handleDirections(center)}
-            >
-              <Text style={styles.smallDirectionsText}>🗺 Directions</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
+            <View style={styles.centerButtons}>
+              <TouchableOpacity
+                style={styles.smallDirections}
+                onPress={() => handleDirections(center)}
+              >
+                <Text style={styles.smallDirectionsText}>🗺 Directions</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.smallView}
+                onPress={() => openMapView(center)}
+              >
+                <Text style={styles.smallViewText}>📍 View</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+
+        <Text style={styles.sectionTitle}>🔵 Secondary Centers</Text>
+        {EVACUATION_CENTERS.filter(c => c.type === "secondary").map((center) => (
+          <View key={center.id} style={[styles.centerCard, { borderLeftColor: "#1565C0" }]}>
+            <View style={styles.centerTop}>
+              <View style={[styles.centerIconBox, { backgroundColor: "#e3f2fd" }]}>
+                <Text style={styles.centerIcon}>🏫</Text>
+              </View>
+              <View style={styles.centerInfo}>
+                <Text style={styles.centerName}>{center.name}</Text>
+                <Text style={styles.centerDesc}>{center.description}</Text>
+                {userLocation && (
+                  <Text style={styles.centerDistance}>
+                    📏 {(getDistance(userLocation.latitude, userLocation.longitude, center.latitude, center.longitude) * 1000).toFixed(0)}m away
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.centerButtons}>
+              <TouchableOpacity
+                style={[styles.smallDirections, { backgroundColor: "#1565C0" }]}
+                onPress={() => handleDirections(center)}
+              >
+                <Text style={styles.smallDirectionsText}>🗺 Directions</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.smallView}
+                onPress={() => openMapView(center)}
+              >
+                <Text style={styles.smallViewText}>📍 View</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ))}
 
         {/* DANGER ZONES */}
-        <Text style={styles.listTitle}>⚠️ Danger Zones</Text>
+        <Text style={styles.sectionTitle}>⚠️ Danger Zones — Avoid These Areas</Text>
         {DANGER_ZONES.map((zone) => (
           <View key={zone.id} style={styles.dangerCard}>
-            <Text style={styles.dangerName}>🔴 {zone.name}</Text>
-            <Text style={styles.dangerDesc}>Radius: {zone.radius}m — Avoid this area</Text>
+            <Text style={styles.dangerIcon}>🔴</Text>
+            <View style={styles.dangerInfo}>
+              <Text style={styles.dangerName}>{zone.name}</Text>
+              <Text style={styles.dangerDesc}>{zone.description}</Text>
+            </View>
           </View>
         ))}
+
+        {/* TIPS */}
+        <View style={styles.tipsCard}>
+          <Text style={styles.tipsTitle}>💡 Evacuation Tips</Text>
+          {[
+            "Follow official evacuation orders immediately",
+            "Bring your go-bag with essentials",
+            "Help elderly and disabled neighbors",
+            "Never drive through floodwater",
+            "Check in with family after reaching safety",
+          ].map((tip, index) => (
+            <View key={index} style={styles.tipRow}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -280,72 +281,95 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    marginBottom: 5,
+    marginBottom: 15,
   },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
-  map: { width: "100%", height: 280 },
-  mapPlaceholder: {
-    width: "100%", height: 280,
-    backgroundColor: "#f5f5f5",
-    justifyContent: "center", alignItems: "center",
-  },
-  mapPlaceholderText: { fontSize: 18, color: "#999" },
-  legend: {
-    flexDirection: "row", justifyContent: "center",
-    gap: 15, paddingVertical: 8,
-    backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1, borderColor: "#eee",
-  },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 12, height: 12, borderRadius: 6 },
-  legendText: { fontSize: 11, color: "#555" },
-  bottomSheet: { flex: 1, padding: 15 },
+  container: { flex: 1, paddingHorizontal: 20 },
   nearestCard: {
-    backgroundColor: "#e8f5e9", borderRadius: 12,
-    padding: 15, marginBottom: 15,
+    backgroundColor: "#e8f5e9", borderRadius: 15,
+    padding: 16, marginBottom: 15,
     borderWidth: 1, borderColor: "#a5d6a7",
   },
   nearestLabel: { fontSize: 12, color: "#555", marginBottom: 4 },
-  nearestName: { fontSize: 16, fontWeight: "bold", color: "#2e7d32" },
-  nearestDistance: { color: "#555", fontSize: 13, marginTop: 2 },
+  nearestName: { fontSize: 18, fontWeight: "bold", color: "#2e7d32" },
+  nearestDesc: { color: "#555", fontSize: 13, marginTop: 2 },
+  nearestDistance: { color: "#2e7d32", fontSize: 13, marginTop: 4, fontWeight: "bold" },
+  nearestButtons: { flexDirection: "row", gap: 10, marginTop: 12 },
   directionsButton: {
-    backgroundColor: "#2e7d32", padding: 10,
-    borderRadius: 8, alignItems: "center", marginTop: 10,
+    flex: 1, backgroundColor: "#2e7d32",
+    padding: 12, borderRadius: 10, alignItems: "center",
   },
-  directionsText: { color: "#fff", fontWeight: "bold" },
-  selectedCard: {
-    backgroundColor: "#e3f2fd", borderRadius: 12,
-    padding: 15, marginBottom: 15,
-    borderWidth: 1, borderColor: "#90caf9",
+  directionsText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  viewMapButton: {
+    flex: 1, backgroundColor: "#1565C0",
+    padding: 12, borderRadius: 10, alignItems: "center",
   },
-  selectedTitle: { fontSize: 16, fontWeight: "bold", color: "#1565C0" },
-  selectedDesc: { color: "#555", marginTop: 4 },
-  selectedType: { marginTop: 6, fontSize: 13 },
-  listTitle: {
+  viewMapText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  openMapCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: COLORS.surface, borderRadius: 15,
+    padding: 15, marginBottom: 20,
+    borderWidth: 1, borderColor: COLORS.border,
+    elevation: 2,
+  },
+  openMapIcon: { fontSize: 35, marginRight: 12 },
+  openMapContent: { flex: 1 },
+  openMapTitle: { fontWeight: "bold", color: COLORS.primary, fontSize: 14 },
+  openMapDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 3 },
+  openMapArrow: { fontSize: 26, color: "#aaa" },
+  sectionTitle: {
     fontSize: 16, fontWeight: "bold",
-    color: COLORS.primary, marginBottom: 10, marginTop: 5,
+    color: COLORS.textDark, marginBottom: 10, marginTop: 5,
   },
   centerCard: {
-    backgroundColor: COLORS.surface, borderRadius: 10,
-    padding: 12, marginBottom: 10,
-    borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: "#fff", borderRadius: 15,
+    padding: 14, marginBottom: 12,
+    borderLeftWidth: 5, borderLeftColor: "#2e7d32",
+    elevation: 3, shadowColor: "#000",
+    shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
-  centerRow: { flexDirection: "row", justifyContent: "space-between" },
-  centerName: { fontWeight: "bold", fontSize: 14, flex: 1 },
-  centerDesc: { color: "#666", fontSize: 12, marginTop: 3 },
+  centerTop: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  centerIconBox: {
+    width: 46, height: 46, borderRadius: 14,
+    backgroundColor: "#e8f5e9",
+    justifyContent: "center", alignItems: "center", marginRight: 12,
+  },
+  centerIcon: { fontSize: 22 },
+  centerInfo: { flex: 1 },
+  centerName: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
+  centerDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  centerDistance: { color: "#2e7d32", fontSize: 12, marginTop: 3, fontWeight: "bold" },
+  centerButtons: { flexDirection: "row", gap: 8 },
   smallDirections: {
-    marginTop: 8, alignSelf: "flex-start",
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: "#2e7d32", borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
   smallDirectionsText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  smallView: {
+    backgroundColor: COLORS.surface, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  smallViewText: { color: COLORS.textMid, fontSize: 12, fontWeight: "bold" },
   dangerCard: {
-    backgroundColor: "#fff0f0", borderRadius: 10,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff0f0", borderRadius: 12,
     padding: 12, marginBottom: 10,
     borderWidth: 1, borderColor: "#ffcccc",
   },
-  dangerName: { fontWeight: "bold", fontSize: 14 },
-  dangerDesc: { color: "#666", fontSize: 12, marginTop: 3 },
+  dangerIcon: { fontSize: 24, marginRight: 12 },
+  dangerInfo: { flex: 1 },
+  dangerName: { fontWeight: "bold", fontSize: 14, color: COLORS.primary },
+  dangerDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  tipsCard: {
+    backgroundColor: COLORS.surface, borderRadius: 15,
+    padding: 16, marginTop: 5,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  tipsTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 12 },
+  tipRow: { flexDirection: "row", marginBottom: 8 },
+  tipBullet: { color: COLORS.primary, fontWeight: "bold", marginRight: 8, fontSize: 16 },
+  tipText: { flex: 1, color: COLORS.textMid, fontSize: 13, lineHeight: 20 },
 });
