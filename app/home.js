@@ -25,13 +25,13 @@ const NAV_ITEMS = [
 
 const ALL_FEATURE_CARDS = [
   { icon: "🛡", label: "Admin", route: "/admin", color: COLORS.admin, adminOnly: true },
-  { icon: "🤖", label: "ARIA AI", route: "/assistant", color: "#4527A0" },
   { icon: "🩺", label: "First Aid", route: "/firstaid", color: COLORS.danger },
   { icon: "📚", label: "Guides", route: "/guides", color: "#00695C" },
   { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F" },
   { icon: "👨‍👩‍👧", label: "Family", route: "/family", color: "#6A1B9A" },
   { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020" },
   { icon: "🗣", label: "Voice Guide", route: "/voiceguide", color: "#1565C0" },
+  { icon: "⚙️", label: "Settings", route: "/settings", color: "#455A64" },
   { icon: "🌊", label: "Flood", tip: "Move to higher ground." },
   { icon: "🌍", label: "Earthquake", tip: "Drop, Cover, Hold." },
   { icon: "🌪", label: "Typhoon", tip: "Stay indoors." },
@@ -154,12 +154,20 @@ export default function Home() {
               )}
             </View>
           </View>
-          <TouchableOpacity
-            style={[styles.headerSOS, !isOnline && styles.headerSOSDisabled]}
-            onPress={handleSOS}
-          >
-            <Text style={[styles.headerSOSText, !isOnline && { color: "#999" }]}>SOS</Text>
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => router.push("/settings")}
+            >
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerSOS, !isOnline && styles.headerSOSDisabled]}
+              onPress={handleSOS}
+            >
+              <Text style={[styles.headerSOSText, !isOnline && { color: "#999" }]}>SOS</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* 🚨 EMERGENCY ALERT */}
@@ -195,21 +203,6 @@ export default function Home() {
             <Text style={styles.offlineGuideArrow}>›</Text>
           </TouchableOpacity>
         )}
-
-        {/* ARIA AI BANNER */}
-        <TouchableOpacity
-          style={styles.ariaBanner}
-          onPress={() => router.push("/assistant")}
-        >
-          <Text style={styles.ariaIcon}>🤖</Text>
-          <View style={styles.ariaContent}>
-            <Text style={styles.ariaTitle}>Ask ARIA AI Assistant</Text>
-            <Text style={styles.ariaDesc}>
-              Voice-powered disaster preparedness assistant
-            </Text>
-          </View>
-          <Text style={styles.ariaArrow}>›</Text>
-        </TouchableOpacity>
 
         {/* QUICK ACCESS */}
         <Text style={styles.sectionTitle}>Quick Access</Text>
@@ -303,7 +296,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
   },
-  headerLeft: {},
+  headerLeft: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 2 },
   statusRow: { flexDirection: "row", alignItems: "center", marginTop: 5, gap: 8 },
@@ -315,6 +308,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   adminBadgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
+  headerButtons: { flexDirection: "row", alignItems: "center", gap: 10 },
+  settingsButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: "center", alignItems: "center",
+  },
+  settingsIcon: { fontSize: 20 },
   headerSOS: {
     backgroundColor: "#fff",
     paddingHorizontal: 18, paddingVertical: 10,
@@ -349,18 +349,6 @@ const styles = StyleSheet.create({
   offlineGuideTitle: { fontWeight: "bold", color: "#2e7d32", fontSize: 14 },
   offlineGuideDesc: { color: "#555", fontSize: 12, marginTop: 3 },
   offlineGuideArrow: { fontSize: 26, color: "#aaa" },
-  ariaBanner: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#EDE7F6", borderRadius: 15,
-    padding: 15, marginHorizontal: 20, marginBottom: 20,
-    borderWidth: 1, borderColor: "#B39DDB",
-    elevation: 2,
-  },
-  ariaIcon: { fontSize: 35, marginRight: 12 },
-  ariaContent: { flex: 1 },
-  ariaTitle: { fontWeight: "bold", color: "#4527A0", fontSize: 14 },
-  ariaDesc: { color: "#555", fontSize: 12, marginTop: 3 },
-  ariaArrow: { fontSize: 26, color: "#aaa" },
   sectionTitle: {
     fontSize: 18, fontWeight: "bold",
     color: COLORS.textDark,
