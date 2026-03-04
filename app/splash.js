@@ -32,31 +32,42 @@ export default function Splash() {
       }).start();
     });
 
-    // ⏱ Wait for Firebase Auth to restore session
+    let hasNavigated = false;
+
+    // ✅ Firebase now reads from AsyncStorage — wait for it
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // Give splash screen at least 2.5 seconds to show
+      if (hasNavigated) return;
+      hasNavigated = true;
+
+      // Small delay to let splash animation show
       setTimeout(() => {
         if (user) {
-          // ✅ Already logged in — go straight to home
           router.replace("/home");
         } else {
-          // ❌ Not logged in — go to login
           router.replace("/login");
         }
       }, 2500);
     });
 
-    return () => unsubscribe();
+    // ⏱ Fallback if Firebase takes too long
+    const fallback = setTimeout(() => {
+      if (!hasNavigated) {
+        hasNavigated = true;
+        router.replace("/login");
+      }
+    }, 6000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(fallback);
+    };
   }, []);
 
   return (
     <View style={styles.container}>
-
-      {/* BACKGROUND CIRCLES */}
       <View style={styles.circle1} />
       <View style={styles.circle2} />
 
-      {/* LOGO */}
       <Animated.View
         style={[
           styles.logoContainer,
@@ -69,22 +80,18 @@ export default function Splash() {
         <Text style={styles.logoText}>LIFELINE</Text>
       </Animated.View>
 
-      {/* SUBTITLE */}
       <Animated.View style={{ opacity: subtitleFade }}>
         <Text style={styles.subtitle}>CTU Danao Disaster Preparedness</Text>
         <Text style={styles.tagline}>Prepared. Connected. Safe.</Text>
       </Animated.View>
 
-      {/* LOADING DOTS */}
       <Animated.View style={[styles.loadingContainer, { opacity: subtitleFade }]}>
         <LoadingDots />
       </Animated.View>
 
-      {/* FOOTER */}
       <Animated.Text style={[styles.footer, { opacity: subtitleFade }]}>
         Powered by CTU Danao Campus
       </Animated.Text>
-
     </View>
   );
 }
