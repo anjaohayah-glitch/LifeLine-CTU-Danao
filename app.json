@@ -43,7 +43,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#B00020"
         }
-      ]
+      ],
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true,

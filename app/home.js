@@ -25,6 +25,7 @@ const NAV_ITEMS = [
 
 const ALL_FEATURE_CARDS = [
   { icon: "🛡", label: "Admin", route: "/admin", color: COLORS.admin, adminOnly: true },
+  { icon: "🤖", label: "ARIA AI", route: "/assistant", color: "#4527A0" },
   { icon: "🩺", label: "First Aid", route: "/firstaid", color: COLORS.danger },
   { icon: "📚", label: "Guides", route: "/guides", color: "#00695C" },
   { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F" },
@@ -47,7 +48,6 @@ export default function Home() {
   const { isAdmin } = useAdmin();
   const router = useRouter();
 
-  // Filter cards based on admin role
   const FEATURE_CARDS = ALL_FEATURE_CARDS.filter(
     (item) => !item.adminOnly || isAdmin
   );
@@ -76,7 +76,6 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // 📡 Monitor network
   useEffect(() => {
     let unsubscribe;
     (async () => {
@@ -196,6 +195,21 @@ export default function Home() {
             <Text style={styles.offlineGuideArrow}>›</Text>
           </TouchableOpacity>
         )}
+
+        {/* ARIA AI BANNER */}
+        <TouchableOpacity
+          style={styles.ariaBanner}
+          onPress={() => router.push("/assistant")}
+        >
+          <Text style={styles.ariaIcon}>🤖</Text>
+          <View style={styles.ariaContent}>
+            <Text style={styles.ariaTitle}>Ask ARIA AI Assistant</Text>
+            <Text style={styles.ariaDesc}>
+              Voice-powered disaster preparedness assistant
+            </Text>
+          </View>
+          <Text style={styles.ariaArrow}>›</Text>
+        </TouchableOpacity>
 
         {/* QUICK ACCESS */}
         <Text style={styles.sectionTitle}>Quick Access</Text>
@@ -335,6 +349,18 @@ const styles = StyleSheet.create({
   offlineGuideTitle: { fontWeight: "bold", color: "#2e7d32", fontSize: 14 },
   offlineGuideDesc: { color: "#555", fontSize: 12, marginTop: 3 },
   offlineGuideArrow: { fontSize: 26, color: "#aaa" },
+  ariaBanner: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#EDE7F6", borderRadius: 15,
+    padding: 15, marginHorizontal: 20, marginBottom: 20,
+    borderWidth: 1, borderColor: "#B39DDB",
+    elevation: 2,
+  },
+  ariaIcon: { fontSize: 35, marginRight: 12 },
+  ariaContent: { flex: 1 },
+  ariaTitle: { fontWeight: "bold", color: "#4527A0", fontSize: 14 },
+  ariaDesc: { color: "#555", fontSize: 12, marginTop: 3 },
+  ariaArrow: { fontSize: 26, color: "#aaa" },
   sectionTitle: {
     fontSize: 18, fontWeight: "bold",
     color: COLORS.textDark,

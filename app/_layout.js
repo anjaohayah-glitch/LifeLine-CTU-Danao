@@ -25,6 +25,7 @@ export default function Layout() {
       <Stack.Screen name="family" />
       <Stack.Screen name="drrm" />
       <Stack.Screen name="voiceguide" />
+      <Stack.Screen name="assistant" />
     </Stack>
   );
 }
