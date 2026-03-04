@@ -17,8 +17,8 @@ const EVACUATION_CENTERS = [
     id: 1,
     name: "CTU Danao Campus",
     description: "Main evacuation center — Sabang, Danao City",
-    latitude: 10.5031973,
-    longitude: 124.0301323,
+    latitude: 10.50339,
+    longitude: 124.02917,
     type: "primary",
   },
   {
@@ -367,9 +367,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
-  centerTop: {
-    flexDirection: "row", alignItems: "center", marginBottom: 10,
-  },
+  centerTop: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   centerIconBox: {
     width: 46, height: 46, borderRadius: 14,
     backgroundColor: "#e8f5e9",
@@ -379,10 +377,7 @@ const styles = StyleSheet.create({
   centerInfo: { flex: 1 },
   centerName: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   centerDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
-  centerDistance: {
-    color: "#2e7d32", fontSize: 12,
-    marginTop: 3, fontWeight: "bold",
-  },
+  centerDistance: { color: "#2e7d32", fontSize: 12, marginTop: 3, fontWeight: "bold" },
   centerButtons: { flexDirection: "row", gap: 8 },
   smallDirections: {
     backgroundColor: "#2e7d32", borderRadius: 20,
@@ -410,14 +405,8 @@ const styles = StyleSheet.create({
     padding: 16, marginTop: 5,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  tipsTitle: {
-    fontWeight: "bold", fontSize: 15,
-    color: COLORS.textDark, marginBottom: 12,
-  },
+  tipsTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 12 },
   tipRow: { flexDirection: "row", marginBottom: 8 },
-  tipBullet: {
-    color: COLORS.primary, fontWeight: "bold",
-    marginRight: 8, fontSize: 16,
-  },
+  tipBullet: { color: COLORS.primary, fontWeight: "bold", marginRight: 8, fontSize: 16 },
   tipText: { flex: 1, color: COLORS.textMid, fontSize: 13, lineHeight: 20 },
 });
