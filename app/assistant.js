@@ -15,7 +15,7 @@ import {
 import { COLORS } from "../constants/colors";
 
 const GEMINI_API_KEY = "AIzaSyDTUObpY-yz_Xhw4udrWTfdNMN_Pm71qK0";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are ARIA (Automated Response and Information Assistant), a disaster preparedness AI assistant for LIFELINE — the official disaster preparedness app of CTU Danao Campus in Danao City, Cebu, Philippines.
 
@@ -23,18 +23,18 @@ Your role is to:
 - Answer questions about disaster preparedness, response, and recovery
 - Give clear, concise evacuation instructions
 - Provide first aid guidance
-- Share DRRM (Disaster Risk Reduction and Management) information
+- Share DRRM information
 - Help users during emergencies
-- Answer questions about CTU Danao Campus safe zones and evacuation centers
+- Answer questions about CTU Danao Campus safe zones
 
-CTU Danao Campus is located at Sabang, Danao City, Cebu (10.50339, 124.02917).
-Campus DRRMO Hotline: 0917-723-6262
+CTU Danao Campus: Sabang, Danao City, Cebu (10.50339, 124.02917)
+DRRMO Hotline: 0917-723-6262
 National Emergency: 911
 Red Cross: 143
 
-Keep responses SHORT, CLEAR, and HELPFUL — max 3-4 sentences.
-If someone is in immediate danger, always tell them to call 911 first.
-You can respond in English, Cebuano, or Filipino depending on what language the user uses.`;
+Keep responses SHORT and HELPFUL — max 3-4 sentences.
+If someone is in immediate danger, tell them to call 911 first.
+Respond in English, Cebuano, or Filipino depending on the user.`;
 
 const SUGGESTIONS = [
   "What to do in earthquake?",
@@ -56,71 +56,67 @@ export default function Assistant() {
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef(null);
-const handleSend = useCallback(async (text) => {
-  const message = text || input;
-  if (!message.trim()) return;
 
-  setInput("");
-  setMessages((prev) => [...prev, { role: "user", text: message }]);
-  setIsThinking(true);
+  const handleSend = useCallback(async (text) => {
+    const message = text || input;
+    if (!message.trim()) return;
 
-  try {
-    const response = await fetch(GEMINI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: SYSTEM_PROMPT + "\n\nUser question: " + message }],
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text: message }]);
+    setIsThinking(true);
+
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: SYSTEM_PROMPT + "\n\nUser question: " + message }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 200,
+            temperature: 0.7,
           },
-        ],
-        generationConfig: {
-          maxOutputTokens: 200,
-          temperature: 0.7,
-        },
-      }),
-    });
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    // 🔍 Show exact error for debugging
-    if (!response.ok) {
+      if (!response.ok) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: "API Error: " + (data?.error?.message || JSON.stringify(data)) },
+        ]);
+        return;
+      }
+
+      const reply =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "Raw response: " + JSON.stringify(data).slice(0, 200);
+
+      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+
+      setIsSpeaking(true);
+      Speech.speak(reply, {
+        language: "en-US",
+        rate: 0.9,
+        onDone: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: "API Error: " + JSON.stringify(data?.error?.message || data) },
+        { role: "assistant", text: "Network Error: " + error.message },
       ]);
-      return;
+    } finally {
+      setIsThinking(false);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response from AI. Raw: " + JSON.stringify(data).slice(0, 200);
-
-    setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
-
-    setIsSpeaking(true);
-    Speech.speak(reply, {
-      language: "en-US",
-      rate: 0.9,
-      onDone: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-    });
-
-  } catch (error) {
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", text: "Network Error: " + error.message },
-    ]);
-  } finally {
-    setIsThinking(false);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }
-}, [input]);
-```
-```
-git add app/assistant.js
-git commit -m "Add error logging to ARIA"
+  }, [input]);
 
   const stopSpeaking = () => {
     Speech.stop();
@@ -155,7 +151,7 @@ git commit -m "Add error logging to ARIA"
         </TouchableOpacity>
       </View>
 
-      {/* ARIA STATUS */}
+      {/* STATUS */}
       <View style={styles.statusBar}>
         <View style={[styles.statusDot, {
           backgroundColor: isThinking ? "#FB8C00" : isSpeaking ? "#2e7d32" : "#4caf50"
@@ -170,7 +166,7 @@ git commit -m "Add error logging to ARIA"
         )}
       </View>
 
-      {/* CHAT MESSAGES */}
+      {/* CHAT */}
       <ScrollView
         ref={scrollRef}
         style={styles.chatContainer}
@@ -212,7 +208,6 @@ git commit -m "Add error logging to ARIA"
             </View>
           </View>
         )}
-
         <View style={{ height: 20 }} />
       </ScrollView>
 
@@ -246,7 +241,6 @@ git commit -m "Add error logging to ARIA"
           onChangeText={setInput}
           multiline
           maxLength={300}
-          onSubmitEditing={() => handleSend()}
         />
         <TouchableOpacity
           style={[styles.sendButton, (!input.trim() || isThinking) && styles.sendDisabled]}
