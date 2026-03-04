@@ -16,41 +16,41 @@ const EVACUATION_CENTERS = [
   {
     id: 1,
     name: "CTU Danao Campus",
-    description: "Main evacuation center",
-    latitude: 10.5167,
-    longitude: 124.0333,
+    description: "Main evacuation center — Sabang, Danao City",
+    latitude: 10.5031973,
+    longitude: 124.0301323,
     type: "primary",
   },
   {
     id: 2,
     name: "Danao City Hall",
     description: "Secondary evacuation center",
-    latitude: 10.5210,
-    longitude: 124.0280,
+    latitude: 10.5228,
+    longitude: 124.0277,
     type: "primary",
   },
   {
     id: 3,
     name: "Danao Sports Complex",
     description: "Large capacity center",
-    latitude: 10.5190,
-    longitude: 124.0310,
+    latitude: 10.5189,
+    longitude: 124.0298,
     type: "primary",
   },
   {
     id: 4,
     name: "Danao Elementary School",
     description: "Community evacuation point",
-    latitude: 10.5145,
-    longitude: 124.0355,
+    latitude: 10.5215,
+    longitude: 124.0265,
     type: "secondary",
   },
   {
     id: 5,
     name: "Poblacion Barangay Hall",
     description: "Local evacuation point",
-    latitude: 10.5230,
-    longitude: 124.0260,
+    latitude: 10.5241,
+    longitude: 124.0252,
     type: "secondary",
   },
 ];
@@ -76,14 +76,13 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 export default function Evacuation() {
   const [userLocation, setUserLocation] = useState(null);
   const [nearestCenter, setNearestCenter] = useState(null);
-  const [selectedCenter, setSelectedCenter] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          Alert.alert("Permission Denied", "Location access is required.");
+          Alert.alert("Permission Denied", "Location access is required to find nearest center.");
           return;
         }
         const location = await Location.getCurrentPositionAsync({});
@@ -136,12 +135,14 @@ export default function Evacuation() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
         {/* NEAREST CENTER */}
-        {nearestCenter && (
+        {nearestCenter ? (
           <View style={styles.nearestCard}>
             <Text style={styles.nearestLabel}>📍 Nearest Evacuation Center</Text>
             <Text style={styles.nearestName}>{nearestCenter.name}</Text>
             <Text style={styles.nearestDesc}>{nearestCenter.description}</Text>
-            <Text style={styles.nearestDistance}>~{nearestCenter.distance}m away from you</Text>
+            <Text style={styles.nearestDistance}>
+              ~{nearestCenter.distance}m away from you
+            </Text>
             <View style={styles.nearestButtons}>
               <TouchableOpacity
                 style={styles.directionsButton}
@@ -157,21 +158,33 @@ export default function Evacuation() {
               </TouchableOpacity>
             </View>
           </View>
+        ) : (
+          <View style={styles.locatingCard}>
+            <Text style={styles.locatingIcon}>📡</Text>
+            <View style={styles.locatingContent}>
+              <Text style={styles.locatingTitle}>Finding your location...</Text>
+              <Text style={styles.locatingDesc}>
+                Allow location access to find the nearest evacuation center
+              </Text>
+            </View>
+          </View>
         )}
 
-        {/* OPEN MAP BUTTON */}
+        {/* OPEN ALL ON MAP */}
         <TouchableOpacity style={styles.openMapCard} onPress={openAllCentersMap}>
           <Text style={styles.openMapIcon}>🗺</Text>
           <View style={styles.openMapContent}>
             <Text style={styles.openMapTitle}>View All Centers on Google Maps</Text>
-            <Text style={styles.openMapDesc}>Opens Google Maps with all evacuation centers nearby</Text>
+            <Text style={styles.openMapDesc}>
+              Opens Google Maps with evacuation centers nearby
+            </Text>
           </View>
           <Text style={styles.openMapArrow}>›</Text>
         </TouchableOpacity>
 
-        {/* ALL CENTERS */}
+        {/* PRIMARY CENTERS */}
         <Text style={styles.sectionTitle}>🏠 Primary Centers</Text>
-        {EVACUATION_CENTERS.filter(c => c.type === "primary").map((center) => (
+        {EVACUATION_CENTERS.filter((c) => c.type === "primary").map((center) => (
           <View key={center.id} style={styles.centerCard}>
             <View style={styles.centerTop}>
               <View style={styles.centerIconBox}>
@@ -182,7 +195,12 @@ export default function Evacuation() {
                 <Text style={styles.centerDesc}>{center.description}</Text>
                 {userLocation && (
                   <Text style={styles.centerDistance}>
-                    📏 {(getDistance(userLocation.latitude, userLocation.longitude, center.latitude, center.longitude) * 1000).toFixed(0)}m away
+                    📏 {(getDistance(
+                      userLocation.latitude,
+                      userLocation.longitude,
+                      center.latitude,
+                      center.longitude
+                    ) * 1000).toFixed(0)}m away
                   </Text>
                 )}
               </View>
@@ -204,8 +222,9 @@ export default function Evacuation() {
           </View>
         ))}
 
+        {/* SECONDARY CENTERS */}
         <Text style={styles.sectionTitle}>🔵 Secondary Centers</Text>
-        {EVACUATION_CENTERS.filter(c => c.type === "secondary").map((center) => (
+        {EVACUATION_CENTERS.filter((c) => c.type === "secondary").map((center) => (
           <View key={center.id} style={[styles.centerCard, { borderLeftColor: "#1565C0" }]}>
             <View style={styles.centerTop}>
               <View style={[styles.centerIconBox, { backgroundColor: "#e3f2fd" }]}>
@@ -216,7 +235,12 @@ export default function Evacuation() {
                 <Text style={styles.centerDesc}>{center.description}</Text>
                 {userLocation && (
                   <Text style={styles.centerDistance}>
-                    📏 {(getDistance(userLocation.latitude, userLocation.longitude, center.latitude, center.longitude) * 1000).toFixed(0)}m away
+                    📏 {(getDistance(
+                      userLocation.latitude,
+                      userLocation.longitude,
+                      center.latitude,
+                      center.longitude
+                    ) * 1000).toFixed(0)}m away
                   </Text>
                 )}
               </View>
@@ -294,7 +318,10 @@ const styles = StyleSheet.create({
   nearestLabel: { fontSize: 12, color: "#555", marginBottom: 4 },
   nearestName: { fontSize: 18, fontWeight: "bold", color: "#2e7d32" },
   nearestDesc: { color: "#555", fontSize: 13, marginTop: 2 },
-  nearestDistance: { color: "#2e7d32", fontSize: 13, marginTop: 4, fontWeight: "bold" },
+  nearestDistance: {
+    color: "#2e7d32", fontSize: 13,
+    marginTop: 4, fontWeight: "bold",
+  },
   nearestButtons: { flexDirection: "row", gap: 10, marginTop: 12 },
   directionsButton: {
     flex: 1, backgroundColor: "#2e7d32",
@@ -306,6 +333,16 @@ const styles = StyleSheet.create({
     padding: 12, borderRadius: 10, alignItems: "center",
   },
   viewMapText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  locatingCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: COLORS.surface, borderRadius: 15,
+    padding: 15, marginBottom: 15,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  locatingIcon: { fontSize: 35, marginRight: 12 },
+  locatingContent: { flex: 1 },
+  locatingTitle: { fontWeight: "bold", color: COLORS.textDark, fontSize: 14 },
+  locatingDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 3 },
   openMapCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: COLORS.surface, borderRadius: 15,
@@ -330,7 +367,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
-  centerTop: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  centerTop: {
+    flexDirection: "row", alignItems: "center", marginBottom: 10,
+  },
   centerIconBox: {
     width: 46, height: 46, borderRadius: 14,
     backgroundColor: "#e8f5e9",
@@ -340,7 +379,10 @@ const styles = StyleSheet.create({
   centerInfo: { flex: 1 },
   centerName: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   centerDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
-  centerDistance: { color: "#2e7d32", fontSize: 12, marginTop: 3, fontWeight: "bold" },
+  centerDistance: {
+    color: "#2e7d32", fontSize: 12,
+    marginTop: 3, fontWeight: "bold",
+  },
   centerButtons: { flexDirection: "row", gap: 8 },
   smallDirections: {
     backgroundColor: "#2e7d32", borderRadius: 20,
@@ -368,8 +410,14 @@ const styles = StyleSheet.create({
     padding: 16, marginTop: 5,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  tipsTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 12 },
+  tipsTitle: {
+    fontWeight: "bold", fontSize: 15,
+    color: COLORS.textDark, marginBottom: 12,
+  },
   tipRow: { flexDirection: "row", marginBottom: 8 },
-  tipBullet: { color: COLORS.primary, fontWeight: "bold", marginRight: 8, fontSize: 16 },
+  tipBullet: {
+    color: COLORS.primary, fontWeight: "bold",
+    marginRight: 8, fontSize: 16,
+  },
   tipText: { flex: 1, color: COLORS.textMid, fontSize: 13, lineHeight: 20 },
 });
