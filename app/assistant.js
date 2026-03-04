@@ -69,16 +69,18 @@ export default function Assistant() {
       const response = await fetch(GEMINI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: [{ role: "user", parts: [{ text: message }] }],
-          generationConfig: {
-            maxOutputTokens: 200,
-            temperature: 0.7,
-          },
-        }),
+       body: JSON.stringify({
+  contents: [
+    {
+      role: "user",
+      parts: [{ text: SYSTEM_PROMPT + "\n\nUser question: " + message }],
+    },
+  ],
+  generationConfig: {
+    maxOutputTokens: 200,
+    temperature: 0.7,
+  },
+}),
       });
 
       const data = await response.json();
