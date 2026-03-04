@@ -1,14 +1,16 @@
 // app/assistant.js
 import * as Speech from "expo-speech";
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
 
@@ -30,67 +32,38 @@ Campus DRRMO Hotline: 0917-723-6262
 National Emergency: 911
 Red Cross: 143
 
-Keep responses SHORT, CLEAR, and HELPFUL — max 3-4 sentences. 
+Keep responses SHORT, CLEAR, and HELPFUL — max 3-4 sentences.
 If someone is in immediate danger, always tell them to call 911 first.
 You can respond in English, Cebuano, or Filipino depending on what language the user uses.`;
+
+const SUGGESTIONS = [
+  "What to do in earthquake?",
+  "How to do CPR?",
+  "Nearest evacuation center?",
+  "Typhoon signal 3 meaning?",
+  "What is a go bag?",
+  "DRRMO hotline number?",
+];
 
 export default function Assistant() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "Hi! I'm ARIA, your disaster preparedness assistant. Ask me anything about disasters, first aid, or evacuation! 🚑",
+      text: "Hi! I'm ARIA 🤖, your disaster preparedness assistant powered by AI.\n\nAsk me anything about disasters, first aid, or evacuation!",
     },
   ]);
-  const [isListening, setIsListening] = useState(false);
+  const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const scrollRef = useRef(null);
 
-  // 🎙 Speech recognition events
-  useSpeechRecognitionEvent("start", () => setIsListening(true));
-  useSpeechRecognitionEvent("end", () => setIsListening(false));
-  useSpeechRecognitionEvent("result", (event) => {
-    const text = event.results[0]?.transcript || "";
-    setTranscript(text);
-    if (event.isFinal && text) {
-      handleUserMessage(text);
-    }
-  });
-  useSpeechRecognitionEvent("error", () => {
-    setIsListening(false);
-    setTranscript("");
-  });
+  const handleSend = useCallback(async (text) => {
+    const message = text || input;
+    if (!message.trim()) return;
 
-  const startListening = async () => {
-    try {
-      Speech.stop();
-      setIsSpeaking(false);
-      setTranscript("");
-
-      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!result.granted) return;
-
-      await ExpoSpeechRecognitionModule.start({
-        lang: "en-US",
-        interimResults: true,
-        maxAlternatives: 1,
-      });
-    } catch (error) {
-      console.log("Speech recognition error:", error);
-    }
-  };
-
-  const stopListening = () => {
-    ExpoSpeechRecognitionModule.stop();
-  };
-
-  const handleUserMessage = useCallback(async (text) => {
-    if (!text.trim()) return;
-
-    const userMessage = { role: "user", text };
-    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text: message }]);
     setIsThinking(true);
-    setTranscript("");
 
     try {
       const response = await fetch(GEMINI_URL, {
@@ -100,12 +73,7 @@ export default function Assistant() {
           system_instruction: {
             parts: [{ text: SYSTEM_PROMPT }],
           },
-          contents: [
-            {
-              role: "user",
-              parts: [{ text }],
-            },
-          ],
+          contents: [{ role: "user", parts: [{ text: message }] }],
           generationConfig: {
             maxOutputTokens: 200,
             temperature: 0.7,
@@ -114,11 +82,11 @@ export default function Assistant() {
       });
 
       const data = await response.json();
-      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      const reply =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
         "Sorry, I couldn't get a response. Please try again.";
 
-      const assistantMessage = { role: "assistant", text: reply };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
 
       // 🔊 Speak the response
       setIsSpeaking(true);
@@ -131,12 +99,16 @@ export default function Assistant() {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: "Sorry, I'm having trouble connecting. Please check your internet connection." },
+        {
+          role: "assistant",
+          text: "Sorry, I'm having trouble connecting. Please check your internet connection.",
+        },
       ]);
     } finally {
       setIsThinking(false);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, []);
+  }, [input]);
 
   const stopSpeaking = () => {
     Speech.stop();
@@ -149,14 +121,17 @@ export default function Assistant() {
     setMessages([
       {
         role: "assistant",
-        text: "Hi! I'm ARIA, your disaster preparedness assistant. Ask me anything about disasters, first aid, or evacuation! 🚑",
+        text: "Hi! I'm ARIA 🤖, your disaster preparedness assistant powered by AI.\n\nAsk me anything about disasters, first aid, or evacuation!",
       },
     ]);
   };
 
   return (
-    <View style={styles.wrapper}>
-
+    <KeyboardAvoidingView
+      style={styles.wrapper}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -168,33 +143,27 @@ export default function Assistant() {
         </TouchableOpacity>
       </View>
 
-      {/* ARIA AVATAR */}
-      <View style={styles.avatarContainer}>
-        <View style={[
-          styles.avatar,
-          isListening && styles.avatarListening,
-          isThinking && styles.avatarThinking,
-          isSpeaking && styles.avatarSpeaking,
-        ]}>
-          <Text style={styles.avatarEmoji}>
-            {isListening ? "🎙" : isThinking ? "💭" : isSpeaking ? "🔊" : "🤖"}
-          </Text>
-        </View>
-        <Text style={styles.avatarStatus}>
-          {isListening ? "Listening..." :
-           isThinking ? "Thinking..." :
-           isSpeaking ? "Speaking..." : "Tap mic to speak"}
+      {/* ARIA STATUS */}
+      <View style={styles.statusBar}>
+        <View style={[styles.statusDot, {
+          backgroundColor: isThinking ? "#FB8C00" : isSpeaking ? "#2e7d32" : "#4caf50"
+        }]} />
+        <Text style={styles.statusText}>
+          {isThinking ? "ARIA is thinking..." : isSpeaking ? "ARIA is speaking..." : "ARIA is ready"}
         </Text>
-        {transcript ? (
-          <Text style={styles.transcriptText}>"{transcript}"</Text>
-        ) : null}
+        {isSpeaking && (
+          <TouchableOpacity style={styles.stopSpeakButton} onPress={stopSpeaking}>
+            <Text style={styles.stopSpeakText}>⏹ Stop</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* CHAT MESSAGES */}
       <ScrollView
+        ref={scrollRef}
         style={styles.chatContainer}
         showsVerticalScrollIndicator={false}
-        ref={(ref) => ref?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {messages.map((msg, index) => (
           <View
@@ -205,7 +174,10 @@ export default function Assistant() {
             ]}
           >
             {msg.role === "assistant" && (
-              <Text style={styles.messageRole}>🤖 ARIA</Text>
+              <View style={styles.messageHeader}>
+                <Text style={styles.messageAvatar}>🤖</Text>
+                <Text style={styles.messageRole}>ARIA</Text>
+              </View>
             )}
             <Text style={[
               styles.messageText,
@@ -215,66 +187,68 @@ export default function Assistant() {
             </Text>
           </View>
         ))}
+
         {isThinking && (
           <View style={styles.assistantBubble}>
-            <Text style={styles.messageRole}>🤖 ARIA</Text>
-            <ActivityIndicator size="small" color={COLORS.primary} />
+            <View style={styles.messageHeader}>
+              <Text style={styles.messageAvatar}>🤖</Text>
+              <Text style={styles.messageRole}>ARIA</Text>
+            </View>
+            <View style={styles.thinkingDots}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.thinkingText}>Thinking...</Text>
+            </View>
           </View>
         )}
+
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* SUGGESTED QUESTIONS */}
+      {/* SUGGESTIONS */}
       {messages.length <= 1 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.suggestionsContainer}
+          style={styles.suggestionsScroll}
           contentContainerStyle={styles.suggestionsContent}
         >
-          {[
-            "What to do in earthquake?",
-            "How to do CPR?",
-            "Nearest evacuation center?",
-            "Typhoon signal 3 meaning?",
-            "What is a go bag?",
-            "DRRMO hotline?",
-          ].map((suggestion, index) => (
+          {SUGGESTIONS.map((s, i) => (
             <TouchableOpacity
-              key={index}
+              key={i}
               style={styles.suggestion}
-              onPress={() => handleUserMessage(suggestion)}
+              onPress={() => handleSend(s)}
             >
-              <Text style={styles.suggestionText}>{suggestion}</Text>
+              <Text style={styles.suggestionText}>{s}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       )}
 
-      {/* MIC BUTTON */}
-      <View style={styles.controls}>
-        {isSpeaking && (
-          <TouchableOpacity style={styles.stopButton} onPress={stopSpeaking}>
-            <Text style={styles.stopText}>⏹ Stop</Text>
-          </TouchableOpacity>
-        )}
+      {/* INPUT */}
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="Ask ARIA anything..."
+          placeholderTextColor={COLORS.textLight}
+          value={input}
+          onChangeText={setInput}
+          multiline
+          maxLength={300}
+          onSubmitEditing={() => handleSend()}
+        />
         <TouchableOpacity
-          style={[
-            styles.micButton,
-            isListening && styles.micButtonActive,
-            isThinking && styles.micButtonDisabled,
-          ]}
-          onPress={isListening ? stopListening : startListening}
-          disabled={isThinking}
+          style={[styles.sendButton, (!input.trim() || isThinking) && styles.sendDisabled]}
+          onPress={() => handleSend()}
+          disabled={!input.trim() || isThinking}
         >
-          <Text style={styles.micIcon}>{isListening ? "⏹" : "🎙"}</Text>
-          <Text style={styles.micText}>
-            {isListening ? "Tap to Stop" : "Tap to Speak"}
-          </Text>
+          {isThinking ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.sendIcon}>➤</Text>
+          )}
         </TouchableOpacity>
       </View>
-
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -299,40 +273,24 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   clearText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
-  avatarContainer: {
-    alignItems: "center", paddingVertical: 20,
+  statusBar: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 20, paddingVertical: 10,
     borderBottomWidth: 1, borderColor: COLORS.border,
+    gap: 8,
   },
-  avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.surface,
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 3, borderColor: COLORS.border,
-    marginBottom: 8,
-  },
-  avatarListening: {
-    borderColor: "#e53935", borderWidth: 3,
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { flex: 1, color: COLORS.textMid, fontSize: 13 },
+  stopSpeakButton: {
     backgroundColor: "#ffebee",
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 15, borderWidth: 1, borderColor: "#ffcdd2",
   },
-  avatarThinking: {
-    borderColor: "#FB8C00", borderWidth: 3,
-    backgroundColor: "#FFF3E0",
-  },
-  avatarSpeaking: {
-    borderColor: "#2e7d32", borderWidth: 3,
-    backgroundColor: "#e8f5e9",
-  },
-  avatarEmoji: { fontSize: 40 },
-  avatarStatus: { color: COLORS.textMid, fontSize: 13 },
-  transcriptText: {
-    color: COLORS.primary, fontStyle: "italic",
-    fontSize: 13, marginTop: 5, paddingHorizontal: 20,
-    textAlign: "center",
-  },
+  stopSpeakText: { color: "#e53935", fontSize: 12, fontWeight: "bold" },
   chatContainer: { flex: 1, padding: 15 },
   messageBubble: {
     maxWidth: "80%", padding: 12,
-    borderRadius: 16, marginBottom: 10,
+    borderRadius: 16, marginBottom: 12,
   },
   userBubble: {
     backgroundColor: COLORS.primary,
@@ -345,45 +303,42 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  messageRole: {
-    fontSize: 11, color: COLORS.textLight,
-    marginBottom: 4, fontWeight: "bold",
+  messageHeader: {
+    flexDirection: "row", alignItems: "center",
+    gap: 5, marginBottom: 6,
   },
-  messageText: { fontSize: 14, color: COLORS.textDark, lineHeight: 20 },
-  suggestionsContainer: { maxHeight: 50, marginBottom: 10 },
-  suggestionsContent: { paddingHorizontal: 15, gap: 8 },
+  messageAvatar: { fontSize: 14 },
+  messageRole: { fontSize: 11, color: COLORS.textLight, fontWeight: "bold" },
+  messageText: { fontSize: 14, color: COLORS.textDark, lineHeight: 21 },
+  thinkingDots: { flexDirection: "row", alignItems: "center", gap: 8 },
+  thinkingText: { color: COLORS.textLight, fontSize: 13 },
+  suggestionsScroll: { maxHeight: 50, marginBottom: 8 },
+  suggestionsContent: { paddingHorizontal: 15, gap: 8, alignItems: "center" },
   suggestion: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#EDE7F6",
     paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 20, borderWidth: 1, borderColor: "#B39DDB",
   },
-  suggestionText: { color: COLORS.primary, fontSize: 12, fontWeight: "bold" },
-  controls: {
-    padding: 20, alignItems: "center", gap: 10,
-    borderTopWidth: 1, borderColor: COLORS.border,
+  suggestionText: { color: "#4527A0", fontSize: 12, fontWeight: "bold" },
+  inputRow: {
+    flexDirection: "row", alignItems: "center",
+    padding: 12, borderTopWidth: 1,
+    borderColor: COLORS.border, gap: 10,
+    backgroundColor: "#fff",
   },
-  stopButton: {
-    backgroundColor: "#ffebee",
-    paddingHorizontal: 20, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: "#ffcdd2",
+  input: {
+    flex: 1, backgroundColor: COLORS.surface,
+    borderRadius: 25, paddingHorizontal: 18,
+    paddingVertical: 10, fontSize: 14,
+    color: COLORS.textDark, borderWidth: 1.5,
+    borderColor: COLORS.border, maxHeight: 100,
   },
-  stopText: { color: "#e53935", fontWeight: "bold" },
-  micButton: {
+  sendButton: {
     backgroundColor: COLORS.primary,
-    width: 120, height: 120, borderRadius: 60,
+    width: 46, height: 46, borderRadius: 23,
     justifyContent: "center", alignItems: "center",
-    elevation: 6, shadowColor: COLORS.primary,
-    shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
+    elevation: 3,
   },
-  micButtonActive: {
-    backgroundColor: "#e53935",
-    shadowColor: "#e53935",
-  },
-  micButtonDisabled: {
-    backgroundColor: "#ccc",
-    shadowColor: "#ccc",
-  },
-  micIcon: { fontSize: 40 },
-  micText: { color: "#fff", fontSize: 11, fontWeight: "bold", marginTop: 4 },
+  sendDisabled: { backgroundColor: "#ccc" },
+  sendIcon: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
