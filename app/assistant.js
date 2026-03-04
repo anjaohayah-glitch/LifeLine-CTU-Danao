@@ -56,61 +56,71 @@ export default function Assistant() {
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef(null);
+const handleSend = useCallback(async (text) => {
+  const message = text || input;
+  if (!message.trim()) return;
 
-  const handleSend = useCallback(async (text) => {
-    const message = text || input;
-    if (!message.trim()) return;
+  setInput("");
+  setMessages((prev) => [...prev, { role: "user", text: message }]);
+  setIsThinking(true);
 
-    setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: message }]);
-    setIsThinking(true);
+  try {
+    const response = await fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: SYSTEM_PROMPT + "\n\nUser question: " + message }],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 200,
+          temperature: 0.7,
+        },
+      }),
+    });
 
-    try {
-      const response = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({
-  contents: [
-    {
-      role: "user",
-      parts: [{ text: SYSTEM_PROMPT + "\n\nUser question: " + message }],
-    },
-  ],
-  generationConfig: {
-    maxOutputTokens: 200,
-    temperature: 0.7,
-  },
-}),
-      });
+    const data = await response.json();
 
-      const data = await response.json();
-      const reply =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "Sorry, I couldn't get a response. Please try again.";
-
-      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
-
-      // 🔊 Speak the response
-      setIsSpeaking(true);
-      Speech.speak(reply, {
-        language: "en-US",
-        rate: 0.9,
-        onDone: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
-      });
-    } catch (error) {
+    // 🔍 Show exact error for debugging
+    if (!response.ok) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          text: "Sorry, I'm having trouble connecting. Please check your internet connection.",
-        },
+        { role: "assistant", text: "API Error: " + JSON.stringify(data?.error?.message || data) },
       ]);
-    } finally {
-      setIsThinking(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      return;
     }
-  }, [input]);
+
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No response from AI. Raw: " + JSON.stringify(data).slice(0, 200);
+
+    setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+
+    setIsSpeaking(true);
+    Speech.speak(reply, {
+      language: "en-US",
+      rate: 0.9,
+      onDone: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+
+  } catch (error) {
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", text: "Network Error: " + error.message },
+    ]);
+  } finally {
+    setIsThinking(false);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }
+}, [input]);
+```
+```
+git add app/assistant.js
+git commit -m "Add error logging to ARIA"
 
   const stopSpeaking = () => {
     Speech.stop();
