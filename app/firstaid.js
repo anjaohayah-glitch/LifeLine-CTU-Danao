@@ -1,11 +1,11 @@
 // app/firstaid.js
 import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const GUIDES = [
@@ -15,6 +15,7 @@ const GUIDES = [
     icon: "❤️",
     color: "#B00020",
     emergency: true,
+    disclaimer: "⚠️ This guide is for educational purposes only. It does not replace professional CPR training. In an emergency, always call 911 first. Use at your own risk.",
     steps: [
       { icon: "👀", title: "Check Safety", desc: "Make sure the scene is safe for you and the victim." },
       { icon: "👋", title: "Check Response", desc: "Tap shoulders firmly and shout 'Are you okay?'" },
@@ -126,7 +127,10 @@ export default function FirstAid() {
 
         {/* GUIDE HEADER */}
         <View style={[styles.guideHeader, { backgroundColor: guide.color }]}>
-          <TouchableOpacity onPress={() => { setSelectedGuide(null); resetSteps(); }} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => { setSelectedGuide(null); resetSteps(); }}
+            style={styles.backButton}
+          >
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.guideIcon}>{guide.icon}</Text>
@@ -137,6 +141,13 @@ export default function FirstAid() {
             </View>
           )}
         </View>
+
+        {/* CPR DISCLAIMER */}
+        {guide.disclaimer && (
+          <View style={styles.disclaimerCard}>
+            <Text style={styles.disclaimerText}>{guide.disclaimer}</Text>
+          </View>
+        )}
 
         {/* PROGRESS BAR */}
         <View style={styles.progressContainer}>
@@ -178,7 +189,6 @@ export default function FirstAid() {
             </TouchableOpacity>
           ))}
 
-          {/* COMPLETED MESSAGE */}
           {completedCount === guide.steps.length && (
             <View style={styles.completedCard}>
               <Text style={styles.completedIcon}>✅</Text>
@@ -204,7 +214,13 @@ export default function FirstAid() {
         <Text style={styles.callNumber}>📞 911</Text>
       </View>
 
-      {/* GUIDE CARDS */}
+      {/* GENERAL DISCLAIMER */}
+      <View style={styles.generalDisclaimer}>
+        <Text style={styles.generalDisclaimerText}>
+          📋 All guides in this section are for <Text style={{ fontWeight: "bold" }}>educational purposes only</Text> and do not replace professional medical training or advice. Always seek professional help in emergencies.
+        </Text>
+      </View>
+
       {GUIDES.map((guide) => (
         <TouchableOpacity
           key={guide.id}
@@ -233,14 +249,24 @@ export default function FirstAid() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
   wrapper: { flex: 1, backgroundColor: "#fff" },
-  header: { fontSize: 26, fontWeight: "bold", color: "#B00020", textAlign: "center", marginTop: 50, marginBottom: 5 },
+  header: {
+    fontSize: 26, fontWeight: "bold", color: "#B00020",
+    textAlign: "center", marginTop: 50, marginBottom: 5,
+  },
   subHeader: { textAlign: "center", color: "#888", fontSize: 13, marginBottom: 20 },
   callBanner: {
     backgroundColor: "#B00020", borderRadius: 12,
-    padding: 15, alignItems: "center", marginBottom: 20,
+    padding: 15, alignItems: "center", marginBottom: 12,
   },
   callText: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
   callNumber: { color: "#fff", fontWeight: "bold", fontSize: 22, marginTop: 4 },
+  generalDisclaimer: {
+    backgroundColor: "#FFF8E1", borderRadius: 12,
+    padding: 14, marginBottom: 20,
+    borderWidth: 1, borderColor: "#FFE082",
+    borderLeftWidth: 4, borderLeftColor: "#FB8C00",
+  },
+  generalDisclaimerText: { color: "#5D4037", fontSize: 12, lineHeight: 18 },
   guideCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#fff", borderRadius: 12, padding: 15,
@@ -248,7 +274,10 @@ const styles = StyleSheet.create({
     elevation: 2, shadowColor: "#000", shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4,
   },
-  guideCardIcon: { width: 55, height: 55, borderRadius: 15, justifyContent: "center", alignItems: "center", marginRight: 15 },
+  guideCardIcon: {
+    width: 55, height: 55, borderRadius: 15,
+    justifyContent: "center", alignItems: "center", marginRight: 15,
+  },
   guideCardEmoji: { fontSize: 28 },
   guideCardContent: { flex: 1 },
   guideCardTitle: { fontWeight: "bold", fontSize: 16, color: "#222" },
@@ -260,9 +289,21 @@ const styles = StyleSheet.create({
   backText: { color: "rgba(255,255,255,0.85)", fontSize: 16 },
   guideIcon: { fontSize: 50, marginBottom: 8 },
   guideHeaderTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
-  emergencyBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, marginTop: 8 },
+  emergencyBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 4, marginTop: 8,
+  },
   emergencyBadgeText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  progressContainer: { padding: 15, backgroundColor: "#f9f9f9", borderBottomWidth: 1, borderColor: "#eee" },
+  disclaimerCard: {
+    backgroundColor: "#FFF8E1", padding: 14,
+    borderLeftWidth: 4, borderLeftColor: "#FB8C00",
+    borderBottomWidth: 1, borderBottomColor: "#FFE082",
+  },
+  disclaimerText: { color: "#5D4037", fontSize: 12, lineHeight: 18 },
+  progressContainer: {
+    padding: 15, backgroundColor: "#f9f9f9",
+    borderBottomWidth: 1, borderColor: "#eee",
+  },
   progressRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   progressText: { fontSize: 12, color: "#555" },
   progressBar: { height: 6, backgroundColor: "#eee", borderRadius: 3 },
@@ -275,14 +316,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 }, shadowRadius: 2,
   },
   stepLeft: { marginRight: 12 },
-  stepNumber: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
+  stepNumber: {
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: "center", alignItems: "center",
+  },
   stepNumberText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
   stepContent: { flex: 1 },
   stepTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
   stepIcon: { fontSize: 18, marginRight: 6 },
   stepTitle: { fontWeight: "bold", fontSize: 15, color: "#222" },
   stepDesc: { color: "#555", fontSize: 13, lineHeight: 20 },
-  completedCard: { backgroundColor: "#e8f5e9", borderRadius: 12, padding: 20, alignItems: "center", marginTop: 10 },
+  completedCard: {
+    backgroundColor: "#e8f5e9", borderRadius: 12,
+    padding: 20, alignItems: "center", marginTop: 10,
+  },
   completedIcon: { fontSize: 40 },
   completedText: { fontWeight: "bold", fontSize: 18, color: "#2e7d32", marginTop: 8 },
   completedSub: { color: "#555", fontSize: 13, marginTop: 4, textAlign: "center" },
