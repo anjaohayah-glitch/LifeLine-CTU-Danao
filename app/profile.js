@@ -1,18 +1,22 @@
+// app/profile.js
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { onValue, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { COLORS } from "../constants/colors";
 import { auth, db } from "../firebase";
 
 export default function Profile() {
@@ -20,46 +24,75 @@ export default function Profile() {
   const user = auth.currentUser;
 
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [barangay, setBarangay] = useState("");
   const [emergencyContact, setEmergencyContact] = useState("");
   const [emergencyName, setEmergencyName] = useState("");
   const [photoURL, setPhotoURL] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [addressPublic, setAddressPublic] = useState(true);
+  const [liveAddress, setLiveAddress] = useState(null);
 
-  // 🔥 Load profile from Firebase
   useEffect(() => {
     if (!user) return;
     const profileRef = ref(db, "users/" + user.uid);
     const unsubscribe = onValue(profileRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        setName(data.name || "");
-        setEmergencyContact(data.emergencyContact || "");
+        setName(data.fullName || data.name || "");
+        setPhone(data.phone || "");
+        setBarangay(data.barangay || "");
+        setEmergencyContact(data.emergencyNumber || data.emergencyContact || "");
         setEmergencyName(data.emergencyName || "");
         setPhotoURL(data.photoURL || null);
+        setAddressPublic(data.addressPublic !== false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // 💾 Save profile to Firebase
+  // 📍 Get live address
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const location = await Location.getCurrentPositionAsync({});
+        const geocode = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+        if (geocode.length > 0) {
+          const g = geocode[0];
+          const address = [g.street, g.district, g.city, g.region]
+            .filter(Boolean).join(", ");
+          setLiveAddress(address);
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
   const handleSave = async () => {
     if (!user) return;
     try {
       await set(ref(db, "users/" + user.uid), {
-        name,
+        fullName: name,
         email: user.email,
+        phone,
+        barangay,
+        addressPublic,
         emergencyContact,
         emergencyName,
+        emergencyNumber: emergencyContact,
         photoURL,
       });
       setEditing(false);
-      Alert.alert("Saved!", "Your profile has been updated.");
+      Alert.alert("Saved! ✅", "Your profile has been updated.");
     } catch (error) {
       Alert.alert("Error", error.message);
     }
   };
 
-  // 🖼 Pick profile photo
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -74,34 +107,34 @@ export default function Profile() {
       base64: true,
     });
     if (!result.canceled) {
-      const base64Photo = "data:image/jpeg;base64," + result.assets[0].base64;
-      setPhotoURL(base64Photo);
+      setPhotoURL("data:image/jpeg;base64," + result.assets[0].base64);
     }
   };
 
-  // 🚪 Logout
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Logout",
-        style: "destructive",
+        text: "Logout", style: "destructive",
         onPress: async () => {
           await signOut(auth);
-          router.replace("/");
+          router.replace("/login");
         },
       },
     ]);
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
       {/* HEADER */}
-      <Text style={styles.header}>👤 My Profile</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>👤 My Profile</Text>
+        <Text style={styles.headerSub}>{user?.email}</Text>
+      </View>
 
       {/* PROFILE PHOTO */}
-      <View style={styles.photoContainer}>
+      <View style={styles.photoSection}>
         <TouchableOpacity onPress={editing ? handlePickPhoto : null}>
           {photoURL ? (
             <Image source={{ uri: photoURL }} style={styles.photo} />
@@ -118,11 +151,53 @@ export default function Profile() {
             </View>
           )}
         </TouchableOpacity>
-        <Text style={styles.emailText}>{user?.email}</Text>
+        <Text style={styles.photoName}>{name || "Your Name"}</Text>
+        <Text style={styles.photoEmail}>{user?.email}</Text>
+      </View>
+
+      {/* LIVE ADDRESS */}
+      {liveAddress && (
+        <View style={styles.liveAddressCard}>
+          <Text style={styles.liveAddressIcon}>📍</Text>
+          <View style={styles.liveAddressContent}>
+            <Text style={styles.liveAddressLabel}>Current Location</Text>
+            <Text style={styles.liveAddressText}>{liveAddress}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* ADDRESS PRIVACY */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🔒 Address Privacy</Text>
+        <View style={styles.privacyRow}>
+          <View style={styles.privacyLeft}>
+            <Text style={styles.privacyLabel}>
+              {addressPublic ? "🌐 Address is Public" : "🔒 Address is Private"}
+            </Text>
+            <Text style={styles.privacyDesc}>
+              {addressPublic
+                ? "Your contacts can see your address"
+                : "Only you can see your address"}
+            </Text>
+          </View>
+          <Switch
+            value={addressPublic}
+            onValueChange={(val) => {
+              setAddressPublic(val);
+              if (!editing) {
+                set(ref(db, "users/" + user.uid + "/addressPublic"), val);
+              }
+            }}
+            trackColor={{ false: "#ddd", true: COLORS.primary }}
+            thumbColor="#fff"
+          />
+        </View>
       </View>
 
       {/* PROFILE FIELDS */}
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>👤 Personal Information</Text>
+
         <Text style={styles.label}>Full Name</Text>
         <TextInput
           style={[styles.input, !editing && styles.inputDisabled]}
@@ -138,11 +213,30 @@ export default function Profile() {
           value={user?.email}
           editable={false}
         />
+
+        <Text style={styles.label}>Phone Number</Text>
+        <TextInput
+          style={[styles.input, !editing && styles.inputDisabled]}
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Enter phone number"
+          editable={editing}
+          keyboardType="phone-pad"
+        />
+
+        <Text style={styles.label}>Barangay / Address</Text>
+        <TextInput
+          style={[styles.input, !editing && styles.inputDisabled]}
+          value={barangay}
+          onChangeText={setBarangay}
+          placeholder="Enter your address"
+          editable={editing}
+        />
       </View>
 
       {/* EMERGENCY CONTACT */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>🆘 Emergency Contact</Text>
+        <Text style={styles.cardTitle}>🆘 Emergency Contact</Text>
 
         <Text style={styles.label}>Contact Name</Text>
         <TextInput
@@ -189,131 +283,93 @@ export default function Profile() {
         </TouchableOpacity>
       )}
 
-      {/* LOGOUT */}
-      <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
+      <TouchableOpacity
+        style={[styles.button, styles.logoutButton]}
+        onPress={handleLogout}
+      >
         <Text style={styles.buttonText}>🚪 Logout</Text>
       </TouchableOpacity>
 
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#B00020",
-    textAlign: "center",
-    marginTop: 50,
+    backgroundColor: COLORS.primary,
+    paddingTop: 55, paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
     marginBottom: 20,
   },
-  photoContainer: {
-    alignItems: "center",
-    marginBottom: 25,
+  headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
+  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
+  photoSection: {
+    alignItems: "center", marginBottom: 20,
   },
   photo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: "#B00020",
+    width: 100, height: 100, borderRadius: 50,
+    borderWidth: 3, borderColor: COLORS.primary,
   },
   photoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#B00020",
-    justifyContent: "center",
-    alignItems: "center",
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center", alignItems: "center",
   },
-  photoInitial: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
-  },
+  photoInitial: { color: "#fff", fontSize: 40, fontWeight: "bold" },
   photoEditBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: "#B00020",
+    position: "absolute", bottom: 0, right: 0,
+    backgroundColor: "#fff", borderRadius: 12,
+    padding: 2, borderWidth: 1, borderColor: COLORS.primary,
   },
-  photoEditText: {
-    fontSize: 14,
+  photoEditText: { fontSize: 14 },
+  photoName: { fontWeight: "bold", fontSize: 18, color: COLORS.textDark, marginTop: 10 },
+  photoEmail: { color: COLORS.textLight, fontSize: 13, marginTop: 3 },
+  liveAddressCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#e8f5e9", borderRadius: 12,
+    padding: 12, marginHorizontal: 20, marginBottom: 15,
+    borderWidth: 1, borderColor: "#a5d6a7",
   },
-  emailText: {
-    color: "#555",
-    marginTop: 10,
-    fontSize: 14,
-  },
+  liveAddressIcon: { fontSize: 24, marginRight: 10 },
+  liveAddressContent: { flex: 1 },
+  liveAddressLabel: { fontWeight: "bold", color: "#2e7d32", fontSize: 12 },
+  liveAddressText: { color: "#555", fontSize: 12, marginTop: 2 },
   card: {
-    backgroundColor: "#fff0f0",
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#ffcccc",
+    backgroundColor: COLORS.surface, borderRadius: 15,
+    padding: 16, marginHorizontal: 20, marginBottom: 15,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  sectionTitle: {
-    fontWeight: "bold",
-    fontSize: 15,
-    color: "#B00020",
-    marginBottom: 10,
+  cardTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 14 },
+  privacyRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between",
   },
-  label: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 4,
-    marginTop: 8,
-  },
+  privacyLeft: { flex: 1 },
+  privacyLabel: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
+  privacyDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  label: { fontSize: 12, color: COLORS.textLight, marginBottom: 4, marginTop: 10 },
   input: {
-    borderWidth: 1,
-    borderColor: "#B00020",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    borderRadius: 10, padding: 12, fontSize: 14,
+    color: COLORS.textDark, backgroundColor: "#fff",
   },
-  inputDisabled: {
-    backgroundColor: "#f5f5f5",
-    borderColor: "#ddd",
-    color: "#999",
-  },
+  inputDisabled: { backgroundColor: COLORS.surface, color: "#999" },
   buttonRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 10,
+    flexDirection: "row", gap: 10,
+    marginHorizontal: 20, marginBottom: 10,
   },
   button: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
+    flex: 1, padding: 15, borderRadius: 12,
+    alignItems: "center", marginHorizontal: 20,
     marginBottom: 10,
   },
-  editButton: {
-    backgroundColor: "#1565C0",
-  },
-  saveButton: {
-    backgroundColor: "#2e7d32",
-  },
-  cancelButton: {
-    backgroundColor: "#888",
-  },
-  logoutButton: {
-    backgroundColor: "#B00020",
-    marginBottom: 40,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+  editButton: { backgroundColor: "#1565C0" },
+  saveButton: { backgroundColor: "#2e7d32" },
+  cancelButton: { backgroundColor: "#888" },
+  logoutButton: { backgroundColor: COLORS.primary, marginBottom: 10 },
+  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });

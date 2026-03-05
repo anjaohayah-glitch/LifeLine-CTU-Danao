@@ -1,19 +1,20 @@
 // app/family.js
+import * as Location from "expo-location";
 import { onValue, push, ref, remove, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
 import { auth, db } from "../firebase";
@@ -22,6 +23,7 @@ export default function Family() {
   const [contacts, setContacts] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [messages, setMessages] = useState({});
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("contacts");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedContact, setSelectedContact] = useState(null);
@@ -32,14 +34,16 @@ export default function Family() {
 
   const user = auth.currentUser;
 
-  // 🔥 Load my contacts
+  // 🔥 Load my contacts (accepted only)
   useEffect(() => {
     if (!user) return;
     const contactsRef = ref(db, `contacts/${user.uid}`);
     const unsubscribe = onValue(contactsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+        const list = Object.entries(data)
+          .map(([id, val]) => ({ id, ...val }))
+          .filter((c) => c.status === "accepted");
         setContacts(list);
       } else {
         setContacts([]);
@@ -48,7 +52,25 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load all users for search
+  // 🔥 Load pending requests (sent to me)
+  useEffect(() => {
+    if (!user) return;
+    const reqRef = ref(db, `contactRequests/${user.uid}`);
+    const unsubscribe = onValue(reqRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.entries(data)
+          .map(([id, val]) => ({ id, ...val }))
+          .filter((r) => r.status === "pending");
+        setPendingRequests(list);
+      } else {
+        setPendingRequests([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 🔥 Load all users
   useEffect(() => {
     const usersRef = ref(db, "users");
     const unsubscribe = onValue(usersRef, (snapshot) => {
@@ -63,7 +85,7 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load my safety status
+  // 🔥 Load safety status
   useEffect(() => {
     if (!user) return;
     const statusRef = ref(db, `safetyStatus/${user.uid}`);
@@ -73,7 +95,7 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load messages with selected contact
+  // 🔥 Load messages
   useEffect(() => {
     if (!selectedContact) return;
     const chatId = getChatId(user.uid, selectedContact.uid);
@@ -90,28 +112,75 @@ export default function Family() {
     return () => unsubscribe();
   }, [selectedContact]);
 
-  const getChatId = (uid1, uid2) =>
-    [uid1, uid2].sort().join("_");
+  const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
 
-  // ➕ Add contact
-  const addContact = async (userToAdd) => {
+  // ➕ Send contact request
+  const sendContactRequest = async (userToAdd) => {
     if (!user) return;
-    const alreadyAdded = contacts.find((c) => c.uid === userToAdd.id);
-    if (alreadyAdded) {
+    const alreadyContact = contacts.find((c) => c.uid === userToAdd.id);
+    if (alreadyContact) {
       Alert.alert("Already Added", "This person is already in your contacts.");
       return;
     }
+
     try {
-      await set(ref(db, `contacts/${user.uid}/${userToAdd.id}`), {
-        uid: userToAdd.id,
-        name: userToAdd.fullName || userToAdd.email,
-        email: userToAdd.email,
-        addedAt: new Date().toISOString(),
+      // Send request to the other user
+      await set(ref(db, `contactRequests/${userToAdd.id}/${user.uid}`), {
+        uid: user.uid,
+        name: auth.currentUser.displayName || user.email,
+        email: user.email,
+        status: "pending",
+        sentAt: new Date().toISOString(),
       });
-      Alert.alert("Added! ✅", `${userToAdd.fullName || userToAdd.email} added to your contacts.`);
+
+      // Track sent request on my side
+      await set(ref(db, `sentRequests/${user.uid}/${userToAdd.id}`), {
+        uid: userToAdd.id,
+        status: "pending",
+        sentAt: new Date().toISOString(),
+      });
+
+      Alert.alert("Request Sent! 📨", `A contact request has been sent to ${userToAdd.fullName || userToAdd.email}.`);
     } catch (error) {
       Alert.alert("Error", error.message);
     }
+  };
+
+  // ✅ Accept contact request
+  const acceptRequest = async (request) => {
+    try {
+      // Add to my contacts
+      await set(ref(db, `contacts/${user.uid}/${request.uid}`), {
+        uid: request.uid,
+        name: request.name,
+        email: request.email,
+        status: "accepted",
+        addedAt: new Date().toISOString(),
+      });
+
+      // Add me to their contacts
+      await set(ref(db, `contacts/${request.uid}/${user.uid}`), {
+        uid: user.uid,
+        name: auth.currentUser.displayName || user.email,
+        email: user.email,
+        status: "accepted",
+        addedAt: new Date().toISOString(),
+      });
+
+      // Remove request
+      await remove(ref(db, `contactRequests/${user.uid}/${request.uid}`));
+      await remove(ref(db, `sentRequests/${request.uid}/${user.uid}`));
+
+      Alert.alert("Contact Added! ✅", `${request.name} is now your contact.`);
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
+  // ❌ Decline contact request
+  const declineRequest = async (request) => {
+    await remove(ref(db, `contactRequests/${user.uid}/${request.uid}`));
+    await remove(ref(db, `sentRequests/${request.uid}/${user.uid}`));
   };
 
   // 🗑 Remove contact
@@ -119,10 +188,10 @@ export default function Family() {
     Alert.alert("Remove Contact", `Remove ${name} from your contacts?`, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Remove",
-        style: "destructive",
+        text: "Remove", style: "destructive",
         onPress: async () => {
           await remove(ref(db, `contacts/${user.uid}/${contactId}`));
+          await remove(ref(db, `contacts/${contactId}/${user.uid}`));
         },
       },
     ]);
@@ -137,14 +206,12 @@ export default function Family() {
         status: "safe",
         message: "I am safe! 🟢",
         timestamp: Date.now(),
-        name: user.email,
+        name: auth.currentUser.displayName || user.email,
       });
-
-      // Notify all contacts
       for (const contact of contacts) {
         await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), {
           senderId: user.uid,
-          senderName: user.email,
+          senderName: auth.currentUser.displayName || user.email,
           text: "🟢 I am safe! No need to worry.",
           timestamp: Date.now(),
           type: "safe",
@@ -158,36 +225,57 @@ export default function Family() {
     }
   };
 
-  // 🆘 Send I Need Help
+  // 🆘 Send I Need Help with live location
   const sendHelp = async () => {
     Alert.alert(
       "🆘 Send Help Alert",
-      "This will alert ALL your contacts that you need help. Continue?",
+      "This will alert ALL your contacts that you need help and share your live location. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Send Alert",
-          style: "destructive",
+          text: "Send Alert", style: "destructive",
           onPress: async () => {
             try {
               setLoading(true);
+
+              // 📍 Get live location
+              let locationText = "Location unavailable";
+              let locationUrl = "";
+              try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === "granted") {
+                  const location = await Location.getCurrentPositionAsync({});
+                  const { latitude, longitude } = location.coords;
+
+                  // Reverse geocode
+                  const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+                  if (geocode.length > 0) {
+                    const g = geocode[0];
+                    locationText = [g.street, g.district, g.city, g.region]
+                      .filter(Boolean).join(", ");
+                  }
+                  locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                }
+              } catch (e) {}
+
               await set(ref(db, `safetyStatus/${user.uid}`), {
                 status: "help",
                 message: "I need help! 🔴",
                 timestamp: Date.now(),
-                name: user.email,
+                name: auth.currentUser.displayName || user.email,
+                location: locationText,
               });
 
               for (const contact of contacts) {
                 await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), {
                   senderId: user.uid,
-                  senderName: user.email,
-                  text: "🔴 I NEED HELP! Please check on me immediately.",
+                  senderName: auth.currentUser.displayName || user.email,
+                  text: `🔴 I NEED HELP! Please check on me immediately.\n\n📍 My Location:\n${locationText}\n\n🗺 Live Location: ${locationUrl}`,
                   timestamp: Date.now(),
                   type: "help",
                 });
               }
-              Alert.alert("🆘 Alert Sent!", "All your contacts have been notified.");
+              Alert.alert("🆘 Alert Sent!", "All your contacts have been notified with your live location.");
             } catch (error) {
               Alert.alert("Error", error.message);
             } finally {
@@ -206,7 +294,7 @@ export default function Family() {
       const chatId = getChatId(user.uid, selectedContact.uid);
       await push(ref(db, `messages/${chatId}`), {
         senderId: user.uid,
-        senderName: user.email,
+        senderName: auth.currentUser.displayName || user.email,
         text: messageText.trim(),
         timestamp: Date.now(),
         type: "message",
@@ -218,9 +306,7 @@ export default function Family() {
   };
 
   const filteredUsers = allUsers.filter((u) =>
-    (u.fullName || u.email || "")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+    (u.fullName || u.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // CHAT MODAL
@@ -231,10 +317,7 @@ export default function Family() {
 
     return (
       <Modal visible={modalVisible} animationType="slide">
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.chatHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.chatBack}>← Back</Text>
@@ -268,7 +351,7 @@ export default function Family() {
                   </Text>
                   <Text style={[
                     styles.messageTime,
-                    isMe && { color: "rgba(255,255,255,0.7)" },
+                    (isMe || isSafe || isHelp) && { color: "rgba(255,255,255,0.7)" },
                   ]}>
                     {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </Text>
@@ -301,21 +384,26 @@ export default function Family() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>👨‍👩‍👧 Family & Peers</Text>
         <Text style={styles.headerSub}>Stay connected during emergencies</Text>
+        {pendingRequests.length > 0 && (
+          <View style={styles.requestBadge}>
+            <Text style={styles.requestBadgeText}>
+              📨 {pendingRequests.length} pending request{pendingRequests.length > 1 ? "s" : ""}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* STATUS BUTTONS */}
       <View style={styles.statusRow}>
         <TouchableOpacity
           style={[styles.statusButton, { backgroundColor: "#2e7d32" }, loading && { opacity: 0.7 }]}
-          onPress={sendSafe}
-          disabled={loading}
+          onPress={sendSafe} disabled={loading}
         >
           {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.statusText}>🟢 I Am Safe</Text>}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.statusButton, { backgroundColor: COLORS.primary }, loading && { opacity: 0.7 }]}
-          onPress={sendHelp}
-          disabled={loading}
+          onPress={sendHelp} disabled={loading}
         >
           <Text style={styles.statusText}>🔴 I Need Help</Text>
         </TouchableOpacity>
@@ -323,10 +411,7 @@ export default function Family() {
 
       {/* MY STATUS */}
       {myStatus && (
-        <View style={[
-          styles.myStatusCard,
-          { backgroundColor: myStatus.status === "safe" ? "#e8f5e9" : "#ffebee" }
-        ]}>
+        <View style={[styles.myStatusCard, { backgroundColor: myStatus.status === "safe" ? "#e8f5e9" : "#ffebee" }]}>
           <Text style={styles.myStatusText}>
             Your status: {myStatus.status === "safe" ? "🟢 Safe" : "🔴 Needs Help"}
           </Text>
@@ -338,14 +423,18 @@ export default function Family() {
 
       {/* TABS */}
       <View style={styles.tabs}>
-        {["contacts", "search"].map((tab) => (
+        {[
+          { key: "contacts", label: `👥 Contacts (${contacts.length})` },
+          { key: "requests", label: `📨 Requests (${pendingRequests.length})` },
+          { key: "search", label: "🔍 Find" },
+        ].map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.activeTab]}
+            onPress={() => setActiveTab(tab.key)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === "contacts" ? `👥 My Contacts (${contacts.length})` : "🔍 Find People"}
+            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+              {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -359,10 +448,7 @@ export default function Family() {
               <Text style={styles.emptyIcon}>👥</Text>
               <Text style={styles.emptyTitle}>No contacts yet</Text>
               <Text style={styles.emptyDesc}>Search for family or peers to add them.</Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => setActiveTab("search")}
-              >
+              <TouchableOpacity style={styles.emptyButton} onPress={() => setActiveTab("search")}>
                 <Text style={styles.emptyButtonText}>🔍 Find People</Text>
               </TouchableOpacity>
             </View>
@@ -377,14 +463,15 @@ export default function Family() {
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{contact.name}</Text>
                   <Text style={styles.contactEmail}>{contact.email}</Text>
+                  {/* Show address only if public */}
+                  {contact.addressPublic !== false && contact.barangay && (
+                    <Text style={styles.contactAddress}>📍 {contact.barangay}</Text>
+                  )}
                 </View>
                 <View style={styles.contactActions}>
                   <TouchableOpacity
                     style={styles.chatButton}
-                    onPress={() => {
-                      setSelectedContact(contact);
-                      setModalVisible(true);
-                    }}
+                    onPress={() => { setSelectedContact(contact); setModalVisible(true); }}
                   >
                     <Text style={styles.chatButtonText}>💬</Text>
                   </TouchableOpacity>
@@ -393,6 +480,51 @@ export default function Family() {
                     onPress={() => removeContact(contact.id, contact.name)}
                   >
                     <Text style={styles.removeButtonText}>🗑</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
+
+      {/* REQUESTS TAB */}
+      {activeTab === "requests" && (
+        <ScrollView style={styles.content}>
+          {pendingRequests.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>📨</Text>
+              <Text style={styles.emptyTitle}>No pending requests</Text>
+              <Text style={styles.emptyDesc}>Contact requests will appear here.</Text>
+            </View>
+          ) : (
+            pendingRequests.map((request) => (
+              <View key={request.id} style={styles.requestCard}>
+                <View style={styles.contactAvatar}>
+                  <Text style={styles.contactAvatarText}>
+                    {(request.name || "?")[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={styles.contactName}>{request.name}</Text>
+                  <Text style={styles.contactEmail}>{request.email}</Text>
+                  <Text style={styles.requestTime}>
+                    Sent {new Date(request.sentAt).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={styles.requestActions}>
+                  <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={() => acceptRequest(request)}
+                  >
+                    <Text style={styles.acceptText}>✓</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.declineButton}
+                    onPress={() => declineRequest(request)}
+                  >
+                    <Text style={styles.declineText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -419,7 +551,7 @@ export default function Family() {
               <Text style={styles.noResults}>No users found</Text>
             ) : (
               filteredUsers.map((u) => {
-                const isAdded = contacts.find((c) => c.uid === u.id);
+                const isAccepted = contacts.find((c) => c.uid === u.id);
                 return (
                   <View key={u.id} style={styles.contactCard}>
                     <View style={styles.contactAvatar}>
@@ -430,16 +562,17 @@ export default function Family() {
                     <View style={styles.contactInfo}>
                       <Text style={styles.contactName}>{u.fullName || "Unknown"}</Text>
                       <Text style={styles.contactEmail}>{u.email}</Text>
-                      {u.barangay && (
-                        <Text style={styles.contactBarangay}>📍 {u.barangay}</Text>
+                      {/* Only show address if public */}
+                      {u.addressPublic !== false && u.barangay && (
+                        <Text style={styles.contactAddress}>📍 {u.barangay}</Text>
                       )}
                     </View>
                     <TouchableOpacity
-                      style={[styles.addButton, isAdded && styles.addedButton]}
-                      onPress={() => !isAdded && addContact(u)}
+                      style={[styles.addButton, isAccepted && styles.addedButton]}
+                      onPress={() => !isAccepted && sendContactRequest(u)}
                     >
                       <Text style={styles.addButtonText}>
-                        {isAdded ? "✓ Added" : "+ Add"}
+                        {isAccepted ? "✓ Added" : "➕ Add"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -468,12 +601,16 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
+  requestBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10, paddingHorizontal: 10,
+    paddingVertical: 4, marginTop: 8, alignSelf: "flex-start",
+  },
+  requestBadgeText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
   statusRow: { flexDirection: "row", gap: 10, paddingHorizontal: 20, marginBottom: 12 },
   statusButton: {
     flex: 1, padding: 14, borderRadius: 12,
     alignItems: "center", elevation: 3,
-    shadowColor: "#000", shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 4,
   },
   statusText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
   myStatusCard: {
@@ -490,7 +627,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
   activeTab: { borderBottomWidth: 3, borderBottomColor: COLORS.primary },
-  tabText: { fontSize: 13, color: COLORS.textLight },
+  tabText: { fontSize: 11, color: COLORS.textLight },
   activeTabText: { color: COLORS.primary, fontWeight: "bold" },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
   empty: { alignItems: "center", marginTop: 50 },
@@ -508,18 +645,25 @@ const styles = StyleSheet.create({
     padding: 12, marginBottom: 10,
     borderWidth: 1, borderColor: COLORS.border,
   },
+  requestCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#FFF8E1", borderRadius: 12,
+    padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: "#FFE082",
+  },
   contactAvatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: COLORS.primary,
-    justifyContent: "center", alignItems: "center",
-    marginRight: 12,
+    justifyContent: "center", alignItems: "center", marginRight: 12,
   },
   contactAvatarText: { color: "#fff", fontWeight: "bold", fontSize: 18 },
   contactInfo: { flex: 1 },
   contactName: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   contactEmail: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
-  contactBarangay: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
+  contactAddress: { color: "#2e7d32", fontSize: 11, marginTop: 2 },
+  requestTime: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
   contactActions: { flexDirection: "row", gap: 8 },
+  requestActions: { flexDirection: "row", gap: 8 },
   chatButton: {
     backgroundColor: COLORS.info, width: 36, height: 36,
     borderRadius: 10, justifyContent: "center", alignItems: "center",
@@ -530,6 +674,16 @@ const styles = StyleSheet.create({
     borderRadius: 10, justifyContent: "center", alignItems: "center",
   },
   removeButtonText: { fontSize: 16 },
+  acceptButton: {
+    backgroundColor: "#2e7d32", width: 36, height: 36,
+    borderRadius: 10, justifyContent: "center", alignItems: "center",
+  },
+  acceptText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  declineButton: {
+    backgroundColor: COLORS.primary, width: 36, height: 36,
+    borderRadius: 10, justifyContent: "center", alignItems: "center",
+  },
+  declineText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   addButton: {
     backgroundColor: COLORS.primary, borderRadius: 20,
     paddingHorizontal: 14, paddingVertical: 8,
@@ -550,8 +704,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: COLORS.primary,
-    paddingTop: 55, paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingTop: 55, paddingBottom: 15, paddingHorizontal: 20,
   },
   chatBack: { color: "rgba(255,255,255,0.85)", fontSize: 16 },
   chatName: { color: "#fff", fontWeight: "bold", fontSize: 16 },
@@ -561,14 +714,12 @@ const styles = StyleSheet.create({
     padding: 12, marginBottom: 8,
   },
   myBubble: {
-    backgroundColor: COLORS.primary,
-    alignSelf: "flex-end",
+    backgroundColor: COLORS.primary, alignSelf: "flex-end",
     borderBottomRightRadius: 4,
   },
   theirBubble: {
     backgroundColor: "#fff", alignSelf: "flex-start",
-    borderBottomLeftRadius: 4, borderWidth: 1,
-    borderColor: COLORS.border,
+    borderBottomLeftRadius: 4, borderWidth: 1, borderColor: COLORS.border,
   },
   safeBubble: { backgroundColor: "#2e7d32", alignSelf: "flex-start" },
   helpBubble: { backgroundColor: COLORS.primary, alignSelf: "flex-start" },
