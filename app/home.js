@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { icon: "👤", label: "Profile", route: "/profile" },
 ];
 
-const ALL_FEATURE_CARDS = [
+const QUICK_ACCESS = [
   { icon: "🛡", label: "Admin", route: "/admin", color: COLORS.admin, adminOnly: true },
   { icon: "🩺", label: "First Aid", route: "/firstaid", color: COLORS.danger },
   { icon: "📚", label: "Guides", route: "/guides", color: "#00695C" },
@@ -32,11 +32,21 @@ const ALL_FEATURE_CARDS = [
   { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020" },
   { icon: "🗣", label: "Voice Guide", route: "/voiceguide", color: "#1565C0" },
   { icon: "⚙️", label: "Settings", route: "/settings", color: "#455A64" },
-  { icon: "🌊", label: "Flood", tip: "Move to higher ground." },
-  { icon: "🌍", label: "Earthquake", tip: "Drop, Cover, Hold." },
-  { icon: "🌪", label: "Typhoon", tip: "Stay indoors." },
-  { icon: "🔥", label: "Fire", tip: "Use evacuation routes." },
-  { icon: "⛰️", label: "Landslide", tip: "Move sideways to safety." },
+];
+
+const DISASTER_TIPS = [
+  { icon: "🌊", label: "Flood", color: "#1565C0", tip: "Move to higher ground immediately. Avoid walking in moving water." },
+  { icon: "🌍", label: "Earthquake", color: "#4527A0", tip: "Drop, Cover, and Hold On. Stay away from windows." },
+  { icon: "🌪", label: "Typhoon", color: "#00695C", tip: "Stay indoors. Keep away from windows and doors." },
+  { icon: "🔥", label: "Fire", color: "#E65100", tip: "Use evacuation routes. Stay low to avoid smoke." },
+  { icon: "⛰️", label: "Landslide", color: "#4E342E", tip: "Move sideways to safety. Avoid river valleys." },
+];
+
+const PREPAREDNESS_TIPS = [
+  { icon: "🎒", title: "Go Bag", desc: "Prepare a bag with 3-day supplies: food, water, meds, documents." },
+  { icon: "📋", title: "Family Plan", desc: "Have a meeting point and contact list ready for your family." },
+  { icon: "📻", title: "Stay Informed", desc: "Keep a battery-powered radio for updates during power outages." },
+  { icon: "💊", title: "First Aid Kit", desc: "Keep a stocked first aid kit at home and in your vehicle." },
 ];
 
 export default function Home() {
@@ -45,10 +55,11 @@ export default function Home() {
   const [announcement, setAnnouncement] = useState(null);
   const [activeNav, setActiveNav] = useState("/home");
   const [isOnline, setIsOnline] = useState(true);
+  const [expandedDisaster, setExpandedDisaster] = useState(null);
   const { isAdmin } = useAdmin();
   const router = useRouter();
 
-  const FEATURE_CARDS = ALL_FEATURE_CARDS.filter(
+  const FEATURE_CARDS = QUICK_ACCESS.filter(
     (item) => !item.adminOnly || isAdmin
   );
 
@@ -176,6 +187,12 @@ export default function Home() {
             <Text style={styles.alertTitle}>🚨 EMERGENCY ALERT 🚨</Text>
             <Text style={styles.alertText}>{alertMessage}</Text>
             <Text style={styles.alertSubText}>Stay indoors. Prepare emergency supplies.</Text>
+            <TouchableOpacity
+              style={styles.alertButton}
+              onPress={() => router.push("/evacuation")}
+            >
+              <Text style={styles.alertButtonText}>🗺 View Evacuation Centers</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -204,37 +221,71 @@ export default function Home() {
           </TouchableOpacity>
         )}
 
-        {/* QUICK ACCESS */}
-        <Text style={styles.sectionTitle}>Quick Access</Text>
+        {/* ═══════════════════════════════ */}
+        {/* PANEL 1 — QUICK ACCESS */}
+        {/* ═══════════════════════════════ */}
+        <View style={styles.panelHeader}>
+          <View style={styles.panelHeaderLine} />
+          <Text style={styles.panelTitle}>⚡ Quick Access</Text>
+          <View style={styles.panelHeaderLine} />
+        </View>
         <View style={styles.quickGrid}>
           {FEATURE_CARDS.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={[
-                styles.quickCard,
-                { backgroundColor: item.color || COLORS.surface },
-              ]}
+              style={[styles.quickCard, { backgroundColor: item.color }]}
               onPress={() => item.route && router.push(item.route)}
             >
               <Text style={styles.quickIcon}>{item.icon}</Text>
-              <Text style={[styles.quickLabel, item.color && { color: "#fff" }]}>
-                {item.label}
-              </Text>
-              {item.tip && (
-                <Text style={styles.quickTip}>{item.tip}</Text>
+              <Text style={styles.quickLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ═══════════════════════════════ */}
+        {/* PANEL 2 — DISASTER TIPS */}
+        {/* ═══════════════════════════════ */}
+        <View style={styles.panelHeader}>
+          <View style={styles.panelHeaderLine} />
+          <Text style={styles.panelTitle}>⚠️ Disaster Tips</Text>
+          <View style={styles.panelHeaderLine} />
+        </View>
+        <View style={styles.disasterGrid}>
+          {DISASTER_TIPS.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.disasterCard,
+                { borderLeftColor: item.color },
+                expandedDisaster === index && styles.disasterCardExpanded,
+              ]}
+              onPress={() => setExpandedDisaster(expandedDisaster === index ? null : index)}
+            >
+              <View style={styles.disasterCardTop}>
+                <View style={[styles.disasterIconBox, { backgroundColor: item.color + "22" }]}>
+                  <Text style={styles.disasterIcon}>{item.icon}</Text>
+                </View>
+                <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
+                <Text style={styles.disasterArrow}>
+                  {expandedDisaster === index ? "▲" : "▼"}
+                </Text>
+              </View>
+              {expandedDisaster === index && (
+                <Text style={styles.disasterTip}>{item.tip}</Text>
               )}
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* PREPAREDNESS TIPS */}
-        <Text style={styles.sectionTitle}>Preparedness Tips</Text>
-        {[
-          { icon: "🎒", title: "Go Bag", desc: "Prepare a bag with 3-day supplies: food, water, meds, documents." },
-          { icon: "📋", title: "Family Plan", desc: "Have a meeting point and contact list ready for your family." },
-          { icon: "📻", title: "Stay Informed", desc: "Keep a battery-powered radio for updates during power outages." },
-          { icon: "💊", title: "First Aid Kit", desc: "Keep a stocked first aid kit at home and in your vehicle." },
-        ].map((tip, index) => (
+        {/* ═══════════════════════════════ */}
+        {/* PANEL 3 — PREPAREDNESS TIPS */}
+        {/* ═══════════════════════════════ */}
+        <View style={styles.panelHeader}>
+          <View style={styles.panelHeaderLine} />
+          <Text style={styles.panelTitle}>🛡 Preparedness Tips</Text>
+          <View style={styles.panelHeaderLine} />
+        </View>
+        {PREPAREDNESS_TIPS.map((tip, index) => (
           <View key={index} style={styles.tipCard}>
             <View style={styles.tipIconBox}>
               <Text style={styles.tipIcon}>{tip.icon}</Text>
@@ -304,8 +355,7 @@ const styles = StyleSheet.create({
   statusText: { color: "rgba(255,255,255,0.85)", fontSize: 11 },
   adminBadge: {
     backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 8, paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
   },
   adminBadgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -331,6 +381,13 @@ const styles = StyleSheet.create({
   alertTitle: { color: "#fff", fontSize: 17, fontWeight: "bold", textAlign: "center" },
   alertText: { color: "#fff", textAlign: "center", marginTop: 4 },
   alertSubText: { color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: 4, fontSize: 13 },
+  alertButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    padding: 10, borderRadius: 10,
+    alignItems: "center", marginTop: 12,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.4)",
+  },
+  alertButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
   announcementBanner: {
     backgroundColor: COLORS.info,
     padding: 15, borderRadius: 15,
@@ -349,25 +406,61 @@ const styles = StyleSheet.create({
   offlineGuideTitle: { fontWeight: "bold", color: "#2e7d32", fontSize: 14 },
   offlineGuideDesc: { color: "#555", fontSize: 12, marginTop: 3 },
   offlineGuideArrow: { fontSize: 26, color: "#aaa" },
-  sectionTitle: {
-    fontSize: 18, fontWeight: "bold",
-    color: COLORS.textDark,
-    marginBottom: 12, marginHorizontal: 20,
+
+  // PANEL HEADERS
+  panelHeader: {
+    flexDirection: "row", alignItems: "center",
+    marginHorizontal: 20, marginBottom: 15, marginTop: 5, gap: 10,
   },
+  panelHeaderLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  panelTitle: {
+    fontSize: 15, fontWeight: "bold",
+    color: COLORS.textDark, paddingHorizontal: 5,
+  },
+
+  // PANEL 1 — QUICK ACCESS
   quickGrid: {
     flexDirection: "row", flexWrap: "wrap",
     paddingHorizontal: 20, gap: 10, marginBottom: 25,
   },
   quickCard: {
-    width: "30%", borderRadius: 15,
-    padding: 14, alignItems: "center",
+    width: "22%", borderRadius: 15,
+    padding: 12, alignItems: "center",
     elevation: 3, shadowColor: "#000",
-    shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4, borderWidth: 1, borderColor: COLORS.border,
+    shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
-  quickIcon: { fontSize: 28, marginBottom: 6 },
-  quickLabel: { fontSize: 12, fontWeight: "bold", color: COLORS.textDark, textAlign: "center" },
-  quickTip: { fontSize: 10, color: COLORS.textLight, textAlign: "center", marginTop: 3 },
+  quickIcon: { fontSize: 26, marginBottom: 5 },
+  quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
+
+  // PANEL 2 — DISASTER TIPS
+  disasterGrid: { paddingHorizontal: 20, marginBottom: 25 },
+  disasterCard: {
+    backgroundColor: "#fff", borderRadius: 12,
+    padding: 14, marginBottom: 10,
+    borderLeftWidth: 5, borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 2, shadowColor: "#000",
+    shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  disasterCardExpanded: { backgroundColor: "#fafafa" },
+  disasterCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  disasterIconBox: {
+    width: 42, height: 42, borderRadius: 12,
+    justifyContent: "center", alignItems: "center",
+  },
+  disasterIcon: { fontSize: 22 },
+  disasterLabel: { flex: 1, fontWeight: "bold", fontSize: 15 },
+  disasterArrow: { color: COLORS.textLight, fontSize: 12 },
+  disasterTip: {
+    color: COLORS.textMid, fontSize: 13,
+    lineHeight: 20, marginTop: 10,
+    paddingTop: 10, borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+
+  // PANEL 3 — PREPAREDNESS TIPS
   tipCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: COLORS.surface, borderRadius: 15,
@@ -387,6 +480,8 @@ const styles = StyleSheet.create({
   tipContent: { flex: 1 },
   tipTitle: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   tipDesc: { color: COLORS.textMid, fontSize: 12, marginTop: 3, lineHeight: 18 },
+
+  // BOTTOM NAV
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "#fff",
