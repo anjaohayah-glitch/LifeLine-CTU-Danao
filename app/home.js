@@ -1,7 +1,7 @@
 // app/home.js
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { onValue, ref, set } from "firebase/database";
+import { onValue, push, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 
 const NAV_ITEMS = [
@@ -110,22 +110,98 @@ export default function Home() {
       );
       return;
     }
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "Location access is required.");
-        return;
-      }
-      const location = await Location.getCurrentPositionAsync({});
-      await set(ref(db, "sosRequests/" + Date.now()), {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        timestamp: new Date().toISOString(),
-      });
-      Alert.alert("SOS Sent", "🚨 Your location has been sent successfully.");
-    } catch (error) {
-      Alert.alert("Error", "Something went wrong sending SOS.");
-    }
+
+    Alert.alert(
+      "🚨 Send SOS Alert",
+      "This will send your live location to ALL your contacts and notify the admin. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "🚨 Send SOS",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // 📍 Get live location
+              const { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== "granted") {
+                Alert.alert("Permission Denied", "Location access is required.");
+                return;
+              }
+              const location = await Location.getCurrentPositionAsync({});
+              const { latitude, longitude } = location.coords;
+
+              // Reverse geocode
+              let locationText = "Location unavailable";
+              try {
+                const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+                if (geocode.length > 0) {
+                  const g = geocode[0];
+                  locationText = [g.street, g.district, g.city, g.region]
+                    .filter(Boolean).join(", ");
+                }
+              } catch (e) {}
+
+              const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+              const senderName = auth.currentUser?.displayName || auth.currentUser?.email;
+              const timestamp = Date.now();
+
+              // 1️⃣ Save to Firebase sosRequests — Admin gets notified
+              await set(ref(db, "sosRequests/" + timestamp), {
+                uid: auth.currentUser?.uid,
+                name: senderName,
+                email: auth.currentUser?.email,
+                latitude,
+                longitude,
+                address: locationText,
+                locationUrl,
+                timestamp: new Date().toISOString(),
+              });
+
+              // 2️⃣ Update safety status to Needs Help
+              await set(ref(db, `safetyStatus/${auth.currentUser?.uid}`), {
+                status: "help",
+                message: "I need help! 🔴",
+                timestamp,
+                name: senderName,
+                location: locationText,
+              });
+
+              // 3️⃣ Notify all approved contacts
+              onValue(ref(db, `contacts/${auth.currentUser?.uid}`), async (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                  const contacts = Object.entries(data)
+                    .map(([id, val]) => ({ id, ...val }))
+                    .filter((c) => c.status === "accepted");
+
+                  const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
+
+                  for (const contact of contacts) {
+                    await push(ref(db, `messages/${getChatId(auth.currentUser?.uid, contact.uid)}`), {
+                      senderId: auth.currentUser?.uid,
+                      senderName,
+                      text: `🚨 SOS ALERT!\n\n${senderName} NEEDS IMMEDIATE HELP!\n\n📍 Location:\n${locationText}\n\n🗺 Live Location:\n${locationUrl}\n\n⏰ ${new Date().toLocaleString()}`,
+                      timestamp,
+                      type: "sos",
+                    });
+                  }
+                }
+              }, { onlyOnce: true });
+
+              // 4️⃣ Confirmation
+              Alert.alert(
+                "🚨 SOS Sent!",
+                `Your emergency alert has been sent!\n\n✅ All your contacts notified\n✅ Admin notified\n\n📍 Location shared:\n${locationText}\n\nStay calm. Help is on the way!`,
+                [{ text: "OK" }]
+              );
+
+            } catch (error) {
+              Alert.alert("Error", "Something went wrong sending SOS. Try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleNav = (route) => {
@@ -221,9 +297,7 @@ export default function Home() {
           </TouchableOpacity>
         )}
 
-        {/* ═══════════════════════════════ */}
         {/* PANEL 1 — QUICK ACCESS */}
-        {/* ═══════════════════════════════ */}
         <View style={styles.panelHeader}>
           <View style={styles.panelHeaderLine} />
           <Text style={styles.panelTitle}>⚡ Quick Access</Text>
@@ -242,9 +316,7 @@ export default function Home() {
           ))}
         </View>
 
-        {/* ═══════════════════════════════ */}
         {/* PANEL 2 — DISASTER TIPS */}
-        {/* ═══════════════════════════════ */}
         <View style={styles.panelHeader}>
           <View style={styles.panelHeaderLine} />
           <Text style={styles.panelTitle}>⚠️ Disaster Tips</Text>
@@ -277,9 +349,7 @@ export default function Home() {
           ))}
         </View>
 
-        {/* ═══════════════════════════════ */}
         {/* PANEL 3 — PREPAREDNESS TIPS */}
-        {/* ═══════════════════════════════ */}
         <View style={styles.panelHeader}>
           <View style={styles.panelHeaderLine} />
           <Text style={styles.panelTitle}>🛡 Preparedness Tips</Text>
@@ -300,7 +370,7 @@ export default function Home() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* BOTTOM NAVIGATION BAR */}
+      {/* BOTTOM NAV */}
       <View style={styles.bottomNav}>
         {NAV_ITEMS.map((item) => (
           <TouchableOpacity
@@ -406,8 +476,6 @@ const styles = StyleSheet.create({
   offlineGuideTitle: { fontWeight: "bold", color: "#2e7d32", fontSize: 14 },
   offlineGuideDesc: { color: "#555", fontSize: 12, marginTop: 3 },
   offlineGuideArrow: { fontSize: 26, color: "#aaa" },
-
-  // PANEL HEADERS
   panelHeader: {
     flexDirection: "row", alignItems: "center",
     marginHorizontal: 20, marginBottom: 15, marginTop: 5, gap: 10,
@@ -417,8 +485,6 @@ const styles = StyleSheet.create({
     fontSize: 15, fontWeight: "bold",
     color: COLORS.textDark, paddingHorizontal: 5,
   },
-
-  // PANEL 1 — QUICK ACCESS
   quickGrid: {
     flexDirection: "row", flexWrap: "wrap",
     paddingHorizontal: 20, gap: 10, marginBottom: 25,
@@ -432,8 +498,6 @@ const styles = StyleSheet.create({
   },
   quickIcon: { fontSize: 26, marginBottom: 5 },
   quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
-
-  // PANEL 2 — DISASTER TIPS
   disasterGrid: { paddingHorizontal: 20, marginBottom: 25 },
   disasterCard: {
     backgroundColor: "#fff", borderRadius: 12,
@@ -459,8 +523,6 @@ const styles = StyleSheet.create({
     paddingTop: 10, borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
-
-  // PANEL 3 — PREPAREDNESS TIPS
   tipCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: COLORS.surface, borderRadius: 15,
@@ -480,8 +542,6 @@ const styles = StyleSheet.create({
   tipContent: { flex: 1 },
   tipTitle: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   tipDesc: { color: COLORS.textMid, fontSize: 12, marginTop: 3, lineHeight: 18 },
-
-  // BOTTOM NAV
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "#fff",
