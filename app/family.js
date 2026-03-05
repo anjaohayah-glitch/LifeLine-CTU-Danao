@@ -34,7 +34,6 @@ export default function Family() {
 
   const user = auth.currentUser;
 
-  // 🔥 Load my contacts (accepted only)
   useEffect(() => {
     if (!user) return;
     const contactsRef = ref(db, `contacts/${user.uid}`);
@@ -52,7 +51,6 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load pending requests (sent to me)
   useEffect(() => {
     if (!user) return;
     const reqRef = ref(db, `contactRequests/${user.uid}`);
@@ -70,7 +68,6 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load all users
   useEffect(() => {
     const usersRef = ref(db, "users");
     const unsubscribe = onValue(usersRef, (snapshot) => {
@@ -85,7 +82,6 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load safety status
   useEffect(() => {
     if (!user) return;
     const statusRef = ref(db, `safetyStatus/${user.uid}`);
@@ -95,7 +91,6 @@ export default function Family() {
     return () => unsubscribe();
   }, []);
 
-  // 🔥 Load messages
   useEffect(() => {
     if (!selectedContact) return;
     const chatId = getChatId(user.uid, selectedContact.uid);
@@ -114,7 +109,6 @@ export default function Family() {
 
   const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
 
-  // ➕ Send contact request
   const sendContactRequest = async (userToAdd) => {
     if (!user) return;
     const alreadyContact = contacts.find((c) => c.uid === userToAdd.id);
@@ -122,9 +116,7 @@ export default function Family() {
       Alert.alert("Already Added", "This person is already in your contacts.");
       return;
     }
-
     try {
-      // Send request to the other user
       await set(ref(db, `contactRequests/${userToAdd.id}/${user.uid}`), {
         uid: user.uid,
         name: auth.currentUser.displayName || user.email,
@@ -132,24 +124,19 @@ export default function Family() {
         status: "pending",
         sentAt: new Date().toISOString(),
       });
-
-      // Track sent request on my side
       await set(ref(db, `sentRequests/${user.uid}/${userToAdd.id}`), {
         uid: userToAdd.id,
         status: "pending",
         sentAt: new Date().toISOString(),
       });
-
-      Alert.alert("Request Sent! 📨", `A contact request has been sent to ${userToAdd.fullName || userToAdd.email}.`);
+      Alert.alert("Request Sent! 📨", `A contact request has been sent to ${userToAdd.fullName || "this person"}.`);
     } catch (error) {
       Alert.alert("Error", error.message);
     }
   };
 
-  // ✅ Accept contact request
   const acceptRequest = async (request) => {
     try {
-      // Add to my contacts
       await set(ref(db, `contacts/${user.uid}/${request.uid}`), {
         uid: request.uid,
         name: request.name,
@@ -157,8 +144,6 @@ export default function Family() {
         status: "accepted",
         addedAt: new Date().toISOString(),
       });
-
-      // Add me to their contacts
       await set(ref(db, `contacts/${request.uid}/${user.uid}`), {
         uid: user.uid,
         name: auth.currentUser.displayName || user.email,
@@ -166,24 +151,19 @@ export default function Family() {
         status: "accepted",
         addedAt: new Date().toISOString(),
       });
-
-      // Remove request
       await remove(ref(db, `contactRequests/${user.uid}/${request.uid}`));
       await remove(ref(db, `sentRequests/${request.uid}/${user.uid}`));
-
       Alert.alert("Contact Added! ✅", `${request.name} is now your contact.`);
     } catch (error) {
       Alert.alert("Error", error.message);
     }
   };
 
-  // ❌ Decline contact request
   const declineRequest = async (request) => {
     await remove(ref(db, `contactRequests/${user.uid}/${request.uid}`));
     await remove(ref(db, `sentRequests/${request.uid}/${user.uid}`));
   };
 
-  // 🗑 Remove contact
   const removeContact = (contactId, name) => {
     Alert.alert("Remove Contact", `Remove ${name} from your contacts?`, [
       { text: "Cancel", style: "cancel" },
@@ -197,7 +177,6 @@ export default function Family() {
     ]);
   };
 
-  // ✅ Send I am Safe
   const sendSafe = async () => {
     if (!user) return;
     try {
@@ -225,7 +204,6 @@ export default function Family() {
     }
   };
 
-  // 🆘 Send I Need Help with live location
   const sendHelp = async () => {
     Alert.alert(
       "🆘 Send Help Alert",
@@ -237,8 +215,6 @@ export default function Family() {
           onPress: async () => {
             try {
               setLoading(true);
-
-              // 📍 Get live location
               let locationText = "Location unavailable";
               let locationUrl = "";
               try {
@@ -246,8 +222,6 @@ export default function Family() {
                 if (status === "granted") {
                   const location = await Location.getCurrentPositionAsync({});
                   const { latitude, longitude } = location.coords;
-
-                  // Reverse geocode
                   const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
                   if (geocode.length > 0) {
                     const g = geocode[0];
@@ -287,7 +261,6 @@ export default function Family() {
     );
   };
 
-  // 💬 Send message
   const sendMessage = async () => {
     if (!messageText.trim() || !selectedContact) return;
     try {
@@ -309,7 +282,6 @@ export default function Family() {
     (u.fullName || u.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // CHAT MODAL
   const renderChat = () => {
     if (!selectedContact) return null;
     const chatId = getChatId(user.uid, selectedContact.uid);
@@ -463,7 +435,7 @@ export default function Family() {
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{contact.name}</Text>
                   <Text style={styles.contactEmail}>{contact.email}</Text>
-                  {/* Show address only if public */}
+                  {/* Show address only if contact made it public */}
                   {contact.addressPublic !== false && contact.barangay && (
                     <Text style={styles.contactAddress}>📍 {contact.barangay}</Text>
                   )}
@@ -508,9 +480,8 @@ export default function Family() {
                 </View>
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{request.name}</Text>
-                  <Text style={styles.contactEmail}>{request.email}</Text>
                   <Text style={styles.requestTime}>
-                    Sent {new Date(request.sentAt).toLocaleDateString()}
+                    Wants to add you as a contact
                   </Text>
                 </View>
                 <View style={styles.requestActions}>
@@ -534,14 +505,14 @@ export default function Family() {
         </ScrollView>
       )}
 
-      {/* SEARCH TAB */}
+      {/* SEARCH TAB - only show name, nothing else */}
       {activeTab === "search" && (
         <View style={styles.content}>
           <View style={styles.searchBar}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by name or email..."
+              placeholder="Search by name..."
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -556,16 +527,13 @@ export default function Family() {
                   <View key={u.id} style={styles.contactCard}>
                     <View style={styles.contactAvatar}>
                       <Text style={styles.contactAvatarText}>
-                        {(u.fullName || u.email || "?")[0].toUpperCase()}
+                        {(u.fullName || "?")[0].toUpperCase()}
                       </Text>
                     </View>
+                    {/* Only show name — no email, no address */}
                     <View style={styles.contactInfo}>
                       <Text style={styles.contactName}>{u.fullName || "Unknown"}</Text>
-                      <Text style={styles.contactEmail}>{u.email}</Text>
-                      {/* Only show address if public */}
-                      {u.addressPublic !== false && u.barangay && (
-                        <Text style={styles.contactAddress}>📍 {u.barangay}</Text>
-                      )}
+                      <Text style={styles.contactMeta}>LIFELINE User</Text>
                     </View>
                     <TouchableOpacity
                       style={[styles.addButton, isAccepted && styles.addedButton]}
@@ -661,7 +629,8 @@ const styles = StyleSheet.create({
   contactName: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
   contactEmail: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
   contactAddress: { color: "#2e7d32", fontSize: 11, marginTop: 2 },
-  requestTime: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
+  contactMeta: { color: COLORS.textLight, fontSize: 11, marginTop: 2 },
+  requestTime: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
   contactActions: { flexDirection: "row", gap: 8 },
   requestActions: { flexDirection: "row", gap: 8 },
   chatButton: {
