@@ -1,9 +1,11 @@
+
 // app/_layout.js
 import { Stack } from "expo-router";
+import { SettingsProvider } from "../context/SettingsContext";
 import { useAlertNotifications } from "../hooks/useAlertNotifications";
 import { useNotifications } from "../hooks/useNotifications";
 
-export default function Layout() {
+function AppLayout() {
   useNotifications();
   useAlertNotifications();
 
@@ -27,5 +29,13 @@ export default function Layout() {
       <Stack.Screen name="voiceguide" />
       <Stack.Screen name="settings" />
     </Stack>
+  );
+}
+
+export default function Layout() {
+  return (
+    <SettingsProvider>
+      <AppLayout />
+    </SettingsProvider>
   );
 }
