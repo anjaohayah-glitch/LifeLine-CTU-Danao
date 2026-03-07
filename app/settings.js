@@ -2,28 +2,31 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, updateProfile } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
+import { useSettings } from "../context/SettingsContext";
 import { auth } from "../firebase";
 
 export default function Settings() {
   const router = useRouter();
-
-  const [language, setLanguage] = useState("en");
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [voiceSpeed, setVoiceSpeed] = useState("normal");
+  const {
+    language, updateLanguage,
+    darkMode, updateDarkMode,
+    notifications, updateNotifications,
+    voiceSpeed, updateVoiceSpeed,
+    theme,
+  } = useSettings();
 
   const [profileModal, setProfileModal] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
@@ -35,25 +38,6 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const savedLang = await AsyncStorage.getItem("language");
-        const savedNotif = await AsyncStorage.getItem("notifications");
-        const savedDark = await AsyncStorage.getItem("darkMode");
-        const savedSpeed = await AsyncStorage.getItem("voiceSpeed");
-        if (savedLang) setLanguage(savedLang);
-        if (savedNotif !== null) setNotifications(savedNotif === "true");
-        if (savedDark !== null) setDarkMode(savedDark === "true");
-        if (savedSpeed) setVoiceSpeed(savedSpeed);
-      } catch (e) {}
-    })();
-  }, []);
-
-  const saveSetting = async (key, value) => {
-    await AsyncStorage.setItem(key, String(value));
-  };
 
   const handleUpdateProfile = async () => {
     if (!displayName.trim()) {
@@ -117,6 +101,7 @@ export default function Settings() {
           style: "destructive",
           onPress: async () => {
             await signOut(auth);
+            await AsyncStorage.removeItem("userUID"); // ✅ Clear saved session
             router.replace("/login");
           },
         },
@@ -136,8 +121,17 @@ export default function Settings() {
     { key: "fast", label: "Fast", icon: "🏃" },
   ];
 
+  // Dynamic styles based on dark mode
+  const bg = theme.bg;
+  const card = theme.card;
+  const border = theme.border;
+  const textDark = theme.textDark;
+  const textLight = theme.textLight;
+  const textMid = theme.textMid;
+  const surface = theme.surface;
+
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: bg }]}>
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -151,32 +145,41 @@ export default function Settings() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
         {/* USER CARD */}
-        <View style={styles.userCard}>
+        <View style={[styles.userCard, { backgroundColor: card, borderColor: border }]}>
           <View style={styles.userAvatar}>
             <Text style={styles.userAvatarText}>
               {auth.currentUser?.displayName?.[0]?.toUpperCase() || "U"}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>
+            <Text style={[styles.userName, { color: textDark }]}>
               {auth.currentUser?.displayName || "User"}
             </Text>
-            <Text style={styles.userEmail}>{auth.currentUser?.email}</Text>
+            <Text style={[styles.userEmail, { color: textLight }]}>
+              {auth.currentUser?.email}
+            </Text>
           </View>
         </View>
 
         {/* 🌐 LANGUAGE */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🌐 Language</Text>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>🌐 Language</Text>
+          <Text style={[styles.sectionNote, { color: textLight }]}>
+            {language === "en" ? "App language: English" : language === "ceb" ? "App language: Cebuano" : "App language: Filipino"}
+          </Text>
           <View style={styles.langButtons}>
             {LANGUAGES.map((lang) => (
               <TouchableOpacity
                 key={lang.key}
-                style={[styles.langButton, language === lang.key && styles.langButtonActive]}
-                onPress={() => { setLanguage(lang.key); saveSetting("language", lang.key); }}
+                style={[
+                  styles.langButton,
+                  { borderColor: border, backgroundColor: card },
+                  language === lang.key && styles.langButtonActive,
+                ]}
+                onPress={() => updateLanguage(lang.key)}
               >
                 <Text style={styles.langFlag}>{lang.flag}</Text>
-                <Text style={[styles.langLabel, language === lang.key && { color: "#fff" }]}>
+                <Text style={[styles.langLabel, { color: textMid }, language === lang.key && { color: "#fff" }]}>
                   {lang.label}
                 </Text>
                 {language === lang.key && <Text style={styles.checkMark}>✓</Text>}
@@ -186,19 +189,19 @@ export default function Settings() {
         </View>
 
         {/* 🔔 NOTIFICATIONS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔔 Notifications</Text>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>🔔 Notifications</Text>
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingIcon}>🚨</Text>
               <View>
-                <Text style={styles.settingLabel}>Emergency Alerts</Text>
-                <Text style={styles.settingDesc}>Receive real-time disaster alerts</Text>
+                <Text style={[styles.settingLabel, { color: textDark }]}>Emergency Alerts</Text>
+                <Text style={[styles.settingDesc, { color: textLight }]}>Receive real-time disaster alerts</Text>
               </View>
             </View>
             <Switch
               value={notifications}
-              onValueChange={(val) => { setNotifications(val); saveSetting("notifications", val); }}
+              onValueChange={(val) => updateNotifications(val)}
               trackColor={{ false: "#ddd", true: COLORS.primary }}
               thumbColor="#fff"
             />
@@ -206,23 +209,21 @@ export default function Settings() {
         </View>
 
         {/* 🌙 DARK MODE */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🌙 Appearance</Text>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>🌙 Appearance</Text>
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingIcon}>{darkMode ? "🌙" : "☀️"}</Text>
               <View>
-                <Text style={styles.settingLabel}>Dark Mode</Text>
-                <Text style={styles.settingDesc}>{darkMode ? "Dark theme enabled" : "Light theme enabled"}</Text>
+                <Text style={[styles.settingLabel, { color: textDark }]}>Dark Mode</Text>
+                <Text style={[styles.settingDesc, { color: textLight }]}>
+                  {darkMode ? "Dark theme enabled" : "Light theme enabled"}
+                </Text>
               </View>
             </View>
             <Switch
               value={darkMode}
-              onValueChange={(val) => {
-                setDarkMode(val);
-                saveSetting("darkMode", val);
-                Alert.alert("Dark Mode", val ? "Dark mode will apply on next restart." : "Light mode restored.");
-              }}
+              onValueChange={(val) => updateDarkMode(val)}
               trackColor={{ false: "#ddd", true: COLORS.primary }}
               thumbColor="#fff"
             />
@@ -230,17 +231,21 @@ export default function Settings() {
         </View>
 
         {/* 🔊 VOICE SPEED */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔊 Voice Guide Speed</Text>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>🔊 Voice Guide Speed</Text>
           <View style={styles.speedButtons}>
             {VOICE_SPEEDS.map((speed) => (
               <TouchableOpacity
                 key={speed.key}
-                style={[styles.speedButton, voiceSpeed === speed.key && styles.speedButtonActive]}
-                onPress={() => { setVoiceSpeed(speed.key); saveSetting("voiceSpeed", speed.key); }}
+                style={[
+                  styles.speedButton,
+                  { borderColor: border, backgroundColor: card },
+                  voiceSpeed === speed.key && styles.speedButtonActive,
+                ]}
+                onPress={() => updateVoiceSpeed(speed.key)}
               >
                 <Text style={styles.speedIcon}>{speed.icon}</Text>
-                <Text style={[styles.speedLabel, voiceSpeed === speed.key && { color: "#fff" }]}>
+                <Text style={[styles.speedLabel, { color: textMid }, voiceSpeed === speed.key && { color: "#fff" }]}>
                   {speed.label}
                 </Text>
                 {voiceSpeed === speed.key && <Text style={styles.checkMark}>✓</Text>}
@@ -250,42 +255,42 @@ export default function Settings() {
         </View>
 
         {/* 👤 ACCOUNT */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👤 Account</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setProfileModal(true)}>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>👤 Account</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: border }]} onPress={() => setProfileModal(true)}>
             <Text style={styles.menuIcon}>✏️</Text>
             <View style={styles.menuContent}>
-              <Text style={styles.menuLabel}>Edit Display Name</Text>
-              <Text style={styles.menuDesc}>Update your name in the app</Text>
+              <Text style={[styles.menuLabel, { color: textDark }]}>Edit Display Name</Text>
+              <Text style={[styles.menuDesc, { color: textLight }]}>Update your name in the app</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => setPasswordModal(true)}>
             <Text style={styles.menuIcon}>🔑</Text>
             <View style={styles.menuContent}>
-              <Text style={styles.menuLabel}>Change Password</Text>
-              <Text style={styles.menuDesc}>Update your account password</Text>
+              <Text style={[styles.menuLabel, { color: textDark }]}>Change Password</Text>
+              <Text style={[styles.menuDesc, { color: textLight }]}>Update your account password</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         {/* ℹ️ INFO */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ℹ️ Information</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setAboutModal(true)}>
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>ℹ️ Information</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: border }]} onPress={() => setAboutModal(true)}>
             <Text style={styles.menuIcon}>📱</Text>
             <View style={styles.menuContent}>
-              <Text style={styles.menuLabel}>About LIFELINE</Text>
-              <Text style={styles.menuDesc}>Version info and credits</Text>
+              <Text style={[styles.menuLabel, { color: textDark }]}>About LIFELINE</Text>
+              <Text style={[styles.menuDesc, { color: textLight }]}>Version info and credits</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => setPrivacyModal(true)}>
             <Text style={styles.menuIcon}>🔒</Text>
             <View style={styles.menuContent}>
-              <Text style={styles.menuLabel}>Privacy Policy</Text>
-              <Text style={styles.menuDesc}>How we handle your data</Text>
+              <Text style={[styles.menuLabel, { color: textDark }]}>Privacy Policy</Text>
+              <Text style={[styles.menuDesc, { color: textLight }]}>How we handle your data</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
@@ -303,14 +308,14 @@ export default function Settings() {
       {/* EDIT PROFILE MODAL */}
       <Modal visible={profileModal} transparent animationType="slide" onRequestClose={() => setProfileModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>✏️ Edit Display Name</Text>
-            <View style={styles.inputWrapper}>
+          <View style={[styles.modalBox, { backgroundColor: card }]}>
+            <Text style={[styles.modalTitle, { color: textDark }]}>✏️ Edit Display Name</Text>
+            <View style={[styles.inputWrapper, { borderColor: border, backgroundColor: surface }]}>
               <Text style={styles.inputIcon}>👤</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: textDark }]}
                 placeholder="Display name"
-                placeholderTextColor={COLORS.textLight}
+                placeholderTextColor={textLight}
                 value={displayName}
                 onChangeText={setDisplayName}
               />
@@ -322,8 +327,8 @@ export default function Settings() {
             >
               <Text style={styles.modalButtonText}>{saving ? "Saving..." : "Save Changes"}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setProfileModal(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
+            <TouchableOpacity style={[styles.modalCancel, { borderColor: border }]} onPress={() => setProfileModal(false)}>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -332,19 +337,19 @@ export default function Settings() {
       {/* CHANGE PASSWORD MODAL */}
       <Modal visible={passwordModal} transparent animationType="slide" onRequestClose={() => setPasswordModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>🔑 Change Password</Text>
+          <View style={[styles.modalBox, { backgroundColor: card }]}>
+            <Text style={[styles.modalTitle, { color: textDark }]}>🔑 Change Password</Text>
             {[
               { placeholder: "Current password", value: currentPassword, setter: setCurrentPassword },
               { placeholder: "New password", value: newPassword, setter: setNewPassword },
               { placeholder: "Confirm new password", value: confirmPassword, setter: setConfirmPassword },
             ].map((field, index) => (
-              <View key={index} style={styles.inputWrapper}>
+              <View key={index} style={[styles.inputWrapper, { borderColor: border, backgroundColor: surface }]}>
                 <Text style={styles.inputIcon}>🔒</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: textDark }]}
                   placeholder={field.placeholder}
-                  placeholderTextColor={COLORS.textLight}
+                  placeholderTextColor={textLight}
                   value={field.value}
                   onChangeText={field.setter}
                   secureTextEntry
@@ -359,10 +364,10 @@ export default function Settings() {
               <Text style={styles.modalButtonText}>{saving ? "Saving..." : "Change Password"}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.modalCancel}
+              style={[styles.modalCancel, { borderColor: border }]}
               onPress={() => { setPasswordModal(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); }}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -371,11 +376,11 @@ export default function Settings() {
       {/* ABOUT MODAL */}
       <Modal visible={aboutModal} transparent animationType="slide" onRequestClose={() => setAboutModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
+          <View style={[styles.modalBox, { backgroundColor: card }]}>
             <View style={styles.aboutHeader}>
               <Text style={styles.aboutEmoji}>🚑</Text>
               <Text style={styles.aboutName}>LIFELINE</Text>
-              <Text style={styles.aboutVersion}>Version 1.0.4</Text>
+              <Text style={[styles.aboutVersion, { color: textLight }]}>Version 1.0.4</Text>
             </View>
             {[
               { label: "Developer", value: "CTU Danao Campus" },
@@ -385,13 +390,13 @@ export default function Settings() {
               { label: "Campus", value: "Sabang, Danao City, Cebu" },
               { label: "DRRMO Hotline", value: "0917-723-6262" },
             ].map((item, index) => (
-              <View key={index} style={styles.aboutRow}>
-                <Text style={styles.aboutLabel}>{item.label}</Text>
-                <Text style={styles.aboutValue}>{item.value}</Text>
+              <View key={index} style={[styles.aboutRow, { borderColor: border }]}>
+                <Text style={[styles.aboutLabel, { color: textLight }]}>{item.label}</Text>
+                <Text style={[styles.aboutValue, { color: textDark }]}>{item.value}</Text>
               </View>
             ))}
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setAboutModal(false)}>
-              <Text style={styles.modalCancelText}>Close</Text>
+            <TouchableOpacity style={[styles.modalCancel, { borderColor: border }]} onPress={() => setAboutModal(false)}>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -400,8 +405,8 @@ export default function Settings() {
       {/* PRIVACY MODAL */}
       <Modal visible={privacyModal} transparent animationType="slide" onRequestClose={() => setPrivacyModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { paddingBottom: 30 }]}>
-            <Text style={styles.modalTitle}>🔒 Privacy Policy</Text>
+          <View style={[styles.modalBox, { backgroundColor: card, paddingBottom: 30 }]}>
+            <Text style={[styles.modalTitle, { color: textDark }]}>🔒 Privacy Policy</Text>
             <ScrollView style={{ maxHeight: 350 }} showsVerticalScrollIndicator={false}>
               {[
                 { title: "Data Collection", text: "LIFELINE collects your email address, display name, and location data (only when SOS is triggered) to provide disaster preparedness services." },
@@ -411,13 +416,13 @@ export default function Settings() {
                 { title: "Contact", text: "For privacy concerns, contact CTU Danao DRRMO at 0917-723-6262." },
               ].map((item, index) => (
                 <View key={index} style={styles.privacyItem}>
-                  <Text style={styles.privacyTitle}>{item.title}</Text>
-                  <Text style={styles.privacyText}>{item.text}</Text>
+                  <Text style={[styles.privacyTitle]}>{item.title}</Text>
+                  <Text style={[styles.privacyText, { color: textMid }]}>{item.text}</Text>
                 </View>
               ))}
             </ScrollView>
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setPrivacyModal(false)}>
-              <Text style={styles.modalCancelText}>Close</Text>
+            <TouchableOpacity style={[styles.modalCancel, { borderColor: border }]} onPress={() => setPrivacyModal(false)}>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -428,7 +433,7 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#fff" },
+  wrapper: { flex: 1 },
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 55, paddingBottom: 20,
@@ -446,9 +451,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
   userCard: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: COLORS.surface, borderRadius: 15,
-    padding: 16, marginBottom: 20, marginTop: 10,
-    borderWidth: 1, borderColor: COLORS.border, elevation: 2,
+    borderRadius: 15, padding: 16,
+    marginBottom: 20, marginTop: 10,
+    borderWidth: 1, elevation: 2,
   },
   userAvatar: {
     width: 55, height: 55, borderRadius: 28,
@@ -457,52 +462,45 @@ const styles = StyleSheet.create({
   },
   userAvatarText: { color: "#fff", fontSize: 24, fontWeight: "bold" },
   userInfo: { flex: 1 },
-  userName: { fontWeight: "bold", fontSize: 16, color: COLORS.textDark },
-  userEmail: { color: COLORS.textLight, fontSize: 13, marginTop: 3 },
+  userName: { fontWeight: "bold", fontSize: 16 },
+  userEmail: { fontSize: 13, marginTop: 3 },
   section: {
-    backgroundColor: COLORS.surface, borderRadius: 15,
-    padding: 16, marginBottom: 15,
-    borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 15, padding: 16,
+    marginBottom: 15, borderWidth: 1,
   },
-  sectionTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 14 },
+  sectionTitle: { fontWeight: "bold", fontSize: 15, marginBottom: 8 },
+  sectionNote: { fontSize: 11, marginBottom: 10, fontStyle: "italic" },
   langButtons: { flexDirection: "row", gap: 8 },
   langButton: {
     flex: 1, flexDirection: "row", alignItems: "center",
     justifyContent: "center", gap: 4,
-    padding: 10, borderRadius: 10,
-    borderWidth: 1.5, borderColor: COLORS.border,
-    backgroundColor: "#fff",
+    padding: 10, borderRadius: 10, borderWidth: 1.5,
   },
   langButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   langFlag: { fontSize: 16 },
-  langLabel: { fontSize: 11, fontWeight: "bold", color: COLORS.textMid },
+  langLabel: { fontSize: 11, fontWeight: "bold" },
   checkMark: { color: "#fff", fontSize: 11, fontWeight: "bold" },
-  settingRow: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-  },
+  settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   settingLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   settingIcon: { fontSize: 26 },
-  settingLabel: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
-  settingDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  settingLabel: { fontWeight: "bold", fontSize: 14 },
+  settingDesc: { fontSize: 12, marginTop: 2 },
   speedButtons: { flexDirection: "row", gap: 8 },
   speedButton: {
     flex: 1, alignItems: "center", padding: 12,
     borderRadius: 10, borderWidth: 1.5,
-    borderColor: COLORS.border, backgroundColor: "#fff",
   },
   speedButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   speedIcon: { fontSize: 24, marginBottom: 4 },
-  speedLabel: { fontSize: 12, fontWeight: "bold", color: COLORS.textMid },
+  speedLabel: { fontSize: 12, fontWeight: "bold" },
   menuItem: {
     flexDirection: "row", alignItems: "center",
     paddingVertical: 12, borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   menuIcon: { fontSize: 22, marginRight: 12 },
   menuContent: { flex: 1 },
-  menuLabel: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
-  menuDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
+  menuLabel: { fontWeight: "bold", fontSize: 14 },
+  menuDesc: { fontSize: 12, marginTop: 2 },
   menuArrow: { fontSize: 22, color: "#ccc" },
   logoutButton: {
     flexDirection: "row", alignItems: "center",
@@ -518,46 +516,38 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalBox: {
-    backgroundColor: "#fff",
     borderTopLeftRadius: 30, borderTopRightRadius: 30,
     padding: 25, paddingBottom: 40,
   },
-  modalTitle: {
-    fontSize: 20, fontWeight: "bold",
-    color: COLORS.textDark, marginBottom: 20, textAlign: "center",
-  },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
   inputWrapper: {
     flexDirection: "row", alignItems: "center",
-    borderWidth: 1.5, borderColor: COLORS.border,
-    borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 12, marginBottom: 12,
-    backgroundColor: COLORS.surface,
+    borderWidth: 1.5, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12,
   },
   inputIcon: { fontSize: 18, marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: COLORS.textDark },
+  input: { flex: 1, fontSize: 15 },
   modalButton: {
-    backgroundColor: COLORS.primary,
-    padding: 15, borderRadius: 12,
-    alignItems: "center", marginTop: 5,
+    backgroundColor: COLORS.primary, padding: 15,
+    borderRadius: 12, alignItems: "center", marginTop: 5,
   },
   modalButtonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   modalCancel: {
     padding: 14, borderRadius: 12,
-    alignItems: "center", marginTop: 10,
-    borderWidth: 1.5, borderColor: COLORS.border,
+    alignItems: "center", marginTop: 10, borderWidth: 1.5,
   },
-  modalCancelText: { color: COLORS.textMid, fontWeight: "bold", fontSize: 15 },
+  modalCancelText: { fontWeight: "bold", fontSize: 15 },
   aboutHeader: { alignItems: "center", marginBottom: 20 },
   aboutEmoji: { fontSize: 50, marginBottom: 8 },
   aboutName: { fontSize: 24, fontWeight: "bold", color: COLORS.primary },
-  aboutVersion: { color: COLORS.textLight, fontSize: 13, marginTop: 4 },
+  aboutVersion: { fontSize: 13, marginTop: 4 },
   aboutRow: {
     flexDirection: "row", justifyContent: "space-between",
-    paddingVertical: 10, borderBottomWidth: 1, borderColor: COLORS.border,
+    paddingVertical: 10, borderBottomWidth: 1,
   },
-  aboutLabel: { color: COLORS.textLight, fontSize: 13 },
-  aboutValue: { color: COLORS.textDark, fontWeight: "bold", fontSize: 13, maxWidth: "60%", textAlign: "right" },
+  aboutLabel: { fontSize: 13 },
+  aboutValue: { fontWeight: "bold", fontSize: 13, maxWidth: "60%", textAlign: "right" },
   privacyItem: { marginBottom: 15 },
   privacyTitle: { fontWeight: "bold", color: COLORS.primary, fontSize: 14, marginBottom: 5 },
-  privacyText: { color: COLORS.textMid, fontSize: 13, lineHeight: 20 },
+  privacyText: { fontSize: 13, lineHeight: 20 },
 });
