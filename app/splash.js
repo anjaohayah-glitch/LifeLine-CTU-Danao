@@ -1,4 +1,5 @@
 // app/splash.js
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useRef } from "react";
@@ -12,55 +13,67 @@ export default function Splash() {
   const subtitleFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 🎬 Animate logo in
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
     ]).start(() => {
-      Animated.timing(subtitleFade, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(subtitleFade, { toValue: 1, duration: 800, useNativeDriver: true }).start();
     });
 
     let hasNavigated = false;
 
-    // ✅ Firebase now reads from AsyncStorage — wait for it
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const navigate = (destination) => {
       if (hasNavigated) return;
       hasNavigated = true;
+      setTimeout(() => router.replace(destination), 2500);
+    };
 
-      // Small delay to let splash animation show
-      setTimeout(() => {
+    // ✅ OFFLINE FIX: Check AsyncStorage FIRST before Firebase
+    AsyncStorage.getItem("userUID").then((savedUID) => {
+      if (savedUID) {
+        // ✅ User was logged in before — go home even without internet
+        navigate("/home");
+        return;
+      }
+
+      // No saved session — need internet to check Firebase
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (user) {
-          router.replace("/home");
+          // Save UID so next time works offline
+          AsyncStorage.setItem("userUID", user.uid);
+          navigate("/home");
         } else {
+          AsyncStorage.removeItem("userUID");
+          navigate("/login");
+        }
+      });
+
+      // Fallback if Firebase takes too long (truly offline, no saved session)
+      const fallback = setTimeout(() => {
+        if (!hasNavigated) {
+          hasNavigated = true;
           router.replace("/login");
         }
-      }, 2500);
+      }, 6000);
+
+      return () => {
+        unsubscribe();
+        clearTimeout(fallback);
+      };
+    }).catch(() => {
+      // AsyncStorage failed — fall back to Firebase
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        navigate(user ? "/home" : "/login");
+      });
+      const fallback = setTimeout(() => {
+        if (!hasNavigated) {
+          hasNavigated = true;
+          router.replace("/login");
+        }
+      }, 6000);
+      return () => { unsubscribe(); clearTimeout(fallback); };
     });
 
-    // ⏱ Fallback if Firebase takes too long
-    const fallback = setTimeout(() => {
-      if (!hasNavigated) {
-        hasNavigated = true;
-        router.replace("/login");
-      }
-    }, 6000);
-
-    return () => {
-      unsubscribe();
-      clearTimeout(fallback);
-    };
   }, []);
 
   return (
@@ -68,12 +81,10 @@ export default function Splash() {
       <View style={styles.circle1} />
       <View style={styles.circle2} />
 
-      <Animated.View
-        style={[
-          styles.logoContainer,
-          { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-        ]}
-      >
+      <Animated.View style={[
+        styles.logoContainer,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+      ]}>
         <View style={styles.logoBox}>
           <Text style={styles.logoIcon}>🚑</Text>
         </View>
@@ -127,58 +138,33 @@ function LoadingDots() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#B00020",
-    justifyContent: "center",
-    alignItems: "center",
+    flex: 1, backgroundColor: "#B00020",
+    justifyContent: "center", alignItems: "center",
   },
   circle1: {
-    position: "absolute",
-    width: 400, height: 400,
-    borderRadius: 200,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    position: "absolute", width: 400, height: 400,
+    borderRadius: 200, backgroundColor: "rgba(255,255,255,0.05)",
     top: -100, right: -100,
   },
   circle2: {
-    position: "absolute",
-    width: 300, height: 300,
-    borderRadius: 150,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    position: "absolute", width: 300, height: 300,
+    borderRadius: 150, backgroundColor: "rgba(255,255,255,0.05)",
     bottom: -50, left: -80,
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
+  logoContainer: { alignItems: "center", marginBottom: 20 },
   logoBox: {
-    width: 110, height: 110,
-    borderRadius: 30,
+    width: 110, height: 110, borderRadius: 30,
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center", alignItems: "center",
     marginBottom: 15, borderWidth: 2,
     borderColor: "rgba(255,255,255,0.3)",
   },
   logoIcon: { fontSize: 60 },
-  logoText: {
-    fontSize: 42, fontWeight: "bold",
-    color: "#fff", letterSpacing: 6,
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 14, textAlign: "center", marginBottom: 6,
-  },
-  tagline: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 13, textAlign: "center", fontStyle: "italic",
-  },
+  logoText: { fontSize: 42, fontWeight: "bold", color: "#fff", letterSpacing: 6 },
+  subtitle: { color: "rgba(255,255,255,0.85)", fontSize: 14, textAlign: "center", marginBottom: 6 },
+  tagline: { color: "rgba(255,255,255,0.6)", fontSize: 13, textAlign: "center", fontStyle: "italic" },
   loadingContainer: { marginTop: 50 },
   dotsRow: { flexDirection: "row", gap: 10 },
-  dot: {
-    width: 10, height: 10,
-    borderRadius: 5, backgroundColor: "#fff",
-  },
-  footer: {
-    position: "absolute", bottom: 40,
-    color: "rgba(255,255,255,0.4)", fontSize: 12,
-  },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#fff" },
+  footer: { position: "absolute", bottom: 40, color: "rgba(255,255,255,0.4)", fontSize: 12 },
 });
