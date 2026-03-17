@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
+import { useSettings } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 
@@ -58,6 +59,8 @@ export default function Home() {
   const [expandedDisaster, setExpandedDisaster] = useState(null);
   const { isAdmin } = useAdmin();
   const router = useRouter();
+  const { theme } = useSettings();
+  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   const FEATURE_CARDS = QUICK_ACCESS.filter(
     (item) => !item.adminOnly || isAdmin
@@ -121,7 +124,6 @@ export default function Home() {
           style: "destructive",
           onPress: async () => {
             try {
-              // 📍 Get live location
               const { status } = await Location.requestForegroundPermissionsAsync();
               if (status !== "granted") {
                 Alert.alert("Permission Denied", "Location access is required.");
@@ -130,7 +132,6 @@ export default function Home() {
               const location = await Location.getCurrentPositionAsync({});
               const { latitude, longitude } = location.coords;
 
-              // Reverse geocode
               let locationText = "Location unavailable";
               try {
                 const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
@@ -145,56 +146,46 @@ export default function Home() {
               const senderName = auth.currentUser?.displayName || auth.currentUser?.email;
               const timestamp = Date.now();
 
-              // 1️⃣ Save to Firebase sosRequests — Admin gets notified
               await set(ref(db, "sosRequests/" + timestamp), {
                 uid: auth.currentUser?.uid,
                 name: senderName,
                 email: auth.currentUser?.email,
-                latitude,
-                longitude,
+                latitude, longitude,
                 address: locationText,
                 locationUrl,
                 timestamp: new Date().toISOString(),
               });
 
-              // 2️⃣ Update safety status to Needs Help
               await set(ref(db, `safetyStatus/${auth.currentUser?.uid}`), {
                 status: "help",
                 message: "I need help! 🔴",
-                timestamp,
-                name: senderName,
+                timestamp, name: senderName,
                 location: locationText,
               });
 
-              // 3️⃣ Notify all approved contacts
               onValue(ref(db, `contacts/${auth.currentUser?.uid}`), async (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                   const contacts = Object.entries(data)
                     .map(([id, val]) => ({ id, ...val }))
                     .filter((c) => c.status === "accepted");
-
                   const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
-
                   for (const contact of contacts) {
                     await push(ref(db, `messages/${getChatId(auth.currentUser?.uid, contact.uid)}`), {
                       senderId: auth.currentUser?.uid,
                       senderName,
                       text: `🚨 SOS ALERT!\n\n${senderName} NEEDS IMMEDIATE HELP!\n\n📍 Location:\n${locationText}\n\n🗺 Live Location:\n${locationUrl}\n\n⏰ ${new Date().toLocaleString()}`,
-                      timestamp,
-                      type: "sos",
+                      timestamp, type: "sos",
                     });
                   }
                 }
               }, { onlyOnce: true });
 
-              // 4️⃣ Confirmation
               Alert.alert(
                 "🚨 SOS Sent!",
                 `Your emergency alert has been sent!\n\n✅ All your contacts notified\n✅ Admin notified\n\n📍 Location shared:\n${locationText}\n\nStay calm. Help is on the way!`,
                 [{ text: "OK" }]
               );
-
             } catch (error) {
               Alert.alert("Error", "Something went wrong sending SOS. Try again.");
             }
@@ -210,21 +201,16 @@ export default function Home() {
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: bg }]}>
 
       {/* OFFLINE BANNER */}
       {!isOnline && (
-        <TouchableOpacity
-          style={styles.offlineBanner}
-          onPress={() => router.push("/guides")}
-        >
-          <Text style={styles.offlineText}>
-            📵 You are offline — Tap to access Disaster Guides
-          </Text>
+        <TouchableOpacity style={styles.offlineBanner} onPress={() => router.push("/guides")}>
+          <Text style={styles.offlineText}>📵 You are offline — Tap to access Disaster Guides</Text>
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.container, { backgroundColor: bg }]} showsVerticalScrollIndicator={false}>
 
         {/* HEADER */}
         <View style={styles.header}>
@@ -242,10 +228,7 @@ export default function Home() {
             </View>
           </View>
           <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={() => router.push("/settings")}
-            >
+            <TouchableOpacity style={styles.settingsButton} onPress={() => router.push("/settings")}>
               <Text style={styles.settingsIcon}>⚙️</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -257,22 +240,19 @@ export default function Home() {
           </View>
         </View>
 
-        {/* 🚨 EMERGENCY ALERT */}
+        {/* EMERGENCY ALERT */}
         {alertVisible && (
           <View style={styles.alertBanner}>
             <Text style={styles.alertTitle}>🚨 EMERGENCY ALERT 🚨</Text>
             <Text style={styles.alertText}>{alertMessage}</Text>
             <Text style={styles.alertSubText}>Stay indoors. Prepare emergency supplies.</Text>
-            <TouchableOpacity
-              style={styles.alertButton}
-              onPress={() => router.push("/evacuation")}
-            >
+            <TouchableOpacity style={styles.alertButton} onPress={() => router.push("/evacuation")}>
               <Text style={styles.alertButtonText}>🗺 View Evacuation Centers</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* 📢 ANNOUNCEMENT */}
+        {/* ANNOUNCEMENT */}
         {announcement && (
           <View style={styles.announcementBanner}>
             <Text style={styles.announcementTitle}>📢 Announcement</Text>
@@ -282,16 +262,11 @@ export default function Home() {
 
         {/* OFFLINE GUIDE CARD */}
         {!isOnline && (
-          <TouchableOpacity
-            style={styles.offlineGuideCard}
-            onPress={() => router.push("/guides")}
-          >
+          <TouchableOpacity style={styles.offlineGuideCard} onPress={() => router.push("/guides")}>
             <Text style={styles.offlineGuideIcon}>📚</Text>
             <View style={styles.offlineGuideContent}>
               <Text style={styles.offlineGuideTitle}>Access Disaster Guides</Text>
-              <Text style={styles.offlineGuideDesc}>
-                View Before, During & After guides — no internet needed!
-              </Text>
+              <Text style={styles.offlineGuideDesc}>View Before, During & After guides — no internet needed!</Text>
             </View>
             <Text style={styles.offlineGuideArrow}>›</Text>
           </TouchableOpacity>
@@ -299,9 +274,9 @@ export default function Home() {
 
         {/* PANEL 1 — QUICK ACCESS */}
         <View style={styles.panelHeader}>
-          <View style={styles.panelHeaderLine} />
-          <Text style={styles.panelTitle}>⚡ Quick Access</Text>
-          <View style={styles.panelHeaderLine} />
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
+          <Text style={[styles.panelTitle, { color: textDark }]}>⚡ Quick Access</Text>
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
         </View>
         <View style={styles.quickGrid}>
           {FEATURE_CARDS.map((item, index) => (
@@ -318,9 +293,9 @@ export default function Home() {
 
         {/* PANEL 2 — DISASTER TIPS */}
         <View style={styles.panelHeader}>
-          <View style={styles.panelHeaderLine} />
-          <Text style={styles.panelTitle}>⚠️ Disaster Tips</Text>
-          <View style={styles.panelHeaderLine} />
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
+          <Text style={[styles.panelTitle, { color: textDark }]}>⚠️ Disaster Tips</Text>
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
         </View>
         <View style={styles.disasterGrid}>
           {DISASTER_TIPS.map((item, index) => (
@@ -328,8 +303,8 @@ export default function Home() {
               key={index}
               style={[
                 styles.disasterCard,
-                { borderLeftColor: item.color },
-                expandedDisaster === index && styles.disasterCardExpanded,
+                { borderLeftColor: item.color, backgroundColor: card, borderColor: border },
+                expandedDisaster === index && { backgroundColor: card },
               ]}
               onPress={() => setExpandedDisaster(expandedDisaster === index ? null : index)}
             >
@@ -338,12 +313,14 @@ export default function Home() {
                   <Text style={styles.disasterIcon}>{item.icon}</Text>
                 </View>
                 <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
-                <Text style={styles.disasterArrow}>
+                <Text style={[styles.disasterArrow, { color: textLight }]}>
                   {expandedDisaster === index ? "▲" : "▼"}
                 </Text>
               </View>
               {expandedDisaster === index && (
-                <Text style={styles.disasterTip}>{item.tip}</Text>
+                <Text style={[styles.disasterTip, { color: textMid, borderTopColor: border }]}>
+                  {item.tip}
+                </Text>
               )}
             </TouchableOpacity>
           ))}
@@ -351,18 +328,18 @@ export default function Home() {
 
         {/* PANEL 3 — PREPAREDNESS TIPS */}
         <View style={styles.panelHeader}>
-          <View style={styles.panelHeaderLine} />
-          <Text style={styles.panelTitle}>🛡 Preparedness Tips</Text>
-          <View style={styles.panelHeaderLine} />
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
+          <Text style={[styles.panelTitle, { color: textDark }]}>🛡 Preparedness Tips</Text>
+          <View style={[styles.panelHeaderLine, { backgroundColor: border }]} />
         </View>
         {PREPAREDNESS_TIPS.map((tip, index) => (
-          <View key={index} style={styles.tipCard}>
-            <View style={styles.tipIconBox}>
+          <View key={index} style={[styles.tipCard, { backgroundColor: card, borderColor: border }]}>
+            <View style={[styles.tipIconBox, { backgroundColor: bg, borderColor: border }]}>
               <Text style={styles.tipIcon}>{tip.icon}</Text>
             </View>
             <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>{tip.title}</Text>
-              <Text style={styles.tipDesc}>{tip.desc}</Text>
+              <Text style={[styles.tipTitle, { color: textDark }]}>{tip.title}</Text>
+              <Text style={[styles.tipDesc, { color: textMid }]}>{tip.desc}</Text>
             </View>
           </View>
         ))}
@@ -371,16 +348,13 @@ export default function Home() {
       </ScrollView>
 
       {/* BOTTOM NAV */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: card, borderColor: border }]}>
         {NAV_ITEMS.map((item) => (
-          <TouchableOpacity
-            key={item.route}
-            style={styles.navItem}
-            onPress={() => handleNav(item.route)}
-          >
+          <TouchableOpacity key={item.route} style={styles.navItem} onPress={() => handleNav(item.route)}>
             <Text style={styles.navIcon}>{item.icon}</Text>
             <Text style={[
               styles.navLabel,
+              { color: textLight },
               activeNav === item.route && { color: COLORS.primary, fontWeight: "bold" }
             ]}>
               {item.label}
@@ -394,28 +368,18 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1, backgroundColor: "#fff" },
-  offlineBanner: {
-    backgroundColor: "#E65100",
-    padding: 10, alignItems: "center",
-  },
+  wrapper: { flex: 1 },
+  container: { flex: 1 },
+  offlineBanner: { backgroundColor: "#E65100", padding: 10, alignItems: "center" },
   offlineText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     backgroundColor: COLORS.primary,
-    paddingTop: 55, paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    marginBottom: 20,
-    elevation: 6,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
+    paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20,
+    borderBottomLeftRadius: 25, borderBottomRightRadius: 25,
+    marginBottom: 20, elevation: 6,
+    shadowColor: COLORS.primary, shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 }, shadowRadius: 8,
   },
   headerLeft: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff" },
@@ -423,139 +387,53 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", marginTop: 5, gap: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { color: "rgba(255,255,255,0.85)", fontSize: 11 },
-  adminBadge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
-  },
+  adminBadge: { backgroundColor: "rgba(255,255,255,0.25)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   adminBadgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 10 },
-  settingsButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: "center", alignItems: "center",
-  },
+  settingsButton: { backgroundColor: "rgba(255,255,255,0.2)", width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   settingsIcon: { fontSize: 20 },
-  headerSOS: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 25, elevation: 3,
-  },
+  headerSOS: { backgroundColor: "#fff", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25, elevation: 3 },
   headerSOSDisabled: { backgroundColor: "#eee" },
   headerSOSText: { color: COLORS.primary, fontWeight: "bold", fontSize: 16 },
-  alertBanner: {
-    backgroundColor: COLORS.primary,
-    padding: 18, borderRadius: 15,
-    marginHorizontal: 20, marginBottom: 15,
-    elevation: 4,
-  },
+  alertBanner: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 15, marginHorizontal: 20, marginBottom: 15, elevation: 4 },
   alertTitle: { color: "#fff", fontSize: 17, fontWeight: "bold", textAlign: "center" },
   alertText: { color: "#fff", textAlign: "center", marginTop: 4 },
   alertSubText: { color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: 4, fontSize: 13 },
-  alertButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    padding: 10, borderRadius: 10,
-    alignItems: "center", marginTop: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.4)",
-  },
+  alertButton: { backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10, alignItems: "center", marginTop: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" },
   alertButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
-  announcementBanner: {
-    backgroundColor: COLORS.info,
-    padding: 15, borderRadius: 15,
-    marginHorizontal: 20, marginBottom: 15,
-  },
+  announcementBanner: { backgroundColor: COLORS.info, padding: 15, borderRadius: 15, marginHorizontal: 20, marginBottom: 15 },
   announcementTitle: { color: "#fff", fontWeight: "bold", fontSize: 14, marginBottom: 4 },
   announcementText: { color: "#fff", fontSize: 13 },
-  offlineGuideCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#E8F5E9", borderRadius: 15,
-    padding: 15, marginHorizontal: 20, marginBottom: 20,
-    borderWidth: 1, borderColor: "#A5D6A7",
-  },
+  offlineGuideCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#E8F5E9", borderRadius: 15, padding: 15, marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: "#A5D6A7" },
   offlineGuideIcon: { fontSize: 35, marginRight: 12 },
   offlineGuideContent: { flex: 1 },
   offlineGuideTitle: { fontWeight: "bold", color: "#2e7d32", fontSize: 14 },
   offlineGuideDesc: { color: "#555", fontSize: 12, marginTop: 3 },
   offlineGuideArrow: { fontSize: 26, color: "#aaa" },
-  panelHeader: {
-    flexDirection: "row", alignItems: "center",
-    marginHorizontal: 20, marginBottom: 15, marginTop: 5, gap: 10,
-  },
-  panelHeaderLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  panelTitle: {
-    fontSize: 15, fontWeight: "bold",
-    color: COLORS.textDark, paddingHorizontal: 5,
-  },
-  quickGrid: {
-    flexDirection: "row", flexWrap: "wrap",
-    paddingHorizontal: 20, gap: 10, marginBottom: 25,
-  },
-  quickCard: {
-    width: "22%", borderRadius: 15,
-    padding: 12, alignItems: "center",
-    elevation: 3, shadowColor: "#000",
-    shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
+  panelHeader: { flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginBottom: 15, marginTop: 5, gap: 10 },
+  panelHeaderLine: { flex: 1, height: 1 },
+  panelTitle: { fontSize: 15, fontWeight: "bold", paddingHorizontal: 5 },
+  quickGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 10, marginBottom: 25 },
+  quickCard: { width: "22%", borderRadius: 15, padding: 12, alignItems: "center", elevation: 3, shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
   quickIcon: { fontSize: 26, marginBottom: 5 },
   quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
   disasterGrid: { paddingHorizontal: 20, marginBottom: 25 },
-  disasterCard: {
-    backgroundColor: "#fff", borderRadius: 12,
-    padding: 14, marginBottom: 10,
-    borderLeftWidth: 5, borderWidth: 1,
-    borderColor: COLORS.border,
-    elevation: 2, shadowColor: "#000",
-    shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  disasterCardExpanded: { backgroundColor: "#fafafa" },
+  disasterCard: { borderRadius: 12, padding: 14, marginBottom: 10, borderLeftWidth: 5, borderWidth: 1, elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
   disasterCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  disasterIconBox: {
-    width: 42, height: 42, borderRadius: 12,
-    justifyContent: "center", alignItems: "center",
-  },
+  disasterIconBox: { width: 42, height: 42, borderRadius: 12, justifyContent: "center", alignItems: "center" },
   disasterIcon: { fontSize: 22 },
   disasterLabel: { flex: 1, fontWeight: "bold", fontSize: 15 },
-  disasterArrow: { color: COLORS.textLight, fontSize: 12 },
-  disasterTip: {
-    color: COLORS.textMid, fontSize: 13,
-    lineHeight: 20, marginTop: 10,
-    paddingTop: 10, borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  tipCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: COLORS.surface, borderRadius: 15,
-    padding: 14, marginHorizontal: 20, marginBottom: 12,
-    borderWidth: 1, borderColor: COLORS.border,
-    elevation: 2, shadowColor: "#000",
-    shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  tipIconBox: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: "#fff", justifyContent: "center",
-    alignItems: "center", marginRight: 14,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
+  disasterArrow: { fontSize: 12 },
+  disasterTip: { fontSize: 13, lineHeight: 20, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  tipCard: { flexDirection: "row", alignItems: "center", borderRadius: 15, padding: 14, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  tipIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center", marginRight: 14, borderWidth: 1 },
   tipIcon: { fontSize: 24 },
   tipContent: { flex: 1 },
-  tipTitle: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
-  tipDesc: { color: COLORS.textMid, fontSize: 12, marginTop: 3, lineHeight: 18 },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1, borderColor: COLORS.border,
-    paddingBottom: 20, paddingTop: 10,
-    elevation: 15, shadowColor: "#000",
-    shadowOpacity: 0.1, shadowOffset: { width: 0, height: -3 },
-    shadowRadius: 6,
-  },
+  tipTitle: { fontWeight: "bold", fontSize: 14 },
+  tipDesc: { fontSize: 12, marginTop: 3, lineHeight: 18 },
+  bottomNav: { flexDirection: "row", borderTopWidth: 1, paddingBottom: 20, paddingTop: 10, elevation: 15, shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: -3 }, shadowRadius: 6 },
   navItem: { flex: 1, alignItems: "center" },
   navIcon: { fontSize: 22 },
-  navLabel: { fontSize: 10, color: COLORS.textLight, marginTop: 3 },
-  navDot: {
-    width: 4, height: 4, borderRadius: 2,
-    backgroundColor: COLORS.primary, marginTop: 3,
-  },
+  navLabel: { fontSize: 10, marginTop: 3 },
+  navDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.primary, marginTop: 3 },
 });

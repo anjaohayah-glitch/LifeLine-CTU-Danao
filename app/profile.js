@@ -17,11 +17,14 @@ import {
   View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
+import { useSettings } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
 
 export default function Profile() {
   const router = useRouter();
   const user = auth.currentUser;
+  const { theme } = useSettings();
+  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -51,7 +54,6 @@ export default function Profile() {
     return () => unsubscribe();
   }, []);
 
-  // 📍 Get live address
   useEffect(() => {
     (async () => {
       try {
@@ -64,9 +66,7 @@ export default function Profile() {
         });
         if (geocode.length > 0) {
           const g = geocode[0];
-          const address = [g.street, g.district, g.city, g.region]
-            .filter(Boolean).join(", ");
-          setLiveAddress(address);
+          setLiveAddress([g.street, g.district, g.city, g.region].filter(Boolean).join(", "));
         }
       } catch (e) {}
     })();
@@ -76,15 +76,10 @@ export default function Profile() {
     if (!user) return;
     try {
       await set(ref(db, "users/" + user.uid), {
-        fullName: name,
-        email: user.email,
-        phone,
-        barangay,
-        addressPublic,
-        emergencyContact,
-        emergencyName,
-        emergencyNumber: emergencyContact,
-        photoURL,
+        fullName: name, email: user.email,
+        phone, barangay, addressPublic,
+        emergencyContact, emergencyName,
+        emergencyNumber: emergencyContact, photoURL,
       });
       setEditing(false);
       Alert.alert("Saved! ✅", "Your profile has been updated.");
@@ -101,10 +96,8 @@ export default function Profile() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
+      allowsEditing: true, aspect: [1, 1],
+      quality: 0.5, base64: true,
     });
     if (!result.canceled) {
       setPhotoURL("data:image/jpeg;base64," + result.assets[0].base64);
@@ -125,8 +118,10 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
+    <ScrollView
+      style={[styles.container, { backgroundColor: bg }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>👤 My Profile</Text>
@@ -151,30 +146,30 @@ export default function Profile() {
             </View>
           )}
         </TouchableOpacity>
-        <Text style={styles.photoName}>{name || "Your Name"}</Text>
-        <Text style={styles.photoEmail}>{user?.email}</Text>
+        <Text style={[styles.photoName, { color: textDark }]}>{name || "Your Name"}</Text>
+        <Text style={[styles.photoEmail, { color: textLight }]}>{user?.email}</Text>
       </View>
 
       {/* LIVE ADDRESS */}
       {liveAddress && (
-        <View style={styles.liveAddressCard}>
+        <View style={[styles.liveAddressCard, { backgroundColor: card, borderColor: border }]}>
           <Text style={styles.liveAddressIcon}>📍</Text>
           <View style={styles.liveAddressContent}>
             <Text style={styles.liveAddressLabel}>Current Location</Text>
-            <Text style={styles.liveAddressText}>{liveAddress}</Text>
+            <Text style={[styles.liveAddressText, { color: textMid }]}>{liveAddress}</Text>
           </View>
         </View>
       )}
 
       {/* ADDRESS PRIVACY */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🔒 Address Privacy</Text>
+      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
+        <Text style={[styles.cardTitle, { color: textDark }]}>🔒 Address Privacy</Text>
         <View style={styles.privacyRow}>
           <View style={styles.privacyLeft}>
-            <Text style={styles.privacyLabel}>
+            <Text style={[styles.privacyLabel, { color: textDark }]}>
               {addressPublic ? "🌐 Address is Public" : "🔒 Address is Private"}
             </Text>
-            <Text style={styles.privacyDesc}>
+            <Text style={[styles.privacyDesc, { color: textLight }]}>
               {addressPublic
                 ? "Your contacts can see your address"
                 : "Only you can see your address"}
@@ -195,64 +190,63 @@ export default function Profile() {
       </View>
 
       {/* PROFILE FIELDS */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>👤 Personal Information</Text>
+      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
+        <Text style={[styles.cardTitle, { color: textDark }]}>👤 Personal Information</Text>
 
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={[styles.input, !editing && styles.inputDisabled]}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          editable={editing}
-        />
-
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={[styles.input, styles.inputDisabled]}
-          value={user?.email}
-          editable={false}
-        />
-
-        <Text style={styles.label}>Phone Number</Text>
-        <TextInput
-          style={[styles.input, !editing && styles.inputDisabled]}
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="Enter phone number"
-          editable={editing}
-          keyboardType="phone-pad"
-        />
-
-        <Text style={styles.label}>Barangay / Address</Text>
-        <TextInput
-          style={[styles.input, !editing && styles.inputDisabled]}
-          value={barangay}
-          onChangeText={setBarangay}
-          placeholder="Enter your address"
-          editable={editing}
-        />
+        {[
+          { label: "Full Name", value: name, setter: setName, placeholder: "Enter your name", editable: true },
+          { label: "Email", value: user?.email, setter: null, placeholder: "", editable: false },
+          { label: "Phone Number", value: phone, setter: setPhone, placeholder: "Enter phone number", editable: true, keyboard: "phone-pad" },
+          { label: "Barangay / Address", value: barangay, setter: setBarangay, placeholder: "Enter your address", editable: true },
+        ].map((field, i) => (
+          <View key={i}>
+            <Text style={[styles.label, { color: textLight }]}>{field.label}</Text>
+            <TextInput
+              style={[
+                styles.input,
+                { borderColor: border, color: textDark },
+                (!editing || !field.editable) && { backgroundColor: surface, color: textLight },
+              ]}
+              value={field.value}
+              onChangeText={field.setter || undefined}
+              placeholder={field.placeholder}
+              placeholderTextColor={textLight}
+              editable={editing && field.editable}
+              keyboardType={field.keyboard || "default"}
+            />
+          </View>
+        ))}
       </View>
 
       {/* EMERGENCY CONTACT */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🆘 Emergency Contact</Text>
+      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
+        <Text style={[styles.cardTitle, { color: textDark }]}>🆘 Emergency Contact</Text>
 
-        <Text style={styles.label}>Contact Name</Text>
+        <Text style={[styles.label, { color: textLight }]}>Contact Name</Text>
         <TextInput
-          style={[styles.input, !editing && styles.inputDisabled]}
+          style={[
+            styles.input,
+            { borderColor: border, color: textDark },
+            !editing && { backgroundColor: surface, color: textLight },
+          ]}
           value={emergencyName}
           onChangeText={setEmergencyName}
           placeholder="e.g. Juan Dela Cruz"
+          placeholderTextColor={textLight}
           editable={editing}
         />
 
-        <Text style={styles.label}>Contact Number</Text>
+        <Text style={[styles.label, { color: textLight }]}>Contact Number</Text>
         <TextInput
-          style={[styles.input, !editing && styles.inputDisabled]}
+          style={[
+            styles.input,
+            { borderColor: border, color: textDark },
+            !editing && { backgroundColor: surface, color: textLight },
+          ]}
           value={emergencyContact}
           onChangeText={setEmergencyContact}
           placeholder="e.g. 09171234567"
+          placeholderTextColor={textLight}
           keyboardType="phone-pad"
           editable={editing}
         />
@@ -296,7 +290,7 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 55, paddingBottom: 20,
@@ -307,66 +301,29 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
-  photoSection: {
-    alignItems: "center", marginBottom: 20,
-  },
-  photo: {
-    width: 100, height: 100, borderRadius: 50,
-    borderWidth: 3, borderColor: COLORS.primary,
-  },
-  photoPlaceholder: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center", alignItems: "center",
-  },
+  photoSection: { alignItems: "center", marginBottom: 20 },
+  photo: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: COLORS.primary },
+  photoPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   photoInitial: { color: "#fff", fontSize: 40, fontWeight: "bold" },
-  photoEditBadge: {
-    position: "absolute", bottom: 0, right: 0,
-    backgroundColor: "#fff", borderRadius: 12,
-    padding: 2, borderWidth: 1, borderColor: COLORS.primary,
-  },
+  photoEditBadge: { position: "absolute", bottom: 0, right: 0, backgroundColor: "#fff", borderRadius: 12, padding: 2, borderWidth: 1, borderColor: COLORS.primary },
   photoEditText: { fontSize: 14 },
-  photoName: { fontWeight: "bold", fontSize: 18, color: COLORS.textDark, marginTop: 10 },
-  photoEmail: { color: COLORS.textLight, fontSize: 13, marginTop: 3 },
-  liveAddressCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#e8f5e9", borderRadius: 12,
-    padding: 12, marginHorizontal: 20, marginBottom: 15,
-    borderWidth: 1, borderColor: "#a5d6a7",
-  },
+  photoName: { fontWeight: "bold", fontSize: 18, marginTop: 10 },
+  photoEmail: { fontSize: 13, marginTop: 3 },
+  liveAddressCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 12, marginHorizontal: 20, marginBottom: 15, borderWidth: 1 },
   liveAddressIcon: { fontSize: 24, marginRight: 10 },
   liveAddressContent: { flex: 1 },
   liveAddressLabel: { fontWeight: "bold", color: "#2e7d32", fontSize: 12 },
-  liveAddressText: { color: "#555", fontSize: 12, marginTop: 2 },
-  card: {
-    backgroundColor: COLORS.surface, borderRadius: 15,
-    padding: 16, marginHorizontal: 20, marginBottom: 15,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  cardTitle: { fontWeight: "bold", fontSize: 15, color: COLORS.textDark, marginBottom: 14 },
-  privacyRow: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-  },
+  liveAddressText: { fontSize: 12, marginTop: 2 },
+  card: { borderRadius: 15, padding: 16, marginHorizontal: 20, marginBottom: 15, borderWidth: 1 },
+  cardTitle: { fontWeight: "bold", fontSize: 15, marginBottom: 14 },
+  privacyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   privacyLeft: { flex: 1 },
-  privacyLabel: { fontWeight: "bold", fontSize: 14, color: COLORS.textDark },
-  privacyDesc: { color: COLORS.textLight, fontSize: 12, marginTop: 2 },
-  label: { fontSize: 12, color: COLORS.textLight, marginBottom: 4, marginTop: 10 },
-  input: {
-    borderWidth: 1.5, borderColor: COLORS.border,
-    borderRadius: 10, padding: 12, fontSize: 14,
-    color: COLORS.textDark, backgroundColor: "#fff",
-  },
-  inputDisabled: { backgroundColor: COLORS.surface, color: "#999" },
-  buttonRow: {
-    flexDirection: "row", gap: 10,
-    marginHorizontal: 20, marginBottom: 10,
-  },
-  button: {
-    flex: 1, padding: 15, borderRadius: 12,
-    alignItems: "center", marginHorizontal: 20,
-    marginBottom: 10,
-  },
+  privacyLabel: { fontWeight: "bold", fontSize: 14 },
+  privacyDesc: { fontSize: 12, marginTop: 2 },
+  label: { fontSize: 12, marginBottom: 4, marginTop: 10 },
+  input: { borderWidth: 1.5, borderRadius: 10, padding: 12, fontSize: 14 },
+  buttonRow: { flexDirection: "row", gap: 10, marginHorizontal: 20, marginBottom: 10 },
+  button: { flex: 1, padding: 15, borderRadius: 12, alignItems: "center", marginHorizontal: 20, marginBottom: 10 },
   editButton: { backgroundColor: "#1565C0" },
   saveButton: { backgroundColor: "#2e7d32" },
   cancelButton: { backgroundColor: "#888" },
