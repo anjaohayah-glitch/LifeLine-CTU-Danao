@@ -7,6 +7,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -235,7 +236,7 @@ export default function Family() {
                 await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), {
                   senderId: user.uid,
                   senderName: auth.currentUser.displayName || user.email,
-                  text: `🔴 I NEED HELP! Please check on me immediately.\n\n📍 My Location:\n${locationText}\n\n🗺 Live Location: ${locationUrl}`,
+                  text: `🔴 I NEED HELP! Please check on me immediately.\n\n📍 My Location:\n${locationText}\n\n🗺 Tap here to navigate:\n${locationUrl}`,
                   timestamp: Date.now(), type: "help",
                 });
               }
@@ -278,7 +279,10 @@ export default function Family() {
 
     return (
       <Modal visible={modalVisible} animationType="slide">
-        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: bg }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: bg }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View style={styles.chatHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.chatBack}>← Back</Text>
@@ -296,29 +300,47 @@ export default function Family() {
               const isMe = item.senderId === user.uid;
               const isSafe = item.type === "safe";
               const isHelp = item.type === "help";
+              const hasUrl = /https?:\/\/[^\s]+/.test(item.text);
+
               return (
-                <View style={[
-                  styles.messageBubble,
-                  isMe ? styles.myBubble : [styles.theirBubble, { backgroundColor: card, borderColor: border }],
-                  isSafe && styles.safeBubble,
-                  isHelp && styles.helpBubble,
-                ]}>
-                  <Text style={[
-                    styles.messageText,
-                    { color: textDark },
-                    isMe && { color: "#fff" },
-                    (isSafe || isHelp) && { color: "#fff" },
+                <TouchableOpacity
+                  activeOpacity={hasUrl ? 0.7 : 1}
+                  onPress={() => {
+                    const urlMatch = item.text.match(/https?:\/\/[^\s]+/);
+                    if (urlMatch) Linking.openURL(urlMatch[0]);
+                  }}
+                >
+                  <View style={[
+                    styles.messageBubble,
+                    isMe ? styles.myBubble : [styles.theirBubble, { backgroundColor: card, borderColor: border }],
+                    isSafe && styles.safeBubble,
+                    isHelp && styles.helpBubble,
                   ]}>
-                    {item.text}
-                  </Text>
-                  <Text style={[
-                    styles.messageTime,
-                    { color: textLight },
-                    (isMe || isSafe || isHelp) && { color: "rgba(255,255,255,0.7)" },
-                  ]}>
-                    {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </Text>
-                </View>
+                    <Text style={[
+                      styles.messageText,
+                      { color: textDark },
+                      isMe && { color: "#fff" },
+                      (isSafe || isHelp) && { color: "#fff" },
+                    ]}>
+                      {item.text}
+                    </Text>
+
+                    {/* TAP TO NAVIGATE HINT — only for help/sos messages with URL */}
+                    {isHelp && hasUrl && (
+                      <View style={styles.tapHint}>
+                        <Text style={styles.tapHintText}>🗺 Tap to open in Google Maps</Text>
+                      </View>
+                    )}
+
+                    <Text style={[
+                      styles.messageTime,
+                      { color: textLight },
+                      (isMe || isSafe || isHelp) && { color: "rgba(255,255,255,0.7)" },
+                    ]}>
+                      {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               );
             }}
           />
@@ -608,6 +630,8 @@ const styles = StyleSheet.create({
   safeBubble: { backgroundColor: "#2e7d32", alignSelf: "flex-start" },
   helpBubble: { backgroundColor: COLORS.primary, alignSelf: "flex-start" },
   messageText: { fontSize: 14, lineHeight: 20 },
+  tapHint: { backgroundColor: "rgba(255,255,255,0.25)", borderRadius: 8, padding: 6, marginTop: 8, alignItems: "center" },
+  tapHintText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
   messageTime: { fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
   chatInputRow: { flexDirection: "row", padding: 12, borderTopWidth: 1, alignItems: "flex-end" },
   chatInput: { flex: 1, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100 },
