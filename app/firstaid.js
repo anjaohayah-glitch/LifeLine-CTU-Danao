@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSettings } from "../context/SettingsContext";
 
 const GUIDES = [
   {
@@ -107,14 +108,12 @@ const GUIDES = [
 export default function FirstAid() {
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [completedSteps, setCompletedSteps] = useState({});
+  const { theme } = useSettings();
+  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   const toggleStep = (stepIndex) => {
-    setCompletedSteps((prev) => ({
-      ...prev,
-      [stepIndex]: !prev[stepIndex],
-    }));
+    setCompletedSteps((prev) => ({ ...prev, [stepIndex]: !prev[stepIndex] }));
   };
-
   const resetSteps = () => setCompletedSteps({});
 
   if (selectedGuide) {
@@ -123,7 +122,7 @@ export default function FirstAid() {
     const progress = (completedCount / guide.steps.length) * 100;
 
     return (
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, { backgroundColor: bg }]}>
 
         {/* GUIDE HEADER */}
         <View style={[styles.guideHeader, { backgroundColor: guide.color }]}>
@@ -150,23 +149,27 @@ export default function FirstAid() {
         )}
 
         {/* PROGRESS BAR */}
-        <View style={styles.progressContainer}>
+        <View style={[styles.progressContainer, { backgroundColor: surface, borderColor: border }]}>
           <View style={styles.progressRow}>
-            <Text style={styles.progressText}>Progress</Text>
-            <Text style={styles.progressText}>{completedCount}/{guide.steps.length} steps</Text>
+            <Text style={[styles.progressText, { color: textMid }]}>Progress</Text>
+            <Text style={[styles.progressText, { color: textMid }]}>{completedCount}/{guide.steps.length} steps</Text>
           </View>
-          <View style={styles.progressBar}>
+          <View style={[styles.progressBar, { backgroundColor: border }]}>
             <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: guide.color }]} />
           </View>
         </View>
 
-        <ScrollView style={styles.stepsContainer}>
+        <ScrollView style={[styles.stepsContainer, { backgroundColor: bg }]}>
           {guide.steps.map((step, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.stepCard,
-                completedSteps[index] && { backgroundColor: "#e8f5e9", borderColor: "#a5d6a7" },
+                { backgroundColor: card, borderColor: border },
+                completedSteps[index] && {
+                  backgroundColor: theme.bg === "#121212" ? "#1a3a1a" : "#e8f5e9",
+                  borderColor: theme.bg === "#121212" ? "#2e5a2e" : "#a5d6a7"
+                },
               ]}
               onPress={() => toggleStep(index)}
             >
@@ -180,20 +183,20 @@ export default function FirstAid() {
               <View style={styles.stepContent}>
                 <View style={styles.stepTitleRow}>
                   <Text style={styles.stepIcon}>{step.icon}</Text>
-                  <Text style={[styles.stepTitle, completedSteps[index] && { color: "#2e7d32" }]}>
+                  <Text style={[styles.stepTitle, { color: textDark }, completedSteps[index] && { color: "#2e7d32" }]}>
                     {step.title}
                   </Text>
                 </View>
-                <Text style={styles.stepDesc}>{step.desc}</Text>
+                <Text style={[styles.stepDesc, { color: textMid }]}>{step.desc}</Text>
               </View>
             </TouchableOpacity>
           ))}
 
           {completedCount === guide.steps.length && (
-            <View style={styles.completedCard}>
+            <View style={[styles.completedCard, { backgroundColor: theme.bg === "#121212" ? "#1a3a1a" : "#e8f5e9" }]}>
               <Text style={styles.completedIcon}>✅</Text>
               <Text style={styles.completedText}>All steps completed!</Text>
-              <Text style={styles.completedSub}>Seek professional medical help if needed.</Text>
+              <Text style={[styles.completedSub, { color: textMid }]}>Seek professional medical help if needed.</Text>
             </View>
           )}
 
@@ -204,9 +207,9 @@ export default function FirstAid() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: bg }]}>
       <Text style={styles.header}>🩺 First Aid Guide</Text>
-      <Text style={styles.subHeader}>Tap a topic to see step-by-step instructions</Text>
+      <Text style={[styles.subHeader, { color: textLight }]}>Tap a topic to see step-by-step instructions</Text>
 
       {/* EMERGENCY CALL BANNER */}
       <View style={styles.callBanner}>
@@ -215,8 +218,12 @@ export default function FirstAid() {
       </View>
 
       {/* GENERAL DISCLAIMER */}
-      <View style={styles.generalDisclaimer}>
-        <Text style={styles.generalDisclaimerText}>
+      <View style={[styles.generalDisclaimer, {
+        backgroundColor: theme.bg === "#121212" ? "#2a2000" : "#FFF8E1",
+        borderColor: theme.bg === "#121212" ? "#5a4a00" : "#FFE082",
+        borderLeftColor: "#FB8C00",
+      }]}>
+        <Text style={[styles.generalDisclaimerText, { color: theme.bg === "#121212" ? "#FFD54F" : "#5D4037" }]}>
           📋 All guides in this section are for <Text style={{ fontWeight: "bold" }}>educational purposes only</Text> and do not replace professional medical training or advice. Always seek professional help in emergencies.
         </Text>
       </View>
@@ -224,20 +231,20 @@ export default function FirstAid() {
       {GUIDES.map((guide) => (
         <TouchableOpacity
           key={guide.id}
-          style={[styles.guideCard, { borderLeftColor: guide.color }]}
+          style={[styles.guideCard, { backgroundColor: card, borderLeftColor: guide.color }]}
           onPress={() => { setSelectedGuide(guide.id); resetSteps(); }}
         >
           <View style={[styles.guideCardIcon, { backgroundColor: guide.color + "22" }]}>
             <Text style={styles.guideCardEmoji}>{guide.icon}</Text>
           </View>
           <View style={styles.guideCardContent}>
-            <Text style={styles.guideCardTitle}>{guide.title}</Text>
-            <Text style={styles.guideCardSteps}>{guide.steps.length} steps</Text>
+            <Text style={[styles.guideCardTitle, { color: textDark }]}>{guide.title}</Text>
+            <Text style={[styles.guideCardSteps, { color: textLight }]}>{guide.steps.length} steps</Text>
             {guide.emergency && (
               <Text style={styles.emergencyLabel}>🚨 Emergency</Text>
             )}
           </View>
-          <Text style={styles.guideCardArrow}>›</Text>
+          <Text style={[styles.guideCardArrow, { color: textLight }]}>›</Text>
         </TouchableOpacity>
       ))}
 
@@ -247,90 +254,49 @@ export default function FirstAid() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 20 },
-  wrapper: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    fontSize: 26, fontWeight: "bold", color: "#B00020",
-    textAlign: "center", marginTop: 50, marginBottom: 5,
-  },
-  subHeader: { textAlign: "center", color: "#888", fontSize: 13, marginBottom: 20 },
-  callBanner: {
-    backgroundColor: "#B00020", borderRadius: 12,
-    padding: 15, alignItems: "center", marginBottom: 12,
-  },
+  container: { flex: 1, padding: 20 },
+  wrapper: { flex: 1 },
+  header: { fontSize: 26, fontWeight: "bold", color: "#B00020", textAlign: "center", marginTop: 50, marginBottom: 5 },
+  subHeader: { textAlign: "center", fontSize: 13, marginBottom: 20 },
+  callBanner: { backgroundColor: "#B00020", borderRadius: 12, padding: 15, alignItems: "center", marginBottom: 12 },
   callText: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
   callNumber: { color: "#fff", fontWeight: "bold", fontSize: 22, marginTop: 4 },
-  generalDisclaimer: {
-    backgroundColor: "#FFF8E1", borderRadius: 12,
-    padding: 14, marginBottom: 20,
-    borderWidth: 1, borderColor: "#FFE082",
-    borderLeftWidth: 4, borderLeftColor: "#FB8C00",
-  },
-  generalDisclaimerText: { color: "#5D4037", fontSize: 12, lineHeight: 18 },
-  guideCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#fff", borderRadius: 12, padding: 15,
-    marginBottom: 12, borderLeftWidth: 5,
-    elevation: 2, shadowColor: "#000", shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 4,
-  },
-  guideCardIcon: {
-    width: 55, height: 55, borderRadius: 15,
-    justifyContent: "center", alignItems: "center", marginRight: 15,
-  },
+  generalDisclaimer: { borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderLeftWidth: 4 },
+  generalDisclaimerText: { fontSize: 12, lineHeight: 18 },
+  guideCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 15, marginBottom: 12, borderLeftWidth: 5, elevation: 2, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  guideCardIcon: { width: 55, height: 55, borderRadius: 15, justifyContent: "center", alignItems: "center", marginRight: 15 },
   guideCardEmoji: { fontSize: 28 },
   guideCardContent: { flex: 1 },
-  guideCardTitle: { fontWeight: "bold", fontSize: 16, color: "#222" },
-  guideCardSteps: { color: "#888", fontSize: 12, marginTop: 2 },
+  guideCardTitle: { fontWeight: "bold", fontSize: 16 },
+  guideCardSteps: { fontSize: 12, marginTop: 2 },
   emergencyLabel: { color: "#B00020", fontSize: 12, fontWeight: "bold", marginTop: 3 },
-  guideCardArrow: { fontSize: 24, color: "#ccc" },
+  guideCardArrow: { fontSize: 24 },
   guideHeader: { padding: 25, paddingTop: 55, alignItems: "center" },
   backButton: { position: "absolute", top: 50, left: 20 },
   backText: { color: "rgba(255,255,255,0.85)", fontSize: 16 },
   guideIcon: { fontSize: 50, marginBottom: 8 },
   guideHeaderTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
-  emergencyBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 4, marginTop: 8,
-  },
+  emergencyBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, marginTop: 8 },
   emergencyBadgeText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  disclaimerCard: {
-    backgroundColor: "#FFF8E1", padding: 14,
-    borderLeftWidth: 4, borderLeftColor: "#FB8C00",
-    borderBottomWidth: 1, borderBottomColor: "#FFE082",
-  },
+  disclaimerCard: { backgroundColor: "#FFF8E1", padding: 14, borderLeftWidth: 4, borderLeftColor: "#FB8C00", borderBottomWidth: 1, borderBottomColor: "#FFE082" },
   disclaimerText: { color: "#5D4037", fontSize: 12, lineHeight: 18 },
-  progressContainer: {
-    padding: 15, backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1, borderColor: "#eee",
-  },
+  progressContainer: { padding: 15, borderBottomWidth: 1 },
   progressRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  progressText: { fontSize: 12, color: "#555" },
-  progressBar: { height: 6, backgroundColor: "#eee", borderRadius: 3 },
+  progressText: { fontSize: 12 },
+  progressBar: { height: 6, borderRadius: 3 },
   progressFill: { height: 6, borderRadius: 3 },
   stepsContainer: { flex: 1, padding: 15 },
-  stepCard: {
-    flexDirection: "row", backgroundColor: "#fff", borderRadius: 12,
-    padding: 15, marginBottom: 10, borderWidth: 1, borderColor: "#eee",
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 }, shadowRadius: 2,
-  },
+  stepCard: { flexDirection: "row", borderRadius: 12, padding: 15, marginBottom: 10, borderWidth: 1, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2 },
   stepLeft: { marginRight: 12 },
-  stepNumber: {
-    width: 32, height: 32, borderRadius: 16,
-    justifyContent: "center", alignItems: "center",
-  },
+  stepNumber: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
   stepNumberText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
   stepContent: { flex: 1 },
   stepTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
   stepIcon: { fontSize: 18, marginRight: 6 },
-  stepTitle: { fontWeight: "bold", fontSize: 15, color: "#222" },
-  stepDesc: { color: "#555", fontSize: 13, lineHeight: 20 },
-  completedCard: {
-    backgroundColor: "#e8f5e9", borderRadius: 12,
-    padding: 20, alignItems: "center", marginTop: 10,
-  },
+  stepTitle: { fontWeight: "bold", fontSize: 15 },
+  stepDesc: { fontSize: 13, lineHeight: 20 },
+  completedCard: { borderRadius: 12, padding: 20, alignItems: "center", marginTop: 10 },
   completedIcon: { fontSize: 40 },
   completedText: { fontWeight: "bold", fontSize: 18, color: "#2e7d32", marginTop: 8 },
-  completedSub: { color: "#555", fontSize: 13, marginTop: 4, textAlign: "center" },
+  completedSub: { fontSize: 13, marginTop: 4, textAlign: "center" },
 });
