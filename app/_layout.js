@@ -1,9 +1,11 @@
-
 // app/_layout.js
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack } from "expo-router";
-import { SettingsProvider } from "../context/SettingsContext";
+import { useEffect } from "react";
 import { useAlertNotifications } from "../hooks/useAlertNotifications";
 import { useNotifications } from "../hooks/useNotifications";
+import { SettingsProvider } from "../context/SettingsContext";
+import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
 
 function AppLayout() {
   useNotifications();
@@ -33,6 +35,11 @@ function AppLayout() {
 }
 
 export default function Layout() {
+  useEffect(() => {
+    // ✅ Register background weather check when app starts
+    registerWeatherBackgroundFetch();
+  }, []);
+
   return (
     <SettingsProvider>
       <AppLayout />

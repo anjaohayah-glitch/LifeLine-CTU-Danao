@@ -2,7 +2,7 @@
   "expo": {
     "name": "LifeLine",
     "slug": "lifeline_expo",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lifelineexpo",
@@ -11,19 +11,27 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone."
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone.",
+        "UIBackgroundModes": ["fetch", "remote-notification", "location"],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "LIFELINE needs your location to send weather alerts and SOS notifications even when the app is in the background.",
+        "NSLocationAlwaysUsageDescription": "LIFELINE needs your location to monitor weather conditions and send emergency alerts.",
+        "NSLocationWhenInUseUsageDescription": "LIFELINE needs your location to find the nearest evacuation center and send SOS alerts."
       }
     },
     "android": {
       "package": "com.ayaanjao.lifeline_expo",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE",
         "android.permission.RECORD_AUDIO",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ],
       "config": {
         "googleMaps": {
@@ -52,7 +60,34 @@
           "backgroundColor": "#B00020"
         }
       ],
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#B00020",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "LIFELINE Alert"
+        }
+      ],
+      [
+        "expo-background-fetch",
+        {
+          "stopOnTerminate": false,
+          "startOnBoot": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "LIFELINE needs your location to send weather alerts and SOS notifications even when the app is in the background.",
+          "locationAlwaysPermission": "LIFELINE needs your location to monitor weather conditions and send emergency alerts.",
+          "locationWhenInUsePermission": "LIFELINE needs your location to find the nearest evacuation center and send SOS alerts.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
