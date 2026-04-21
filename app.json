@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.ayaanjao.lifeline_expo",
-      "versionCode": 5,
+      "versionCode": 6,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -42,7 +42,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#B00020"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -65,17 +65,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#B00020",
-          "sounds": [],
-          "androidMode": "default",
-          "androidCollapsedTitle": "LIFELINE Alert"
-        }
-      ],
-      [
-        "expo-background-fetch",
-        {
-          "stopOnTerminate": false,
-          "startOnBoot": true
+          "sounds": []
         }
       ],
       [
@@ -87,7 +77,9 @@
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-task-manager",
+      "expo-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true,
