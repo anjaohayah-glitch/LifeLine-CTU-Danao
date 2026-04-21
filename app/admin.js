@@ -16,6 +16,7 @@ import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
+import { checkEarthquakes } from "../hooks/useWeatherNotifications";
 
 export default function Admin() {
   const { isAdmin, loading } = useAdmin();
@@ -23,6 +24,7 @@ export default function Admin() {
   const [announcement, setAnnouncement] = useState("");
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState("alerts");
+  const [checkingQuake, setCheckingQuake] = useState(false);
   const { theme } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
@@ -77,6 +79,28 @@ export default function Admin() {
     await remove(ref(db, "sosRequests/" + id));
   };
 
+  const handleCheckEarthquake = async () => {
+    setCheckingQuake(true);
+    try {
+      const found = await checkEarthquakes();
+      if (found) {
+        Alert.alert(
+          "🌍 Earthquake Detected!",
+          "A significant earthquake has been detected near Danao City.\n\nEmergency alert has been automatically activated for ALL users."
+        );
+      } else {
+        Alert.alert(
+          "✅ All Clear",
+          "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours."
+        );
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not check earthquake data. Check internet connection.");
+    } finally {
+      setCheckingQuake(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: bg }]}>
@@ -110,16 +134,17 @@ export default function Admin() {
 
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
-        {["alerts", "sos", "announce", "users"].map((tab) => (
+        {["alerts", "sos", "announce", "quake", "users"].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, { color: textLight }, activeTab === tab && styles.activeTabText]}>
-              {tab === "alerts" ? "🚨 Alert" :
+              {tab === "alerts" ? "🚨" :
                tab === "sos" ? "📍 SOS" :
-               tab === "announce" ? "📢 Post" : "👥 Users"}
+               tab === "announce" ? "📢" :
+               tab === "quake" ? "🌍" : "👥"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -157,10 +182,7 @@ export default function Admin() {
                   <Text style={[styles.sosTime, { color: textLight }]}>🕐 {new Date(req.timestamp).toLocaleString()}</Text>
                   <View style={styles.sosActions}>
                     {req.locationUrl && (
-                      <TouchableOpacity
-                        style={styles.mapButton}
-                        onPress={() => Linking.openURL(req.locationUrl)}
-                      >
+                      <TouchableOpacity style={styles.mapButton} onPress={() => Linking.openURL(req.locationUrl)}>
                         <Text style={styles.mapButtonText}>🗺 View Map</Text>
                       </TouchableOpacity>
                     )}
@@ -198,6 +220,65 @@ export default function Admin() {
             <TouchableOpacity style={styles.announceButton} onPress={sendAnnouncement}>
               <Text style={styles.buttonText}>📢 BROADCAST NOW</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* EARTHQUAKE TAB */}
+        {activeTab === "quake" && (
+          <View>
+            <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>🌍 Earthquake Monitor</Text>
+            <Text style={[styles.description, { color: textMid }]}>
+              Monitor real-time earthquake activity near Danao City using USGS data. If detected, all users are automatically alerted.
+            </Text>
+
+            {/* STATUS CARD */}
+            <View style={[styles.quakeStatusCard, { backgroundColor: card, borderColor: border }]}>
+              <Text style={styles.quakeStatusIcon}>🌍</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.quakeStatusTitle, { color: textDark }]}>USGS Real-Time Monitoring</Text>
+                <Text style={[styles.quakeStatusDesc, { color: textMid }]}>
+                  Auto-checks every 15 minutes. Triggers emergency alert for Magnitude 4.0+ near Danao City.
+                </Text>
+              </View>
+            </View>
+
+            {/* MANUAL CHECK */}
+            <TouchableOpacity
+              style={[styles.quakeCheckButton, checkingQuake && { opacity: 0.7 }]}
+              onPress={handleCheckEarthquake}
+              disabled={checkingQuake}
+            >
+              {checkingQuake
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.buttonText}>🔍 CHECK EARTHQUAKES NOW</Text>
+              }
+            </TouchableOpacity>
+
+            {/* VIEW USGS MAP */}
+            <TouchableOpacity
+              style={styles.quakeViewButton}
+              onPress={() => Linking.openURL("https://earthquake.usgs.gov/earthquakes/map/")}
+            >
+              <Text style={styles.buttonText}>🌍 VIEW USGS EARTHQUAKE MAP</Text>
+            </TouchableOpacity>
+
+            {/* CLEAR EARTHQUAKE ALERT */}
+            <TouchableOpacity style={styles.clearButton} onPress={clearAlert}>
+              <Text style={styles.buttonText}>✅ CLEAR EMERGENCY ALERT</Text>
+            </TouchableOpacity>
+
+            {/* INFO BOX */}
+            <View style={[styles.quakeInfoBox, { backgroundColor: card, borderColor: "#4527A0" }]}>
+              <Text style={[styles.quakeInfoTitle, { color: "#4527A0" }]}>⚙️ How Automatic Detection Works</Text>
+              <Text style={[styles.quakeInfoText, { color: textMid }]}>
+                • Checks USGS data every 15 minutes in the background{"\n"}
+                • Triggers if Magnitude 4.0+ within 200km of Danao City{"\n"}
+                • Auto-activates emergency alert for ALL users{"\n"}
+                • Sends push notification with buzzer to all devices{"\n"}
+                • Evacuation screen turns red for all users instantly{"\n"}
+                • Admin can manually clear the alert above
+              </Text>
+            </View>
           </View>
         )}
 
@@ -257,7 +338,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   description: { marginBottom: 20, fontSize: 13 },
   sosButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
-  clearButton: { backgroundColor: "#2e7d32", padding: 15, borderRadius: 12, alignItems: "center", elevation: 3 },
+  clearButton: { backgroundColor: "#2e7d32", padding: 15, borderRadius: 12, alignItems: "center", elevation: 3, marginTop: 12 },
   announceButton: { backgroundColor: "#1565C0", padding: 15, borderRadius: 12, alignItems: "center", marginTop: 10, elevation: 3 },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   sosCard: { borderRadius: 12, padding: 15, marginBottom: 10, borderWidth: 1 },
@@ -270,6 +351,15 @@ const styles = StyleSheet.create({
   deleteButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#ffebee" },
   deleteText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12 },
   input: { borderWidth: 1.5, borderRadius: 12, padding: 14, textAlignVertical: "top", minHeight: 120, marginBottom: 10, fontSize: 14 },
+  quakeStatusCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 15, borderWidth: 1, gap: 12 },
+  quakeStatusIcon: { fontSize: 35 },
+  quakeStatusTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 4 },
+  quakeStatusDesc: { fontSize: 12, lineHeight: 18 },
+  quakeCheckButton: { backgroundColor: "#4527A0", padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
+  quakeViewButton: { backgroundColor: "#2E7D32", padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
+  quakeInfoBox: { borderRadius: 12, padding: 15, borderWidth: 1.5, marginTop: 5 },
+  quakeInfoTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 8 },
+  quakeInfoText: { fontSize: 13, lineHeight: 22 },
   userCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1 },
   userAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center", marginRight: 12 },
   userAvatarText: { color: "#fff", fontWeight: "bold", fontSize: 18 },

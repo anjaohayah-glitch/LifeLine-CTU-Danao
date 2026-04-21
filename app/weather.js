@@ -15,27 +15,19 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { useSettings } from "../context/SettingsContext";
+import { checkEarthquakes } from "../hooks/useWeatherNotifications";
 
 const API_KEY = "f1174f62efabb76017f70f21096688b2";
 
 const WEATHER_ICONS = {
-  Thunderstorm: "⛈",
-  Drizzle: "🌦",
-  Rain: "🌧",
-  Snow: "❄️",
-  Clear: "☀️",
-  Clouds: "☁️",
-  Mist: "🌫",
-  Fog: "🌫",
-  Haze: "🌫",
-  Tornado: "🌪",
-  Squall: "💨",
+  Thunderstorm: "⛈", Drizzle: "🌦", Rain: "🌧", Snow: "❄️",
+  Clear: "☀️", Clouds: "☁️", Mist: "🌫", Fog: "🌫",
+  Haze: "🌫", Tornado: "🌪", Squall: "💨",
 };
 
 const HOURS = ["12AM","1AM","2AM","3AM","4AM","5AM","6AM","7AM","8AM","9AM","10AM","11AM",
   "12PM","1PM","2PM","3PM","4PM","5PM","6PM","7PM","8PM","9PM","10PM","11PM"];
 
-// ✅ Notification handler — shows alert + plays buzzer sound
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -52,6 +44,7 @@ export default function Weather() {
   const [error, setError] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
   const [activeTab, setActiveTab] = useState("weather");
+  const [checkingQuake, setCheckingQuake] = useState(false);
   const { theme } = useSettings();
   const { bg, card, border, textDark, textMid, textLight } = theme;
   const notificationSentRef = useRef(false);
@@ -61,32 +54,26 @@ export default function Weather() {
     fetchWeather();
   }, []);
 
-  // ✅ Register for push notifications
   const registerForNotifications = async () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
-        console.log("Notification permission not granted");
-      }
-    } catch (e) {
-      console.log(e);
-    }
+      if (status !== "granted") console.log("Notification permission not granted");
+    } catch (e) { console.log(e); }
   };
 
-  // ✅ Send weather warning notification with buzzer
   const sendWeatherNotification = async (warning) => {
     if (notificationSentRef.current) return;
     notificationSentRef.current = true;
-
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "⚠️ LIFELINE Weather Alert",
         body: warning.text,
-        sound: true, // triggers buzzer/sound
+        sound: true,
         priority: Notifications.AndroidNotificationPriority.MAX,
         color: warning.color,
+        vibrate: [0, 500, 200, 500, 200, 500],
       },
-      trigger: null, // send immediately
+      trigger: null,
     });
   };
 
@@ -107,6 +94,10 @@ export default function Weather() {
       const { latitude, longitude } = loc.coords;
       setUserCoords({ latitude, longitude });
 
+      // Save coords for background task
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorage.setItem("lastKnownCoords", JSON.stringify({ latitude, longitude }));
+
       const weatherRes = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
       );
@@ -126,11 +117,8 @@ export default function Weather() {
       setWeather(weatherData);
       setForecast(forecastData?.list || []);
 
-      // ✅ Auto-send notification if warning detected
       const warning = getWarningFromData(weatherData);
-      if (warning) {
-        await sendWeatherNotification(warning);
-      }
+      if (warning) await sendWeatherNotification(warning);
 
     } catch (err) {
       console.log(err);
@@ -141,16 +129,12 @@ export default function Weather() {
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchWeather();
-  };
+  const onRefresh = () => { setRefreshing(true); fetchWeather(); };
 
   const getWarningFromData = (data) => {
     if (!data?.wind || !data?.weather?.[0]) return null;
     const condition = data.weather[0].main;
     const windSpeed = data.wind.speed || 0;
-
     if (windSpeed >= 17.2) return { text: "🌪 Typhoon Warning — Winds above 62km/h! Take shelter immediately!", color: "#B00020" };
     if (windSpeed >= 10.8) return { text: "⚠️ Strong Wind Warning — Stay cautious and avoid open areas!", color: "#E65100" };
     if (condition === "Thunderstorm") return { text: "⛈ Thunderstorm Warning — Stay indoors and away from windows!", color: "#B00020" };
@@ -158,12 +142,24 @@ export default function Weather() {
     return null;
   };
 
-  const getWarning = () => {
-    if (!weather) return null;
-    return getWarningFromData(weather);
+  const getWarning = () => { if (!weather) return null; return getWarningFromData(weather); };
+
+  const handleCheckEarthquake = async () => {
+    setCheckingQuake(true);
+    try {
+      const found = await checkEarthquakes();
+      if (found) {
+        Alert.alert("🌍 Earthquake Detected!", "A significant earthquake has been detected near Danao City. Emergency alert has been activated for ALL users automatically.");
+      } else {
+        Alert.alert("✅ No Earthquake Detected", "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours.");
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not check earthquake data. Check your internet connection.");
+    } finally {
+      setCheckingQuake(false);
+    }
   };
 
-  // LOADING
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
@@ -173,7 +169,6 @@ export default function Weather() {
     );
   }
 
-  // ERROR
   if (error) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
@@ -200,7 +195,6 @@ export default function Weather() {
   const warning = getWarning();
   const icon = WEATHER_ICONS[weather?.weather?.[0]?.main] || "🌡";
 
-  // Windy URL with user coordinates
   const windyUrl = userCoords
     ? `https://embed.windy.com/embed2.html?lat=${userCoords.latitude}&lon=${userCoords.longitude}&detailLat=${userCoords.latitude}&detailLon=${userCoords.longitude}&width=650&height=450&pane=wind&overlay=wind&product=ecmwf&level=surface&pressure=true&type=map&location=coordinates&detail=true&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`
     : `https://embed.windy.com/embed2.html?lat=10.5034&lon=124.0292&width=650&height=450&pane=wind&overlay=wind&product=ecmwf&level=surface&pressure=true`;
@@ -244,9 +238,7 @@ export default function Weather() {
       {activeTab === "weather" && (
         <ScrollView
           style={[styles.container, { backgroundColor: bg }]}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#B00020"]} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#B00020"]} />}
         >
           {/* CURRENT WEATHER */}
           <View style={[styles.currentCard, { backgroundColor: card, borderColor: border }]}>
@@ -254,7 +246,6 @@ export default function Weather() {
             <Text style={styles.temperature}>{Math.round(weather?.main?.temp ?? 0)}°C</Text>
             <Text style={[styles.condition, { color: textMid }]}>{weather?.weather?.[0]?.description || ""}</Text>
             <Text style={[styles.feelsLike, { color: textLight }]}>Feels like {Math.round(weather?.main?.feels_like ?? 0)}°C</Text>
-
             <View style={styles.statsRow}>
               {[
                 { icon: "💧", value: `${weather?.main?.humidity ?? 0}%`, label: "Humidity" },
@@ -314,13 +305,35 @@ export default function Weather() {
             </View>
           )}
 
-          {/* PAGASA & PHIVOLCS LINKS */}
+          {/* 🌍 EARTHQUAKE MONITOR */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: "#B00020" }]}>🌍 Earthquake Monitor</Text>
+            <View style={[styles.quakeCard, { backgroundColor: card, borderColor: border }]}>
+              <Text style={[styles.quakeTitle, { color: textDark }]}>🔍 USGS Real-Time Detection</Text>
+              <Text style={[styles.quakeDesc, { color: textMid }]}>
+                LIFELINE automatically monitors USGS earthquake data every 15 minutes. If a Magnitude 4.0+ earthquake is detected near Danao City, all users will be alerted automatically with a buzzer notification.
+              </Text>
+              <TouchableOpacity
+                style={[styles.quakeButton, checkingQuake && { opacity: 0.7 }]}
+                onPress={handleCheckEarthquake}
+                disabled={checkingQuake}
+              >
+                {checkingQuake
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.quakeButtonText}>🔍 Check Now</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 📡 OFFICIAL UPDATES */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: "#B00020" }]}>📡 Official Updates</Text>
             {[
               { icon: "🌧", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#1565C0" },
               { icon: "🌋", label: "PHIVOLCS Earthquake Bulletin", url: "https://earthquake.phivolcs.dost.gov.ph/", color: "#4527A0" },
               { icon: "🌪", label: "PAGASA Typhoon Updates", url: "https://www.pagasa.dost.gov.ph/tropical-cyclone/active-tropical-cyclone", color: "#B00020" },
+              { icon: "🌍", label: "USGS Earthquake Feed", url: "https://earthquake.usgs.gov/earthquakes/map/", color: "#2E7D32" },
             ].map((link, i) => (
               <TouchableOpacity
                 key={i}
@@ -382,7 +395,7 @@ const styles = StyleSheet.create({
   header: { backgroundColor: "#B00020", paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, marginBottom: 5 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
-  warningBanner: { padding: 15, marginHorizontal: 0 },
+  warningBanner: { padding: 15 },
   warningText: { color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 14 },
   warningSubText: { color: "rgba(255,255,255,0.8)", textAlign: "center", fontSize: 11, marginTop: 4 },
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginHorizontal: 20, marginTop: 10, marginBottom: 5 },
@@ -412,6 +425,11 @@ const styles = StyleSheet.create({
   sunIcon: { fontSize: 30 },
   sunLabel: { fontSize: 12, marginTop: 5 },
   sunTime: { fontWeight: "bold", fontSize: 16, marginTop: 3 },
+  quakeCard: { borderRadius: 15, padding: 16, marginBottom: 10, borderWidth: 1 },
+  quakeTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 8 },
+  quakeDesc: { fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  quakeButton: { backgroundColor: "#4527A0", padding: 12, borderRadius: 10, alignItems: "center" },
+  quakeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
   linkCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1 },
   linkIcon: { fontSize: 24, marginRight: 12 },
   linkLabel: { flex: 1, fontWeight: "bold", fontSize: 14 },
