@@ -60,11 +60,8 @@ export default function Login() {
       );
     } catch (error) {
       let message = "Something went wrong. Please try again.";
-      if (error.code === "auth/user-not-found") {
-        message = "No account found with this email address.";
-      } else if (error.code === "auth/invalid-email") {
-        message = "Please enter a valid email address.";
-      }
+      if (error.code === "auth/user-not-found") message = "No account found with this email address.";
+      else if (error.code === "auth/invalid-email") message = "Please enter a valid email address.";
       Alert.alert("Error", message);
     } finally {
       setResetLoading(false);
@@ -76,85 +73,126 @@ export default function Login() {
       style={styles.wrapper}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {/* ── TOP HERO SECTION ─────────────────────────── */}
       <View style={styles.topSection}>
+        {/* Decorative circles */}
         <View style={styles.circle1} />
         <View style={styles.circle2} />
+        <View style={styles.circle3} />
+
+        {/* Logo */}
         <View style={styles.logoBox}>
           <Text style={styles.logoEmoji}>🚑</Text>
         </View>
         <Text style={styles.logoText}>LIFELINE</Text>
         <Text style={styles.logoSub}>CTU Danao Disaster Preparedness</Text>
+
+        {/* Feature pills */}
+        <View style={styles.pillsRow}>
+          {["🆘 SOS", "🗺 Evacuate", "📚 Guides"].map((pill, i) => (
+            <View key={i} style={styles.pill}>
+              <Text style={styles.pillText}>{pill}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
+      {/* ── BOTTOM CARD ──────────────────────────────── */}
       <View style={styles.bottomSection}>
-        <Text style={styles.welcomeText}>Welcome Back 👋</Text>
-        <Text style={styles.welcomeSub}>Sign in to your account</Text>
 
-        {/* EMAIL */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputIcon}>✉️</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email address"
-            placeholderTextColor={COLORS.textLight}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        {/* Header */}
+        <Text style={styles.welcomeText}>Welcome Back 👋</Text>
+        <Text style={styles.welcomeSub}>Sign in to stay connected and stay safe</Text>
+
+        {/* EMAIL INPUT */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Email Address</Text>
+          <View style={[styles.inputWrapper, email.length > 0 && styles.inputWrapperActive]}>
+            <Text style={styles.inputIcon}>✉️</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#B0BEC5"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {email.length > 0 && (
+              <TouchableOpacity onPress={() => setEmail("")}>
+                <Text style={styles.clearText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* PASSWORD */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.inputIcon}>🔒</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={COLORS.textLight}
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
-          </TouchableOpacity>
+        {/* PASSWORD INPUT */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Password</Text>
+          <View style={[styles.inputWrapper, password.length > 0 && styles.inputWrapperActive]}>
+            <Text style={styles.inputIcon}>🔒</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor="#B0BEC5"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* FORGOT PASSWORD */}
         <TouchableOpacity
           style={styles.forgotRow}
-          onPress={() => {
-            setResetEmail(email);
-            setForgotModal(true);
-          }}
+          onPress={() => { setResetEmail(email); setForgotModal(true); }}
         >
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
 
         {/* LOGIN BUTTON */}
         <TouchableOpacity
-          style={[styles.loginButton, loading && { opacity: 0.7 }]}
+          style={[styles.loginButton, loading && { opacity: 0.8 }]}
           onPress={handleLogin}
           disabled={loading}
+          activeOpacity={0.85}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.loginText}>LOGIN</Text>
+            <View style={styles.loginButtonInner}>
+              <Text style={styles.loginButtonText}>SIGN IN</Text>
+              <Text style={styles.loginButtonArrow}>→</Text>
+            </View>
           )}
         </TouchableOpacity>
 
+        {/* DIVIDER */}
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         {/* REGISTER LINK */}
         <TouchableOpacity
-          style={styles.registerRow}
+          style={styles.registerButton}
           onPress={() => router.push("/register")}
+          activeOpacity={0.85}
         >
-          <Text style={styles.registerText}>Don't have an account? </Text>
-          <Text style={styles.registerLink}>Sign Up</Text>
+          <Text style={styles.registerButtonText}>Create New Account</Text>
         </TouchableOpacity>
+
+        {/* FOOTER */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>🔒 Your data is secure and encrypted</Text>
+        </View>
       </View>
 
-      {/* 🔑 FORGOT PASSWORD MODAL */}
+      {/* ── FORGOT PASSWORD MODAL ────────────────────── */}
       <Modal
         visible={forgotModal}
         transparent
@@ -163,36 +201,51 @@ export default function Login() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
+
+            {/* Modal handle */}
+            <View style={styles.modalHandle} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalIcon}>🔑</Text>
-              <Text style={styles.modalTitle}>Forgot Password?</Text>
+              <View style={styles.modalIconBox}>
+                <Text style={styles.modalIcon}>🔑</Text>
+              </View>
+              <Text style={styles.modalTitle}>Reset Password</Text>
               <Text style={styles.modalSub}>
-                Enter your email and we'll send you a reset link.
+                Enter your registered email and we'll send you a reset link instantly.
               </Text>
             </View>
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputIcon}>✉️</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor={COLORS.textLight}
-                value={resetEmail}
-                onChangeText={setResetEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>✉️</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#B0BEC5"
+                  value={resetEmail}
+                  onChangeText={setResetEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
+
             <TouchableOpacity
-              style={[styles.sendButton, resetLoading && { opacity: 0.7 }]}
+              style={[styles.loginButton, resetLoading && { opacity: 0.7 }]}
               onPress={handleForgotPassword}
               disabled={resetLoading}
             >
               {resetLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.sendText}>📧 Send Reset Link</Text>
+                <View style={styles.loginButtonInner}>
+                  <Text style={styles.loginButtonText}>SEND RESET LINK</Text>
+                  <Text style={styles.loginButtonArrow}>📧</Text>
+                </View>
               )}
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => { setForgotModal(false); setResetEmail(""); }}
@@ -208,84 +261,101 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: COLORS.primary },
+
+  // ── TOP SECTION ──────────────────────────────────────
   topSection: {
-    flex: 0.45, alignItems: "center",
+    flex: 0.48, alignItems: "center",
     justifyContent: "center", overflow: "hidden",
+    paddingHorizontal: 20,
   },
-  circle1: {
-    position: "absolute", width: 300, height: 300,
-    borderRadius: 150, backgroundColor: "rgba(255,255,255,0.07)",
-    top: -80, right: -80,
-  },
-  circle2: {
-    position: "absolute", width: 200, height: 200,
-    borderRadius: 100, backgroundColor: "rgba(255,255,255,0.07)",
-    bottom: -40, left: -40,
-  },
+  circle1: { position: "absolute", width: 350, height: 350, borderRadius: 175, backgroundColor: "rgba(255,255,255,0.06)", top: -120, right: -100 },
+  circle2: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.06)", bottom: -60, left: -60 },
+  circle3: { position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)", top: 20, left: 20 },
   logoBox: {
-    width: 90, height: 90, borderRadius: 25,
+    width: 90, height: 90, borderRadius: 28,
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center", alignItems: "center",
-    marginBottom: 12, borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    marginBottom: 14, borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.25)",
+    elevation: 8, shadowColor: "#000",
+    shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 },
   },
-  logoEmoji: { fontSize: 45 },
-  logoText: { fontSize: 34, fontWeight: "bold", color: "#fff", letterSpacing: 5 },
-  logoSub: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 6 },
+  logoEmoji: { fontSize: 46 },
+  logoText: { fontSize: 36, fontWeight: "bold", color: "#fff", letterSpacing: 6, marginBottom: 4 },
+  logoSub: { color: "rgba(255,255,255,0.65)", fontSize: 13, marginBottom: 20 },
+  pillsRow: { flexDirection: "row", gap: 8 },
+  pill: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  pillText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+
+  // ── BOTTOM SECTION ───────────────────────────────────
   bottomSection: {
-    flex: 0.55, backgroundColor: "#fff",
-    borderTopLeftRadius: 35, borderTopRightRadius: 35,
-    padding: 30, paddingTop: 35,
+    flex: 0.52, backgroundColor: "#fff",
+    borderTopLeftRadius: 36, borderTopRightRadius: 36,
+    paddingHorizontal: 28, paddingTop: 30,
     elevation: 20, shadowColor: "#000",
     shadowOpacity: 0.15, shadowOffset: { width: 0, height: -5 },
-    shadowRadius: 10,
   },
-  welcomeText: { fontSize: 24, fontWeight: "bold", color: COLORS.textDark, marginBottom: 4 },
-  welcomeSub: { color: COLORS.textLight, marginBottom: 25 },
+  welcomeText: { fontSize: 26, fontWeight: "bold", color: "#1A1A2E", marginBottom: 4 },
+  welcomeSub: { color: "#90A4AE", fontSize: 13, marginBottom: 24 },
+
+  // ── INPUTS ───────────────────────────────────────────
+  inputGroup: { marginBottom: 14 },
+  inputLabel: { fontSize: 12, fontWeight: "700", color: "#546E7A", marginBottom: 6, letterSpacing: 0.5 },
   inputWrapper: {
     flexDirection: "row", alignItems: "center",
-    borderWidth: 1.5, borderColor: COLORS.border,
-    borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 12, marginBottom: 15,
-    backgroundColor: COLORS.surface,
+    borderWidth: 1.5, borderColor: "#ECEFF1",
+    borderRadius: 14, paddingHorizontal: 14,
+    paddingVertical: 13, backgroundColor: "#F8FAFB",
   },
+  inputWrapperActive: { borderColor: COLORS.primary, backgroundColor: "#FFF5F5" },
   inputIcon: { fontSize: 18, marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: COLORS.textDark },
+  input: { flex: 1, fontSize: 15, color: "#1A1A2E" },
   showText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
-  forgotRow: { alignItems: "flex-end", marginTop: -8, marginBottom: 15 },
+  clearText: { color: "#90A4AE", fontSize: 16, fontWeight: "bold" },
+
+  // ── FORGOT ───────────────────────────────────────────
+  forgotRow: { alignItems: "flex-end", marginBottom: 20, marginTop: -6 },
   forgotText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
+
+  // ── LOGIN BUTTON ─────────────────────────────────────
   loginButton: {
-    backgroundColor: COLORS.primary, padding: 16,
-    borderRadius: 12, alignItems: "center", marginTop: 5,
-    elevation: 4, shadowColor: COLORS.primary,
-    shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16, padding: 16,
+    alignItems: "center", marginBottom: 16,
+    elevation: 6, shadowColor: COLORS.primary,
+    shadowOpacity: 0.5, shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
   },
-  loginText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1 },
-  registerRow: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
-  registerText: { color: COLORS.textLight },
-  registerLink: { color: COLORS.primary, fontWeight: "bold" },
-  modalOverlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
+  loginButtonInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  loginButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1.5 },
+  loginButtonArrow: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+
+  // ── DIVIDER ──────────────────────────────────────────
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#ECEFF1" },
+  dividerText: { color: "#90A4AE", fontSize: 13 },
+
+  // ── REGISTER BUTTON ──────────────────────────────────
+  registerButton: {
+    borderWidth: 1.5, borderColor: COLORS.primary,
+    borderRadius: 16, padding: 15,
+    alignItems: "center", marginBottom: 16,
   },
-  modalBox: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 30, borderTopRightRadius: 30,
-    padding: 30, paddingBottom: 40,
-  },
-  modalHeader: { alignItems: "center", marginBottom: 25 },
-  modalIcon: { fontSize: 45, marginBottom: 12 },
-  modalTitle: { fontSize: 22, fontWeight: "bold", color: COLORS.textDark, marginBottom: 8 },
-  modalSub: { color: COLORS.textMid, textAlign: "center", fontSize: 14, lineHeight: 20 },
-  sendButton: {
-    backgroundColor: COLORS.primary, padding: 16,
-    borderRadius: 12, alignItems: "center", marginTop: 5, elevation: 4,
-  },
-  sendText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
-  cancelButton: {
-    padding: 14, borderRadius: 12, alignItems: "center",
-    marginTop: 10, borderWidth: 1.5, borderColor: COLORS.border,
-  },
-  cancelText: { color: COLORS.textMid, fontWeight: "bold", fontSize: 15 },
+  registerButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 15 },
+
+  // ── FOOTER ───────────────────────────────────────────
+  footer: { alignItems: "center" },
+  footerText: { color: "#B0BEC5", fontSize: 11 },
+
+  // ── MODAL ────────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 28, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+  modalHeader: { alignItems: "center", marginBottom: 24 },
+  modalIconBox: { width: 70, height: 70, borderRadius: 20, backgroundColor: "#FFF5F5", justifyContent: "center", alignItems: "center", marginBottom: 12, borderWidth: 1.5, borderColor: "#FFCDD2" },
+  modalIcon: { fontSize: 36 },
+  modalTitle: { fontSize: 22, fontWeight: "bold", color: "#1A1A2E", marginBottom: 8 },
+  modalSub: { color: "#90A4AE", textAlign: "center", fontSize: 13, lineHeight: 20 },
+  cancelButton: { padding: 14, borderRadius: 14, alignItems: "center", marginTop: 10, borderWidth: 1.5, borderColor: "#ECEFF1" },
+  cancelText: { color: "#90A4AE", fontWeight: "bold", fontSize: 15 },
 });
