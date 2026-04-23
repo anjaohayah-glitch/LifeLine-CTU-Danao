@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { onValue, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
+import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import {
   Alert,
   Image,

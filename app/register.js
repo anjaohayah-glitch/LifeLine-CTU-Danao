@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { useState } from "react";
+import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import {
   ActivityIndicator,
   Alert,
