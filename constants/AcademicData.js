@@ -1,3 +1,4 @@
+// constants/AcademicData.js
 export const CTU_ACADEMIC_DATA = {
   colleges: [
     "College of Engineering (COE)",
