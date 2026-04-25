@@ -1,190 +1,131 @@
-// hooks/useWeatherNotifications.js
-import * as BackgroundFetch from "expo-background-fetch";
-import * as Location from "expo-location";
-import * as Notifications from "expo-notifications";
-import * as TaskManager from "expo-task-manager";
+// app/_layout.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ref, set } from "firebase/database";
+import * as Notifications from "expo-notifications";
+import { Stack } from "expo-router";
+import { onValue, ref } from "firebase/database";
+import { useEffect } from "react";
+import { SettingsProvider } from "../context/SettingsContext";
 import { db } from "../firebase";
+import { useAlertNotifications } from "../hooks/useAlertNotifications";
+import { useNotifications } from "../hooks/useNotifications";
+import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
 
-const WEATHER_TASK = "LIFELINE_WEATHER_CHECK";
-const API_KEY = "f1174f62efabb76017f70f21096688b2";
-const USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
-
-// ── EARTHQUAKE CHECK ─────────────────────────────────────
-const checkEarthquakes = async () => {
-  try {
-    const response = await fetch(USGS_URL);
-    const data = await response.json();
-
-    // Find earthquake near Danao City (10.52°N, 124.03°E)
-    // within ~200km radius and magnitude 4.0+
-    const nearbyQuake = data.features.find((quake) => {
-      const [lon, lat] = quake.geometry.coordinates;
-      const mag = quake.properties.mag;
-      const isNear = Math.abs(lat - 10.52) < 2 && Math.abs(lon - 124.03) < 2;
-      return mag >= 4.0 && isNear;
-    });
-
-    if (nearbyQuake) {
-      const mag = nearbyQuake.properties.mag;
-      const place = nearbyQuake.properties.place;
-
-      // ✅ Auto-activate emergency alert in Firebase
-      await set(ref(db, "emergencyAlert"), {
-        active: true,
-        message: `🌍 EARTHQUAKE DETECTED: Magnitude ${mag} near ${place}. Proceed to nearest evacuation center immediately!`,
-        timestamp: Date.now(),
-        type: "seismic_alert",
-      });
-
-      // ✅ Send push notification with buzzer
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🌍 LIFELINE — Earthquake Alert!",
-          body: `Magnitude ${mag} earthquake detected near ${place}. Check the app for evacuation instructions!`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          vibrate: [0, 500, 200, 500, 200, 500],
-          color: "#4527A0",
-          data: { screen: "evacuation" },
-        },
-        trigger: null,
-      });
-
-      // Save last earthquake alert time
-      await AsyncStorage.setItem("lastQuakeNotif", String(Date.now()));
-      return true; // earthquake found
-    }
-    return false; // no earthquake
-  } catch (error) {
-    console.error("USGS Fetch Failed:", error);
-    return false;
-  }
-};
-
-// ── BACKGROUND TASK ──────────────────────────────────────
-TaskManager.defineTask(WEATHER_TASK, async () => {
-  try {
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-
-    // ── 1. CHECK EARTHQUAKES ─────────────────────────────
-    const lastQuakeNotif = await AsyncStorage.getItem("lastQuakeNotif");
-    if (!lastQuakeNotif || now - parseInt(lastQuakeNotif) >= oneHour) {
-      await checkEarthquakes();
-    }
-
-    // ── 2. CHECK WEATHER ─────────────────────────────────
-    const savedCoords = await AsyncStorage.getItem("lastKnownCoords");
-    let latitude, longitude;
-
-    if (savedCoords) {
-      const parsed = JSON.parse(savedCoords);
-      latitude = parsed.latitude;
-      longitude = parsed.longitude;
-    } else {
-      const location = await Location.getCurrentPositionAsync({});
-      latitude = location.coords.latitude;
-      longitude = location.coords.longitude;
-      await AsyncStorage.setItem("lastKnownCoords", JSON.stringify({ latitude, longitude }));
-    }
-
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
-    );
-    const data = await res.json();
-
-    if (data.cod !== 200) return BackgroundFetch.BackgroundFetchResult.Failed;
-
-    const condition = data?.weather?.[0]?.main;
-    const windSpeed = data?.wind?.speed || 0;
-    const windKmh = windSpeed * 3.6;
-
-    // Only notify once per hour
-    const lastWeatherNotif = await AsyncStorage.getItem("lastWeatherNotif");
-    if (lastWeatherNotif && now - parseInt(lastWeatherNotif) < oneHour) {
-      return BackgroundFetch.BackgroundFetchResult.NoData;
-    }
-
-    let title = null;
-    let body = null;
-
-    if (windKmh >= 62) {
-      title = "🌪 TYPHOON WARNING";
-      body = `Winds at ${windKmh.toFixed(0)} km/h detected! Take shelter immediately and proceed to the nearest evacuation center.`;
-    } else if (windKmh >= 39) {
-      title = "⚠️ Strong Wind Warning";
-      body = `Wind speed is ${windKmh.toFixed(0)} km/h. Stay indoors and avoid open areas.`;
-    } else if (condition === "Thunderstorm") {
-      title = "⛈ Thunderstorm Warning";
-      body = "A thunderstorm has been detected in your area. Stay indoors and away from windows.";
-    } else if (condition === "Rain") {
-      title = "🌧 Heavy Rain Advisory";
-      body = "Heavy rain detected. Avoid flood-prone areas and stay safe.";
-    } else if (condition === "Squall" || condition === "Tornado") {
-      title = "🌪 Severe Weather Alert";
-      body = "Severe weather detected in your area. Take immediate precautions.";
-    }
-
-    if (title && body) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `LIFELINE — ${title}`,
-          body,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          vibrate: [0, 500, 200, 500, 200, 500],
-          color: "#B00020",
-          data: { screen: "weather" },
-        },
-        trigger: null,
-      });
-      await AsyncStorage.setItem("lastWeatherNotif", String(now));
-    }
-
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-
-  } catch (error) {
-    console.log("Background task error:", error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
+// Set notification handler globally
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
 });
 
-// ── REGISTER BACKGROUND TASK ─────────────────────────────
-export async function registerWeatherBackgroundFetch() {
-  try {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== "granted") return;
+function AppLayout() {
+  useNotifications();
+  useAlertNotifications();
 
-    await Location.requestBackgroundPermissionsAsync();
+  useEffect(() => {
+    // ✅ Listen for admin emergency alerts in real-time
+    const alertRef = ref(db, "emergencyAlert");
+    const unsubAlert = onValue(alertRef, async (snapshot) => {
+      const data = snapshot.val();
+      if (data?.active === true) {
+        const lastNotif = await AsyncStorage.getItem("lastEmergencyNotif");
+        const alertTime = data.timestamp || 0;
 
-    const isRegistered = await TaskManager.isTaskRegisteredAsync(WEATHER_TASK);
-    if (isRegistered) return;
-
-    await BackgroundFetch.registerTaskAsync(WEATHER_TASK, {
-      minimumInterval: 15 * 60,
-      stopOnTerminate: false,
-      startOnBoot: true,
+        if (!lastNotif || alertTime > parseInt(lastNotif)) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "🚨 EMERGENCY ALERT — LIFELINE",
+              body: data.message || "Emergency alert issued for CTU Danao Campus!",
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.MAX,
+              vibrate: [0, 1000, 300, 1000, 300, 1000],
+              color: "#B00020",
+              sticky: true,
+            },
+            trigger: null,
+          });
+          await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
+        }
+      }
     });
 
-    console.log("✅ Background fetch registered — weather + earthquake monitoring active");
-  } catch (error) {
-    console.log("Background fetch registration error:", error);
-  }
+    // ✅ Listen for new SOS requests in real-time
+    const sosRef = ref(db, "sosRequests");
+    const unsubSOS = onValue(sosRef, async (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const savedUID = await AsyncStorage.getItem("userUID");
+      if (!savedUID) return;
+
+      const requests = Object.values(data);
+      const now = Date.now();
+      const fiveMin = 5 * 60 * 1000;
+      const lastSOS = await AsyncStorage.getItem("lastSOSNotif");
+
+      const recentSOS = requests.find((req) => {
+        const reqTime = new Date(req.timestamp).getTime();
+        return (
+          now - reqTime < fiveMin &&
+          req.uid !== savedUID &&
+          (!lastSOS || reqTime > parseInt(lastSOS))
+        );
+      });
+
+      if (recentSOS) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🆘 SOS RECEIVED — LIFELINE",
+            body: `${recentSOS.name || "A contact"} needs help! Location: ${recentSOS.address || "See app for details"}`,
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
+            color: "#B00020",
+          },
+          trigger: null,
+        });
+        await AsyncStorage.setItem("lastSOSNotif", String(new Date(recentSOS.timestamp).getTime()));
+      }
+    });
+
+    return () => {
+      unsubAlert();
+      unsubSOS();
+    };
+  }, []);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="splash" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="register" />
+      <Stack.Screen name="home" />
+      <Stack.Screen name="admin" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="evacuation" />
+      <Stack.Screen name="hotlines" />
+      <Stack.Screen name="weather" />
+      <Stack.Screen name="firstaid" />
+      <Stack.Screen name="guides" />
+      <Stack.Screen name="checklist" />
+      <Stack.Screen name="family" />
+      <Stack.Screen name="drrm" />
+      <Stack.Screen name="voiceguide" />
+      <Stack.Screen name="settings" />
+    </Stack>
+  );
 }
 
-// ── UNREGISTER BACKGROUND TASK ───────────────────────────
-export async function unregisterWeatherBackgroundFetch() {
-  try {
-    const isRegistered = await TaskManager.isTaskRegisteredAsync(WEATHER_TASK);
-    if (isRegistered) {
-      await BackgroundFetch.unregisterTaskAsync(WEATHER_TASK);
-    }
-  } catch (error) {
-    console.log(error);
-  }
-}
+export default function Layout() {
+  useEffect(() => {
+    registerWeatherBackgroundFetch();
+  }, []);
 
-// ── MANUAL EARTHQUAKE CHECK (for use in screens) ─────────
-export { checkEarthquakes };
+  return (
+    <SettingsProvider>
+      <AppLayout />
+    </SettingsProvider>
+  );
+}
