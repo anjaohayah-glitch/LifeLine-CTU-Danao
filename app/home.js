@@ -1,10 +1,10 @@
 // app/home.js
+import * as BackgroundFetch from "expo-background-fetch";
+import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import * as BackgroundFetch from "expo-background-fetch";
 import * as TaskManager from "expo-task-manager";
-import * as Haptics from "expo-haptics";
-import { onValue, push, ref, set, limitToLast, query } from "firebase/database";
+import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -12,9 +12,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   Vibration,
-  Animated,
+  View,
 } from "react-native";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
@@ -54,21 +53,21 @@ const NAV_ITEMS = [
 ];
 
 const QUICK_ACCESS = [
-  { icon: "🛡", label: "Admin", route: "/admin", color: "#B00020", gradient: "#8B0000", adminOnly: true },
-  { icon: "🩺", label: "First Aid", route: "/firstaid", color: "#C62828", gradient: "#B71C1C" },
-  { icon: "📚", label: "Guides", route: "/guides", color: "#00695C", gradient: "#004D40" },
-  { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F", gradient: "#006064" },
-  { icon: "👨‍👩‍👧", label: "Family", route: "/family", color: "#6A1B9A", gradient: "#4A148C" },
-  { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020", gradient: "#7F0000" },
-  { icon: "🗣", label: "Voice", route: "/voiceguide", color: "#1565C0", gradient: "#0D47A1" },
-  { icon: "⚙️", label: "Settings", route: "/settings", color: "#37474F", gradient: "#263238" },
+  { icon: "🛡", label: "Admin", route: "/admin", color: "#7F0000", adminOnly: true },
+  { icon: "🩺", label: "First Aid", route: "/firstaid", color: "#C62828" },
+  { icon: "📚", label: "Guides", route: "/guides", color: "#00695C" },
+  { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F" },
+  { icon: "👨‍👩‍👧", label: "Family", route: "/family", color: "#6A1B9A" },
+  { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020" },
+  { icon: "🗣", label: "Voice", route: "/voiceguide", color: "#1565C0" },
+  { icon: "⚙️", label: "Settings", route: "/settings", color: "#37474F" },
 ];
 
 const DISASTER_TIPS = [
-  { icon: "🌊", label: "Flood", color: "#1565C0", bg: "#E3F2FD", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
-  { icon: "🌍", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
-  { icon: "🌪", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
-  { icon: "🔥", label: "Fire", color: "#E65100", bg: "#FBE9E7", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
+  { icon: "🌊", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
+  { icon: "🌍", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
+  { icon: "🌪", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
+  { icon: "🔥", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
 ];
 
 export default function Home() {
@@ -83,11 +82,11 @@ export default function Home() {
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const { theme } = useSettings();
-  const { bg, card, border, textDark, textMid, textLight } = theme;
+  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
+  const isDark = theme.bg === "#121212";
 
   const FEATURE_CARDS = QUICK_ACCESS.filter((item) => !item.adminOnly || isAdmin);
 
-  // Live clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -155,7 +154,6 @@ export default function Home() {
             if (status !== "granted") return;
             const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
             const { latitude, longitude } = loc.coords;
-
             let locationText = "Location unavailable";
             try {
               const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
@@ -164,43 +162,30 @@ export default function Home() {
                 locationText = [g.street, g.district, g.city, g.region].filter(Boolean).join(", ");
               }
             } catch (e) {}
-
             const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
             const senderName = auth.currentUser?.displayName || auth.currentUser?.email;
             const timestamp = Date.now();
 
             await set(ref(db, `sosRequests/${timestamp}`), {
-              uid: auth.currentUser?.uid,
-              name: senderName,
-              email: auth.currentUser?.email,
-              latitude, longitude,
-              address: locationText,
-              locationUrl,
+              uid: auth.currentUser?.uid, name: senderName,
+              email: auth.currentUser?.email, latitude, longitude,
+              address: locationText, locationUrl,
               timestamp: new Date().toISOString(),
             });
-
             await set(ref(db, `safetyStatus/${auth.currentUser?.uid}`), {
-              status: "help",
-              message: "I need help! 🔴",
-              timestamp,
-              name: senderName,
-              location: locationText,
+              status: "help", message: "I need help! 🔴",
+              timestamp, name: senderName, location: locationText,
             });
-
             onValue(ref(db, `contacts/${auth.currentUser?.uid}`), async (snapshot) => {
               const data = snapshot.val();
               if (data) {
-                const contacts = Object.entries(data)
-                  .map(([id, val]) => ({ id, ...val }))
-                  .filter((c) => c.status === "accepted");
+                const contacts = Object.entries(data).map(([id, val]) => ({ id, ...val })).filter((c) => c.status === "accepted");
                 const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
                 for (const contact of contacts) {
                   await push(ref(db, `messages/${getChatId(auth.currentUser?.uid, contact.uid)}`), {
-                    senderId: auth.currentUser?.uid,
-                    senderName,
+                    senderId: auth.currentUser?.uid, senderName,
                     text: `🚨 SOS ALERT!\n\n${senderName} NEEDS HELP!\n\n📍 ${locationText}\n\n🗺 Tap to navigate:\n${locationUrl}`,
-                    timestamp,
-                    type: "sos",
+                    timestamp, type: "sos",
                   });
                 }
               }
@@ -208,41 +193,32 @@ export default function Home() {
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert("🚨 SOS Sent!", "✅ All contacts notified\n✅ Admin notified\n\nStay calm. Help is on the way!");
-          } catch (e) {
-            Alert.alert("Error", e.message);
-          }
+          } catch (e) { Alert.alert("Error", e.message); }
         },
       },
     ]);
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-  };
-
+  const formatTime = (date) => date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatDate = (date) => date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
   const getGreeting = () => {
-    const hour = currentTime.getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+    const h = currentTime.getHours();
+    if (h < 12) return "Good Morning ☀️";
+    if (h < 17) return "Good Afternoon 🌤";
+    return "Good Evening 🌙";
   };
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
-        {/* ── HERO HEADER ─────────────────────────────── */}
+        {/* ── HEADER ─────────────────────────────────── */}
         <View style={styles.header}>
-          {/* Top row */}
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.headerGreeting}>{getGreeting()} 👋</Text>
+              <Text style={styles.headerGreeting}>{getGreeting()}</Text>
               <Text style={styles.headerTitle}>LIFELINE</Text>
-              <Text style={styles.headerSub}>CTU Danao Campus DRRMO System</Text>
+              <Text style={styles.headerSub}>CTU Danao Campus · DRRMO System</Text>
             </View>
             <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
               <Text style={styles.sosButtonEmoji}>🚨</Text>
@@ -250,7 +226,7 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Live clock */}
+          {/* Clock */}
           <View style={styles.clockRow}>
             <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
             <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
@@ -258,33 +234,30 @@ export default function Home() {
 
           {/* Status strip */}
           <View style={styles.statusStrip}>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: isOnline ? "#4CAF50" : "#FF5722" }]} />
-              <Text style={styles.statusItemText}>{isOnline ? "Online" : "Offline"}</Text>
-            </View>
-            <View style={styles.statusDivider} />
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: "#4CAF50" }]} />
-              <Text style={styles.statusItemText}>USGS Active</Text>
-            </View>
-            <View style={styles.statusDivider} />
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: "#4CAF50" }]} />
-              <Text style={styles.statusItemText}>PAGASA Sync</Text>
-            </View>
+            {[
+              { dot: isOnline ? "#4CAF50" : "#FF5722", label: isOnline ? "Online" : "Offline" },
+              { dot: "#4CAF50", label: "USGS Active" },
+              { dot: "#4CAF50", label: "PAGASA Sync" },
+            ].map((s, i) => (
+              <View key={i} style={styles.statusItem}>
+                {i > 0 && <View style={styles.statusDivider} />}
+                <View style={[styles.statusDot, { backgroundColor: s.dot }]} />
+                <Text style={styles.statusItemText}>{s.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* ── FLOATING STATUS CARD ─────────────────────── */}
-        <View style={[styles.statusCard, { backgroundColor: card }]}>
+        {/* ── STATUS CARD ────────────────────────────── */}
+        <View style={[styles.statusCard, { backgroundColor: card, borderColor: border }]}>
           <View style={styles.statusCardLeft}>
             <Text style={[styles.statusCardLabel, { color: textLight }]}>YOUR STATUS</Text>
-            <Text style={[styles.statusCardName, { color: textDark }]}>
+            <Text style={[styles.statusCardName, { color: textDark }]} numberOfLines={1}>
               {auth.currentUser?.displayName || "Student"}
             </Text>
-            <View style={styles.statusCardBadge}>
-              <View style={[styles.pulseDot, { backgroundColor: isSafe ? "#4CAF50" : "#FF9800" }]} />
-              <Text style={[styles.statusCardStatus, { color: isSafe ? "#4CAF50" : "#FF9800" }]}>
+            <View style={styles.statusBadgeRow}>
+              <View style={[styles.statusPulseDot, { backgroundColor: isSafe ? "#4CAF50" : "#FF9800" }]} />
+              <Text style={[styles.statusBadgeText, { color: isSafe ? "#4CAF50" : "#FF9800" }]}>
                 {isSafe ? "Marked Safe" : "Status Unknown"}
               </Text>
             </View>
@@ -298,13 +271,15 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* ── EMERGENCY ALERT ──────────────────────────── */}
+        {/* ── EMERGENCY ALERT ────────────────────────── */}
         {alertVisible && (
           <View style={styles.alertCard}>
-            <View style={styles.alertHeader}>
-              <Text style={styles.alertIcon}>🚨</Text>
-              <Text style={styles.alertTitle}>EMERGENCY ALERT</Text>
+            <View style={styles.alertTop}>
+              <View style={styles.alertBadge}>
+                <Text style={styles.alertBadgeText}>⚠️ EMERGENCY ACTIVE</Text>
+              </View>
             </View>
+            <Text style={styles.alertTitle}>🚨 Emergency Alert</Text>
             <Text style={styles.alertMessage}>{alertMessage}</Text>
             <TouchableOpacity
               style={styles.alertButton}
@@ -315,9 +290,10 @@ export default function Home() {
           </View>
         )}
 
-        {/* ── ANNOUNCEMENT ─────────────────────────────── */}
+        {/* ── ANNOUNCEMENT ───────────────────────────── */}
         {announcement?.message && (
           <View style={[styles.announcementCard, { backgroundColor: card, borderColor: border }]}>
+            <View style={[styles.announcementAccent, { backgroundColor: COLORS.primary }]} />
             <Text style={styles.announcementIcon}>📢</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.announcementLabel, { color: textLight }]}>DRRMO ANNOUNCEMENT</Text>
@@ -326,7 +302,7 @@ export default function Home() {
           </View>
         )}
 
-        {/* ── QUICK ACCESS ─────────────────────────────── */}
+        {/* ── QUICK ACCESS ───────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: textDark }]}>Quick Access</Text>
           <Text style={[styles.sectionSub, { color: textLight }]}>All features</Text>
@@ -337,22 +313,16 @@ export default function Home() {
             <TouchableOpacity
               key={index}
               style={[styles.quickCard, { backgroundColor: item.color }]}
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.push(item.route);
-              }}
+              onPress={() => { Haptics.selectionAsync(); router.push(item.route); }}
               activeOpacity={0.85}
             >
-              <View style={styles.quickCardInner}>
-                <Text style={styles.quickIcon}>{item.icon}</Text>
-                <Text style={styles.quickLabel}>{item.label}</Text>
-              </View>
-              <View style={styles.quickCardShine} />
+              <Text style={styles.quickIcon}>{item.icon}</Text>
+              <Text style={styles.quickLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ── DISASTER TIPS ────────────────────────────── */}
+        {/* ── DISASTER TIPS ──────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: textDark }]}>Disaster Tips</Text>
           <Text style={[styles.sectionSub, { color: textLight }]}>Tap to expand</Text>
@@ -360,49 +330,48 @@ export default function Home() {
 
         <View style={styles.disasterGrid}>
           {DISASTER_TIPS.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.disasterCard,
-                { backgroundColor: card, borderColor: border },
-                expandedDisaster === index && { borderColor: item.color, borderWidth: 2 },
-              ]}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setExpandedDisaster(expandedDisaster === index ? null : index);
-              }}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.disasterIconBg, { backgroundColor: item.bg }]}>
-                <Text style={styles.disasterIcon}>{item.icon}</Text>
-              </View>
-              <View style={styles.disasterContent}>
-                <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
-                <Text style={[styles.disasterSubLabel, { color: textLight }]}>
-                  {expandedDisaster === index ? "Tap to collapse" : "Tap for quick tip"}
+            <View key={index}>
+              <TouchableOpacity
+                style={[
+                  styles.disasterCard,
+                  { backgroundColor: card, borderColor: border },
+                  expandedDisaster === index && { borderColor: item.color, borderWidth: 1.5 },
+                ]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setExpandedDisaster(expandedDisaster === index ? null : index);
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.disasterIconBg, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
+                  <Text style={styles.disasterIcon}>{item.icon}</Text>
+                </View>
+                <View style={styles.disasterContent}>
+                  <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
+                  <Text style={[styles.disasterSubLabel, { color: textLight }]}>
+                    {expandedDisaster === index ? "Tap to collapse" : "Tap for quick tip"}
+                  </Text>
+                </View>
+                <Text style={[styles.disasterChevron, { color: textLight }]}>
+                  {expandedDisaster === index ? "▲" : "▼"}
                 </Text>
-              </View>
-              <Text style={[styles.disasterChevron, { color: textLight }]}>
-                {expandedDisaster === index ? "▲" : "▼"}
-              </Text>
-            </TouchableOpacity>
+              </TouchableOpacity>
+
+              {/* Inline expanded tip */}
+              {expandedDisaster === index && (
+                <View style={[styles.expandedTip, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
+                  <Text style={styles.expandedTipIcon}>{item.icon}</Text>
+                  <Text style={[styles.expandedTipText, { color: item.color }]}>{item.tip}</Text>
+                </View>
+              )}
+            </View>
           ))}
         </View>
 
-        {/* EXPANDED TIP */}
-        {expandedDisaster !== null && (
-          <View style={[styles.expandedTip, { backgroundColor: DISASTER_TIPS[expandedDisaster].bg }]}>
-            <Text style={[styles.expandedTipIcon]}>{DISASTER_TIPS[expandedDisaster].icon}</Text>
-            <Text style={[styles.expandedTipText, { color: DISASTER_TIPS[expandedDisaster].color }]}>
-              {DISASTER_TIPS[expandedDisaster].tip}
-            </Text>
-          </View>
-        )}
-
-        {/* ── SYSTEM FEED ──────────────────────────────── */}
+        {/* ── SYSTEM FEED ────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: textDark }]}>System Feed</Text>
-          <View style={styles.liveBadge}>
+          <View style={[styles.liveBadge, { backgroundColor: isDark ? "#1a3a1a" : "#E8F5E9" }]}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>LIVE</Text>
           </View>
@@ -410,21 +379,21 @@ export default function Home() {
 
         <View style={[styles.systemFeed, { backgroundColor: card, borderColor: border }]}>
           {[
-            { icon: "🌍", label: "USGS Seismic Watch", status: "Active", color: "#4CAF50" },
-            { icon: "☁️", label: "PAGASA Weather Sync", status: "Online", color: "#4CAF50" },
-            { icon: "🌋", label: "PHIVOLCS Monitor", status: "Active", color: "#4CAF50" },
-            { icon: "📡", label: "Firebase Real-Time DB", status: "Connected", color: "#4CAF50" },
-            { icon: "🔔", label: "Push Notifications", status: "Enabled", color: "#4CAF50" },
-          ].map((feed, i) => (
+            { icon: "🌍", label: "USGS Seismic Watch", status: "Active" },
+            { icon: "☁️", label: "PAGASA Weather Sync", status: "Online" },
+            { icon: "🌋", label: "PHIVOLCS Monitor", status: "Active" },
+            { icon: "📡", label: "Firebase Real-Time DB", status: "Connected" },
+            { icon: "🔔", label: "Push Notifications", status: "Enabled" },
+          ].map((feed, i, arr) => (
             <View
               key={i}
-              style={[styles.feedItem, i < 4 && { borderBottomWidth: 1, borderColor: border }]}
+              style={[styles.feedItem, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: border }]}
             >
               <Text style={styles.feedIcon}>{feed.icon}</Text>
               <Text style={[styles.feedLabel, { color: textDark }]}>{feed.label}</Text>
-              <View style={[styles.feedStatus, { backgroundColor: feed.color + "22" }]}>
-                <View style={[styles.feedDot, { backgroundColor: feed.color }]} />
-                <Text style={[styles.feedStatusText, { color: feed.color }]}>{feed.status}</Text>
+              <View style={[styles.feedStatus, { backgroundColor: isDark ? "#1a3a1a" : "#E8F5E9" }]}>
+                <View style={styles.feedDot} />
+                <Text style={styles.feedStatusText}>{feed.status}</Text>
               </View>
             </View>
           ))}
@@ -433,7 +402,7 @@ export default function Home() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* ── BOTTOM NAV ───────────────────────────────── */}
+      {/* ── BOTTOM NAV ─────────────────────────────── */}
       <View style={[styles.bottomNav, { backgroundColor: card, borderColor: border }]}>
         {NAV_ITEMS.map((item) => (
           <TouchableOpacity
@@ -447,7 +416,7 @@ export default function Home() {
           >
             <View style={[
               styles.navIconWrap,
-              activeNav === item.route && { backgroundColor: COLORS.primary + "18" }
+              activeNav === item.route && { backgroundColor: COLORS.primary + "18" },
             ]}>
               <Text style={styles.navIcon}>{item.icon}</Text>
             </View>
@@ -478,27 +447,34 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  headerTop: {
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "flex-start", marginBottom: 16,
+  },
   headerGreeting: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginBottom: 2 },
   headerTitle: { color: "#fff", fontSize: 32, fontWeight: "bold", letterSpacing: 2 },
-  headerSub: { color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 2 },
+  headerSub: { color: "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 2 },
   sosButton: {
-    backgroundColor: "#fff",
-    borderRadius: 18, paddingHorizontal: 14,
-    paddingVertical: 10, alignItems: "center",
-    elevation: 6, shadowColor: "#000",
-    shadowOpacity: 0.2, shadowOffset: { width: 0, height: 3 },
+    backgroundColor: "#fff", borderRadius: 18,
+    paddingHorizontal: 14, paddingVertical: 10,
+    alignItems: "center", elevation: 6,
+    shadowColor: "#000", shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 3 },
   },
   sosButtonEmoji: { fontSize: 18 },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
   clockRow: { marginBottom: 16 },
   clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
   clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
-  statusStrip: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14, gap: 8 },
+  statusStrip: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14,
+  },
   statusItem: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1, justifyContent: "center" },
   statusItemText: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600" },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusDivider: { width: 1, height: 14, backgroundColor: "rgba(255,255,255,0.2)" },
+  statusDivider: { width: 1, height: 14, backgroundColor: "rgba(255,255,255,0.2)", marginRight: 8 },
 
   // ── STATUS CARD ─────────────────────────────────────
   statusCard: {
@@ -506,36 +482,46 @@ const styles = StyleSheet.create({
     borderRadius: 20, padding: 18,
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: 1,
     elevation: 12, shadowColor: "#000",
-    shadowOpacity: 0.12, shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
+    shadowOpacity: 0.12, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12,
   },
   statusCardLeft: { flex: 1 },
   statusCardLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 },
   statusCardName: { fontSize: 18, fontWeight: "bold", marginBottom: 6 },
-  statusCardBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
-  pulseDot: { width: 7, height: 7, borderRadius: 4 },
-  statusCardStatus: { fontSize: 12, fontWeight: "600" },
+  statusBadgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  statusPulseDot: { width: 7, height: 7, borderRadius: 4 },
+  statusBadgeText: { fontSize: 12, fontWeight: "600" },
   safeButton: {
     borderRadius: 16, width: 64, height: 64,
-    justifyContent: "center", alignItems: "center",
-    elevation: 4,
+    justifyContent: "center", alignItems: "center", elevation: 4,
   },
   safeButtonIcon: { color: "#fff", fontSize: 20, fontWeight: "bold" },
   safeButtonLabel: { color: "#fff", fontSize: 9, fontWeight: "bold", textAlign: "center", marginTop: 2 },
 
   // ── ALERT ───────────────────────────────────────────
   alertCard: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: "#B00020",
     marginHorizontal: 20, marginTop: 16,
     borderRadius: 20, padding: 18,
+    borderWidth: 1.5, borderColor: "#FF5252",
     elevation: 6,
   },
-  alertHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  alertIcon: { fontSize: 20 },
-  alertTitle: { color: "#fff", fontWeight: "bold", fontSize: 15, letterSpacing: 0.5 },
+  alertTop: { marginBottom: 10 },
+  alertBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20, paddingHorizontal: 10,
+    paddingVertical: 4, alignSelf: "flex-start",
+  },
+  alertBadgeText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  alertTitle: { color: "#fff", fontWeight: "bold", fontSize: 16, marginBottom: 6 },
   alertMessage: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20, marginBottom: 14 },
-  alertButton: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  alertButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10, padding: 10,
+    alignItems: "center", borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
   alertButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
 
   // ── ANNOUNCEMENT ────────────────────────────────────
@@ -543,10 +529,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginTop: 12,
     borderRadius: 16, padding: 14,
     flexDirection: "row", alignItems: "center",
-    gap: 12, borderWidth: 1,
+    gap: 12, borderWidth: 1, overflow: "hidden",
   },
-  announcementIcon: { fontSize: 28 },
-  announcementLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 },
+  announcementAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4 },
+  announcementIcon: { fontSize: 26, marginLeft: 8 },
+  announcementLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 3 },
   announcementText: { fontSize: 13, lineHeight: 18 },
 
   // ── SECTION HEADERS ─────────────────────────────────
@@ -555,65 +542,69 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginHorizontal: 20, marginTop: 28, marginBottom: 14,
   },
-  sectionTitle: { fontSize: 18, fontWeight: "bold" },
+  sectionTitle: { fontSize: 17, fontWeight: "bold" },
   sectionSub: { fontSize: 12 },
 
   // ── QUICK ACCESS ────────────────────────────────────
   quickGrid: {
     flexDirection: "row", flexWrap: "wrap",
-    paddingHorizontal: 20, gap: 12,
+    paddingHorizontal: 20, gap: 10,
   },
   quickCard: {
-    width: "22%", borderRadius: 18,
-    padding: 14, alignItems: "center",
-    elevation: 4, shadowColor: "#000",
-    shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6, overflow: "hidden",
+    width: "22%", borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 8,
+    alignItems: "center",
+    elevation: 3, shadowColor: "#000",
+    shadowOpacity: 0.12, shadowOffset: { width: 0, height: 3 }, shadowRadius: 5,
   },
-  quickCardInner: { alignItems: "center" },
-  quickCardShine: {
-    position: "absolute", top: 0, left: 0,
-    right: 0, height: "50%",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderTopLeftRadius: 18, borderTopRightRadius: 18,
-  },
-  quickIcon: { fontSize: 28, marginBottom: 6 },
+  quickIcon: { fontSize: 26, marginBottom: 6 },
   quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
 
   // ── DISASTER TIPS ────────────────────────────────────
-  disasterGrid: { paddingHorizontal: 20, gap: 10 },
+  disasterGrid: { paddingHorizontal: 20, gap: 8 },
   disasterCard: {
     flexDirection: "row", alignItems: "center",
     borderRadius: 16, padding: 14, gap: 14,
-    borderWidth: 1, elevation: 2,
-    shadowColor: "#000", shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 4,
+    borderWidth: 1, elevation: 1,
+    shadowColor: "#000", shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 }, shadowRadius: 3,
   },
-  disasterIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  disasterIcon: { fontSize: 24 },
+  disasterIconBg: {
+    width: 46, height: 46, borderRadius: 13,
+    justifyContent: "center", alignItems: "center",
+  },
+  disasterIcon: { fontSize: 22 },
   disasterContent: { flex: 1 },
-  disasterLabel: { fontWeight: "bold", fontSize: 15 },
+  disasterLabel: { fontWeight: "bold", fontSize: 14 },
   disasterSubLabel: { fontSize: 11, marginTop: 2 },
-  disasterChevron: { fontSize: 12 },
+  disasterChevron: { fontSize: 11 },
   expandedTip: {
-    marginHorizontal: 20, marginTop: 8,
-    borderRadius: 14, padding: 16,
-    flexDirection: "row", gap: 12, alignItems: "flex-start",
+    borderBottomLeftRadius: 14, borderBottomRightRadius: 14,
+    padding: 14, flexDirection: "row",
+    gap: 10, alignItems: "flex-start",
+    marginTop: -4,
   },
-  expandedTipIcon: { fontSize: 24 },
+  expandedTipIcon: { fontSize: 20 },
   expandedTipText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: "500" },
 
   // ── SYSTEM FEED ──────────────────────────────────────
-  liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#E8F5E9", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  liveBadge: {
+    flexDirection: "row", alignItems: "center",
+    gap: 5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4CAF50" },
   liveText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
-  systemFeed: { marginHorizontal: 20, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
+  systemFeed: { marginHorizontal: 20, borderRadius: 18, borderWidth: 1, overflow: "hidden" },
   feedItem: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  feedIcon: { fontSize: 20, width: 30, textAlign: "center" },
+  feedIcon: { fontSize: 18, width: 28, textAlign: "center" },
   feedLabel: { flex: 1, fontSize: 13, fontWeight: "500" },
-  feedStatus: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  feedDot: { width: 5, height: 5, borderRadius: 3 },
-  feedStatusText: { fontSize: 10, fontWeight: "bold" },
+  feedStatus: {
+    flexDirection: "row", alignItems: "center",
+    gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  feedDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#4CAF50" },
+  feedStatusText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
 
   // ── BOTTOM NAV ───────────────────────────────────────
   bottomNav: {
@@ -621,7 +612,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28, paddingTop: 12,
     position: "absolute", bottom: 0, left: 0, right: 0,
     elevation: 20, shadowColor: "#000",
-    shadowOpacity: 0.1, shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08, shadowOffset: { width: 0, height: -2 },
   },
   navItem: { flex: 1, alignItems: "center" },
   navIconWrap: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 3 },
