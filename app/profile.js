@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { onValue, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
-import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import {
   Alert,
   Image,
@@ -21,11 +20,17 @@ import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
 
+const ROLES = {
+  student: { label: "Student", icon: "🎓" },
+  faculty: { label: "Faculty Staff", icon: "👨‍🏫" },
+};
+
 export default function Profile() {
   const router = useRouter();
   const user = auth.currentUser;
   const { theme } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
+  const isDark = theme.bg === "#121212";
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -36,11 +41,14 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [addressPublic, setAddressPublic] = useState(true);
   const [liveAddress, setLiveAddress] = useState(null);
+  const [role, setRole] = useState("");
+  const [college, setCollege] = useState("");
+  const [program, setProgram] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
 
   useEffect(() => {
     if (!user) return;
-    const profileRef = ref(db, "users/" + user.uid);
-    const unsubscribe = onValue(profileRef, (snapshot) => {
+    const unsubscribe = onValue(ref(db, "users/" + user.uid), (snapshot) => {
       const data = snapshot.val();
       if (data) {
         setName(data.fullName || data.name || "");
@@ -50,6 +58,10 @@ export default function Profile() {
         setEmergencyName(data.emergencyName || "");
         setPhotoURL(data.photoURL || null);
         setAddressPublic(data.addressPublic !== false);
+        setRole(data.role || "");
+        setCollege(data.college || "");
+        setProgram(data.program || "");
+        setYearLevel(data.yearLevel || "");
       }
     });
     return () => unsubscribe();
@@ -80,7 +92,8 @@ export default function Profile() {
         fullName: name, email: user.email,
         phone, barangay, addressPublic,
         emergencyContact, emergencyName,
-        emergencyNumber: emergencyContact, photoURL,
+        emergencyNumber: emergencyContact,
+        photoURL, role, college, program, yearLevel,
       });
       setEditing(false);
       Alert.alert("Saved! ✅", "Your profile has been updated.");
@@ -91,243 +104,248 @@ export default function Profile() {
 
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Denied", "Photo library access is required.");
-      return;
-    }
+    if (status !== "granted") { Alert.alert("Permission Denied", "Photo library access is required."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1],
-      quality: 0.5, base64: true,
+      allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true,
     });
-    if (!result.canceled) {
-      setPhotoURL("data:image/jpeg;base64," + result.assets[0].base64);
-    }
+    if (!result.canceled) setPhotoURL("data:image/jpeg;base64," + result.assets[0].base64);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout", style: "destructive",
-        onPress: async () => {
-          await signOut(auth);
-          router.replace("/login");
-        },
-      },
+      { text: "Logout", style: "destructive", onPress: async () => { await signOut(auth); router.replace("/login"); } },
     ]);
   };
 
+  const Field = ({ label, value, setter, placeholder, keyboard, editable = true }) => (
+    <View style={styles.fieldGroup}>
+      <Text style={[styles.fieldLabel, { color: textLight }]}>{label}</Text>
+      <TextInput
+        style={[
+          styles.fieldInput,
+          { borderColor: border, color: textDark, backgroundColor: editing && editable ? (isDark ? "#1e1e1e" : "#fff") : surface },
+        ]}
+        value={value}
+        onChangeText={setter}
+        placeholder={placeholder}
+        placeholderTextColor={textLight}
+        editable={editing && editable}
+        keyboardType={keyboard || "default"}
+      />
+    </View>
+  );
+
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: bg }]}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={[styles.container, { backgroundColor: bg }]} showsVerticalScrollIndicator={false}>
+
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>👤 My Profile</Text>
-        <Text style={styles.headerSub}>{user?.email}</Text>
+        <Text style={styles.headerSub}>Manage your personal information</Text>
+        {role ? (
+          <View style={styles.rolePill}>
+            <Text style={styles.rolePillText}>
+              {ROLES[role]?.icon} {ROLES[role]?.label}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {/* PROFILE PHOTO */}
-      <View style={styles.photoSection}>
-        <TouchableOpacity onPress={editing ? handlePickPhoto : null}>
+      {/* PHOTO + NAME */}
+      <View style={[styles.photoCard, { backgroundColor: card, borderColor: border }]}>
+        <TouchableOpacity onPress={editing ? handlePickPhoto : null} style={styles.photoWrap}>
           {photoURL ? (
             <Image source={{ uri: photoURL }} style={styles.photo} />
           ) : (
             <View style={styles.photoPlaceholder}>
-              <Text style={styles.photoInitial}>
-                {name ? name[0].toUpperCase() : "?"}
-              </Text>
+              <Text style={styles.photoInitial}>{name ? name[0].toUpperCase() : "?"}</Text>
             </View>
           )}
           {editing && (
-            <View style={styles.photoEditBadge}>
-              <Text style={styles.photoEditText}>✏️</Text>
+            <View style={styles.photoBadge}>
+              <Text style={styles.photoBadgeText}>✏️</Text>
             </View>
           )}
         </TouchableOpacity>
-        <Text style={[styles.photoName, { color: textDark }]}>{name || "Your Name"}</Text>
-        <Text style={[styles.photoEmail, { color: textLight }]}>{user?.email}</Text>
+        <View style={styles.photoInfo}>
+          <Text style={[styles.photoName, { color: textDark }]}>{name || "Your Name"}</Text>
+          <Text style={[styles.photoEmail, { color: textLight }]}>{user?.email}</Text>
+          {college ? (
+            <Text style={[styles.photoCollege, { color: textMid }]}>🏫 {college}</Text>
+          ) : null}
+          {program ? (
+            <Text style={[styles.photoProgram, { color: textMid }]}>📚 {program} {yearLevel ? `· ${yearLevel}` : ""}</Text>
+          ) : null}
+        </View>
       </View>
 
-      {/* LIVE ADDRESS */}
+      {/* LIVE LOCATION */}
       {liveAddress && (
-        <View style={[styles.liveAddressCard, { backgroundColor: card, borderColor: border }]}>
-          <Text style={styles.liveAddressIcon}>📍</Text>
-          <View style={styles.liveAddressContent}>
-            <Text style={styles.liveAddressLabel}>Current Location</Text>
-            <Text style={[styles.liveAddressText, { color: textMid }]}>{liveAddress}</Text>
+        <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
+          <View style={styles.sectionCardTop}>
+            <Text style={styles.sectionCardIcon}>📍</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionCardTitle, { color: "#2e7d32" }]}>Current Location</Text>
+              <Text style={[styles.sectionCardDesc, { color: textMid }]}>{liveAddress}</Text>
+            </View>
           </View>
         </View>
       )}
 
       {/* ADDRESS PRIVACY */}
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.cardTitle, { color: textDark }]}>🔒 Address Privacy</Text>
-        <View style={styles.privacyRow}>
-          <View style={styles.privacyLeft}>
+      <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
+        <View style={styles.sectionCardTop}>
+          <Text style={styles.sectionCardIcon}>🔒</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Address Privacy</Text>
+        </View>
+        <View style={[styles.privacyRow, { backgroundColor: isDark ? "#1a1a1a" : surface, borderColor: border }]}>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.privacyLabel, { color: textDark }]}>
               {addressPublic ? "🌐 Address is Public" : "🔒 Address is Private"}
             </Text>
             <Text style={[styles.privacyDesc, { color: textLight }]}>
-              {addressPublic
-                ? "Your contacts can see your address"
-                : "Only you can see your address"}
+              {addressPublic ? "Your contacts can see your address" : "Only you can see your address"}
             </Text>
           </View>
           <Switch
             value={addressPublic}
             onValueChange={(val) => {
               setAddressPublic(val);
-              if (!editing) {
-                set(ref(db, "users/" + user.uid + "/addressPublic"), val);
-              }
+              if (!editing) set(ref(db, "users/" + user.uid + "/addressPublic"), val);
             }}
-            trackColor={{ false: "#ddd", true: COLORS.primary }}
+            trackColor={{ false: "#ccc", true: COLORS.primary }}
             thumbColor="#fff"
           />
         </View>
       </View>
 
-      {/* PROFILE FIELDS */}
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.cardTitle, { color: textDark }]}>👤 Personal Information</Text>
-
-        {[
-          { label: "Full Name", value: name, setter: setName, placeholder: "Enter your name", editable: true },
-          { label: "Email", value: user?.email, setter: null, placeholder: "", editable: false },
-          { label: "Phone Number", value: phone, setter: setPhone, placeholder: "Enter phone number", editable: true, keyboard: "phone-pad" },
-          { label: "Barangay / Address", value: barangay, setter: setBarangay, placeholder: "Enter your address", editable: true },
-        ].map((field, i) => (
-          <View key={i}>
-            <Text style={[styles.label, { color: textLight }]}>{field.label}</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { borderColor: border, color: textDark },
-                (!editing || !field.editable) && { backgroundColor: surface, color: textLight },
-              ]}
-              value={field.value}
-              onChangeText={field.setter || undefined}
-              placeholder={field.placeholder}
-              placeholderTextColor={textLight}
-              editable={editing && field.editable}
-              keyboardType={field.keyboard || "default"}
-            />
-          </View>
-        ))}
+      {/* PERSONAL INFO */}
+      <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
+        <View style={styles.sectionCardTop}>
+          <Text style={styles.sectionCardIcon}>👤</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Personal Information</Text>
+        </View>
+        <Field label="Full Name" value={name} setter={setName} placeholder="Enter your name" />
+        <Field label="Email" value={user?.email} placeholder="" editable={false} />
+        <Field label="Phone Number" value={phone} setter={setPhone} placeholder="Enter phone number" keyboard="phone-pad" />
+        <Field label="Barangay / Address" value={barangay} setter={setBarangay} placeholder="Enter your address" />
       </View>
 
       {/* EMERGENCY CONTACT */}
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.cardTitle, { color: textDark }]}>🆘 Emergency Contact</Text>
-
-        <Text style={[styles.label, { color: textLight }]}>Contact Name</Text>
-        <TextInput
-          style={[
-            styles.input,
-            { borderColor: border, color: textDark },
-            !editing && { backgroundColor: surface, color: textLight },
-          ]}
-          value={emergencyName}
-          onChangeText={setEmergencyName}
-          placeholder="e.g. Juan Dela Cruz"
-          placeholderTextColor={textLight}
-          editable={editing}
-        />
-
-        <Text style={[styles.label, { color: textLight }]}>Contact Number</Text>
-        <TextInput
-          style={[
-            styles.input,
-            { borderColor: border, color: textDark },
-            !editing && { backgroundColor: surface, color: textLight },
-          ]}
-          value={emergencyContact}
-          onChangeText={setEmergencyContact}
-          placeholder="e.g. 09171234567"
-          placeholderTextColor={textLight}
-          keyboardType="phone-pad"
-          editable={editing}
-        />
+      <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
+        <View style={styles.sectionCardTop}>
+          <Text style={styles.sectionCardIcon}>🆘</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Emergency Contact</Text>
+        </View>
+        <Field label="Contact Name" value={emergencyName} setter={setEmergencyName} placeholder="e.g. Juan Dela Cruz" />
+        <Field label="Contact Number" value={emergencyContact} setter={setEmergencyContact} placeholder="e.g. 09171234567" keyboard="phone-pad" />
       </View>
 
-      {/* BUTTONS */}
+      {/* EDIT / SAVE BUTTONS */}
       {editing ? (
         <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
+            style={[styles.btn, { backgroundColor: isDark ? "#333" : "#90A4AE", flex: 0.4 }]}
             onPress={() => setEditing(false)}
           >
-            <Text style={styles.buttonText}>Cancel</Text>
+            <Text style={styles.btnText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, styles.saveButton]}
+            style={[styles.btn, { backgroundColor: "#2e7d32", flex: 1 }]}
             onPress={handleSave}
           >
-            <Text style={styles.buttonText}>💾 Save</Text>
+            <Text style={styles.btnText}>💾 Save Changes</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.button, styles.editButton]}
+          style={[styles.btn, styles.btnFull, { backgroundColor: "#1565C0" }]}
           onPress={() => setEditing(true)}
         >
-          <Text style={styles.buttonText}>✏️ Edit Profile</Text>
+          <Text style={styles.btnText}>✏️ Edit Profile</Text>
         </TouchableOpacity>
       )}
 
+      {/* LOGOUT */}
       <TouchableOpacity
-        style={[styles.button, styles.logoutButton]}
+        style={[styles.btn, styles.btnFull, { backgroundColor: COLORS.primary }]}
         onPress={handleLogout}
       >
-        <Text style={styles.buttonText}>🚪 Logout</Text>
+        <Text style={styles.btnText}>🚪 Logout</Text>
       </TouchableOpacity>
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 60 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  // HEADER
   header: {
     backgroundColor: COLORS.primary,
-    paddingTop: 55, paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    marginBottom: 20,
+    paddingTop: 55, paddingBottom: 24, paddingHorizontal: 24,
+    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    marginBottom: 16,
   },
-  headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
-  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
-  photoSection: { alignItems: "center", marginBottom: 20 },
-  photo: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: COLORS.primary },
-  photoPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
-  photoInitial: { color: "#fff", fontSize: 40, fontWeight: "bold" },
-  photoEditBadge: { position: "absolute", bottom: 0, right: 0, backgroundColor: "#fff", borderRadius: 12, padding: 2, borderWidth: 1, borderColor: COLORS.primary },
-  photoEditText: { fontSize: 14 },
-  photoName: { fontWeight: "bold", fontSize: 18, marginTop: 10 },
-  photoEmail: { fontSize: 13, marginTop: 3 },
-  liveAddressCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 12, marginHorizontal: 20, marginBottom: 15, borderWidth: 1 },
-  liveAddressIcon: { fontSize: 24, marginRight: 10 },
-  liveAddressContent: { flex: 1 },
-  liveAddressLabel: { fontWeight: "bold", color: "#2e7d32", fontSize: 12 },
-  liveAddressText: { fontSize: 12, marginTop: 2 },
-  card: { borderRadius: 15, padding: 16, marginHorizontal: 20, marginBottom: 15, borderWidth: 1 },
-  cardTitle: { fontWeight: "bold", fontSize: 15, marginBottom: 14 },
-  privacyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  privacyLeft: { flex: 1 },
-  privacyLabel: { fontWeight: "bold", fontSize: 14 },
-  privacyDesc: { fontSize: 12, marginTop: 2 },
-  label: { fontSize: 12, marginBottom: 4, marginTop: 10 },
-  input: { borderWidth: 1.5, borderRadius: 10, padding: 12, fontSize: 14 },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 4 },
+  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13 },
+  rolePill: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20, paddingHorizontal: 12,
+    paddingVertical: 5, alignSelf: "flex-start", marginTop: 10,
+  },
+  rolePillText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+
+  // PHOTO CARD
+  photoCard: {
+    flexDirection: "row", alignItems: "center",
+    marginHorizontal: 20, marginBottom: 12,
+    borderRadius: 20, padding: 16, borderWidth: 1, gap: 16,
+    elevation: 2, shadowColor: "#000",
+    shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+  },
+  photoWrap: { position: "relative" },
+  photo: { width: 80, height: 80, borderRadius: 22, borderWidth: 2, borderColor: COLORS.primary },
+  photoPlaceholder: { width: 80, height: 80, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
+  photoInitial: { color: "#fff", fontSize: 34, fontWeight: "bold" },
+  photoBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: "#fff", borderRadius: 10, padding: 3, borderWidth: 1.5, borderColor: COLORS.primary },
+  photoBadgeText: { fontSize: 12 },
+  photoInfo: { flex: 1 },
+  photoName: { fontWeight: "bold", fontSize: 17, marginBottom: 2 },
+  photoEmail: { fontSize: 12, marginBottom: 4 },
+  photoCollege: { fontSize: 11, marginBottom: 2 },
+  photoProgram: { fontSize: 11 },
+
+  // SECTION CARD
+  sectionCard: {
+    marginHorizontal: 20, marginBottom: 12,
+    borderRadius: 18, padding: 16, borderWidth: 1,
+  },
+  sectionCardTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  sectionCardIcon: { fontSize: 20 },
+  sectionCardTitle: { fontWeight: "bold", fontSize: 15 },
+  sectionCardDesc: { fontSize: 12, marginTop: 2 },
+
+  // PRIVACY ROW
+  privacyRow: {
+    flexDirection: "row", alignItems: "center",
+    borderRadius: 12, padding: 12, borderWidth: 1,
+  },
+  privacyLabel: { fontWeight: "600", fontSize: 13 },
+  privacyDesc: { fontSize: 11, marginTop: 2 },
+
+  // FIELD
+  fieldGroup: { marginBottom: 12 },
+  fieldLabel: { fontSize: 11, fontWeight: "600", marginBottom: 5, letterSpacing: 0.3 },
+  fieldInput: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14 },
+
+  // BUTTONS
   buttonRow: { flexDirection: "row", gap: 10, marginHorizontal: 20, marginBottom: 10 },
-  button: { flex: 1, padding: 15, borderRadius: 12, alignItems: "center", marginHorizontal: 20, marginBottom: 10 },
-  editButton: { backgroundColor: "#1565C0" },
-  saveButton: { backgroundColor: "#2e7d32" },
-  cancelButton: { backgroundColor: "#888" },
-  logoutButton: { backgroundColor: COLORS.primary, marginBottom: 10 },
-  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
+  btn: { padding: 15, borderRadius: 14, alignItems: "center", elevation: 2, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  btnFull: { marginHorizontal: 20, marginBottom: 10 },
+  btnText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });
