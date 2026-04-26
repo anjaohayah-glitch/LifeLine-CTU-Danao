@@ -2,7 +2,7 @@
   "expo": {
     "name": "LifeLine",
     "slug": "lifeline_expo",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lifelineexpo",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.ayaanjao.lifeline_expo",
-      "versionCode": 6,
+      "versionCode": 7,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -42,7 +42,6 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#B00020"
       },
-      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
