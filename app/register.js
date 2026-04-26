@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { useState } from "react";
-import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import {
   ActivityIndicator,
   Alert,
@@ -17,10 +16,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import { COLORS } from "../constants/colors";
 import { auth, db } from "../firebase";
 
-// ── REUSABLE INPUT ───────────────────────────────────────
+const ROLES = [
+  { key: "student", label: "Student", icon: "🎓", desc: "Enrolled at CTU Danao" },
+  { key: "faculty", label: "Faculty Staff", icon: "👨‍🏫", desc: "Teaching or admin staff" },
+];
+
 const InputField = ({ icon, placeholder, value, onChangeText, keyboardType, secureTextEntry, editable = true, rightElement }) => (
   <View style={styles.inputWrapper}>
     <Text style={styles.inputIcon}>{icon}</Text>
@@ -39,15 +43,11 @@ const InputField = ({ icon, placeholder, value, onChangeText, keyboardType, secu
   </View>
 );
 
-// ── SELECTOR COMPONENT ───────────────────────────────────
 const SelectorField = ({ icon, label, value, options, onSelect }) => {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <TouchableOpacity
-        style={styles.inputWrapper}
-        onPress={() => setOpen(true)}
-      >
+      <TouchableOpacity style={styles.inputWrapper} onPress={() => setOpen(true)}>
         <Text style={styles.inputIcon}>{icon}</Text>
         <Text style={[styles.input, !value && { color: COLORS.textLight }]}>
           {value || label}
@@ -58,6 +58,7 @@ const SelectorField = ({ icon, label, value, options, onSelect }) => {
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={styles.selectorOverlay}>
           <View style={styles.selectorBox}>
+            <View style={styles.selectorHandle} />
             <View style={styles.selectorHeader}>
               <Text style={styles.selectorTitle}>{label}</Text>
               <TouchableOpacity onPress={() => setOpen(false)}>
@@ -75,10 +76,7 @@ const SelectorField = ({ icon, label, value, options, onSelect }) => {
                   ]}
                   onPress={() => { onSelect(option); setOpen(false); }}
                 >
-                  <Text style={[
-                    styles.selectorItemText,
-                    value === option && styles.selectorItemTextActive,
-                  ]}>
+                  <Text style={[styles.selectorItemText, value === option && styles.selectorItemTextActive]}>
                     {option}
                   </Text>
                   {value === option && <Text style={styles.selectorCheck}>✓</Text>}
@@ -92,11 +90,11 @@ const SelectorField = ({ icon, label, value, options, onSelect }) => {
   );
 };
 
-// ── MAIN COMPONENT ───────────────────────────────────────
 export default function Register() {
   const router = useRouter();
 
-  // Step 1 — Account Info
+  // Step 1
+  const [role, setRole] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -104,7 +102,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Step 2 — Personal Details
+  // Step 2
   const [phone, setPhone] = useState("");
   const [barangay, setBarangay] = useState("");
   const [college, setCollege] = useState("");
@@ -114,16 +112,15 @@ export default function Register() {
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyNumber, setEmergencyNumber] = useState("");
 
-  // UI State
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [termsModal, setTermsModal] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // Programs based on selected college
   const availablePrograms = college ? CTU_ACADEMIC_DATA.programs[college] || [] : [];
 
   const validateStep1 = () => {
+    if (!role) return "Please select your role (Student or Faculty Staff).";
     if (!fullName.trim()) return "Please enter your full name.";
     if (!email.trim()) return "Please enter your email.";
     if (!password.trim()) return "Please enter a password.";
@@ -135,10 +132,12 @@ export default function Register() {
   const validateStep2 = () => {
     if (!phone.trim()) return "Please enter your phone number.";
     if (!barangay.trim()) return "Please enter your barangay/address.";
-    if (!college) return "Please select your college.";
-    if (!program) return "Please select your program.";
-    if (!yearLevel) return "Please select your year level.";
-    if (!schedule) return "Please select your schedule.";
+    if (role === "student") {
+      if (!college) return "Please select your college.";
+      if (!program) return "Please select your program.";
+      if (!yearLevel) return "Please select your year level.";
+      if (!schedule) return "Please select your schedule.";
+    }
     return null;
   };
 
@@ -160,26 +159,18 @@ export default function Register() {
       setLoading(true);
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
-
-      // Update display name
       await updateProfile(userCred.user, { displayName: fullName });
-
-      // Save to Firebase
       await set(ref(db, "users/" + uid), {
-        fullName,
-        email,
-        phone,
-        barangay,
-        college,
-        program,
-        yearLevel,
-        schedule,
+        fullName, email, phone, barangay,
+        role,
+        college: role === "student" ? college : "",
+        program: role === "student" ? program : "",
+        yearLevel: role === "student" ? yearLevel : "",
+        schedule: role === "student" ? schedule : "",
         addressPublic: true,
-        emergencyName,
-        emergencyNumber,
+        emergencyName, emergencyNumber,
         createdAt: new Date().toISOString(),
       });
-
       Alert.alert(
         "Account Created! 🎉",
         `Welcome to LIFELINE, ${fullName}!\n\nYou can now log in and stay connected during emergencies.`,
@@ -193,11 +184,9 @@ export default function Register() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.wrapper}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {/* TOP SECTION */}
+    <KeyboardAvoidingView style={styles.wrapper} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+
+      {/* TOP */}
       <View style={styles.topSection}>
         <View style={styles.circle1} />
         <View style={styles.circle2} />
@@ -208,14 +197,14 @@ export default function Register() {
         <Text style={styles.logoSub}>Create your account</Text>
       </View>
 
-      {/* BOTTOM SECTION */}
+      {/* BOTTOM */}
       <View style={styles.bottomSection}>
 
         {/* STEP INDICATOR */}
         <View style={styles.stepIndicator}>
           <View style={styles.stepRow}>
             <View style={[styles.stepCircle, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.stepCircleText}>1</Text>
+              <Text style={styles.stepCircleText}>{step > 1 ? "✓" : "1"}</Text>
             </View>
             <View style={[styles.stepLine, { backgroundColor: step === 2 ? COLORS.primary : COLORS.border }]} />
             <View style={[styles.stepCircle, { backgroundColor: step === 2 ? COLORS.primary : COLORS.border }]}>
@@ -228,11 +217,40 @@ export default function Register() {
           </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-          {/* ── STEP 1: ACCOUNT INFO ───────────────────── */}
+          {/* ── STEP 1 ─────────────────────────────────── */}
           {step === 1 && (
             <>
+              {/* ROLE PICKER */}
+              <Text style={styles.sectionTitle}>I am a...</Text>
+              <View style={styles.roleRow}>
+                {ROLES.map((r) => (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={[
+                      styles.roleCard,
+                      role === r.key && styles.roleCardActive,
+                    ]}
+                    onPress={() => setRole(r.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.roleIcon}>{r.icon}</Text>
+                    <Text style={[styles.roleLabel, role === r.key && styles.roleLabelActive]}>
+                      {r.label}
+                    </Text>
+                    <Text style={[styles.roleDesc, role === r.key && { color: COLORS.primary }]}>
+                      {r.desc}
+                    </Text>
+                    {role === r.key && (
+                      <View style={styles.roleCheck}>
+                        <Text style={styles.roleCheckText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <Text style={styles.sectionTitle}>Account Information</Text>
               <InputField
                 icon="👤" placeholder="Full Name"
@@ -263,16 +281,24 @@ export default function Register() {
                   </TouchableOpacity>
                 }
               />
+
               <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
                 <Text style={styles.primaryButtonText}>Next →</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {/* ── STEP 2: PERSONAL DETAILS ───────────────── */}
+          {/* ── STEP 2 ─────────────────────────────────── */}
           {step === 2 && (
             <>
-              {/* Personal Info */}
+              {/* Role badge */}
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleBadgeText}>
+                  {ROLES.find((r) => r.key === role)?.icon}{" "}
+                  Registering as {ROLES.find((r) => r.key === role)?.label}
+                </Text>
+              </View>
+
               <Text style={styles.sectionTitle}>📋 Personal Information</Text>
               <InputField
                 icon="📱" placeholder="Phone Number"
@@ -284,49 +310,43 @@ export default function Register() {
                 value={barangay} onChangeText={setBarangay}
               />
 
-              {/* Academic Info */}
-              <Text style={styles.sectionTitle}>🎓 Academic Information</Text>
-              <Text style={styles.sectionSub}>Select your college, program, year level, and schedule.</Text>
+              {/* Academic info — students only */}
+              {role === "student" && (
+                <>
+                  <Text style={styles.sectionTitle}>🎓 Academic Information</Text>
+                  <Text style={styles.sectionSub}>Select your college, program, year level, and schedule.</Text>
 
-              <SelectorField
-                icon="🏫"
-                label="Select College"
-                value={college}
-                options={CTU_ACADEMIC_DATA.colleges}
-                onSelect={(val) => { setCollege(val); setProgram(""); }}
-              />
-
-              <SelectorField
-                icon="📚"
-                label={college ? "Select Program" : "Select College First"}
-                value={program}
-                options={availablePrograms}
-                onSelect={setProgram}
-              />
-
-              <View style={styles.rowFields}>
-                <View style={{ flex: 1 }}>
                   <SelectorField
-                    icon="📅"
-                    label="Year Level"
-                    value={yearLevel}
-                    options={CTU_ACADEMIC_DATA.yearLevels}
-                    onSelect={setYearLevel}
+                    icon="🏫" label="Select College"
+                    value={college} options={CTU_ACADEMIC_DATA.colleges}
+                    onSelect={(val) => { setCollege(val); setProgram(""); }}
                   />
-                </View>
-                <View style={{ width: 10 }} />
-                <View style={{ flex: 1 }}>
                   <SelectorField
-                    icon="🌙"
-                    label="Schedule"
-                    value={schedule}
-                    options={CTU_ACADEMIC_DATA.schedules}
-                    onSelect={setSchedule}
+                    icon="📚"
+                    label={college ? "Select Program" : "Select College First"}
+                    value={program} options={availablePrograms}
+                    onSelect={setProgram}
                   />
-                </View>
-              </View>
+                  <View style={styles.rowFields}>
+                    <View style={{ flex: 1 }}>
+                      <SelectorField
+                        icon="📅" label="Year Level"
+                        value={yearLevel} options={CTU_ACADEMIC_DATA.yearLevels}
+                        onSelect={setYearLevel}
+                      />
+                    </View>
+                    <View style={{ width: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <SelectorField
+                        icon="🌙" label="Schedule"
+                        value={schedule} options={CTU_ACADEMIC_DATA.schedules}
+                        onSelect={setSchedule}
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
 
-              {/* Emergency Contact */}
               <Text style={styles.sectionTitle}>🆘 Emergency Contact</Text>
               <Text style={styles.sectionSub}>Who should we contact in case of emergency?</Text>
               <InputField
@@ -339,25 +359,19 @@ export default function Register() {
                 keyboardType="phone-pad"
               />
 
-              {/* TERMS CHECKBOX */}
-              <TouchableOpacity
-                style={styles.termsRow}
-                onPress={() => setTermsModal(true)}
-              >
+              {/* TERMS */}
+              <TouchableOpacity style={styles.termsRow} onPress={() => setTermsModal(true)}>
                 <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
                   {agreedToTerms && <Text style={styles.checkboxCheck}>✓</Text>}
                 </View>
                 <Text style={styles.termsText}>
-                  I agree to the{" "}
-                  <Text style={styles.termsLink}>Terms & Conditions</Text>
-                  {" "}and{" "}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  I agree to the <Text style={styles.termsLink}>Terms & Conditions</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>
                 </Text>
               </TouchableOpacity>
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={[styles.primaryButton, styles.backButton]}
+                  style={[styles.primaryButton, styles.backBtn]}
                   onPress={() => setStep(1)}
                 >
                   <Text style={styles.primaryButtonText}>← Back</Text>
@@ -378,7 +392,7 @@ export default function Register() {
 
           <TouchableOpacity style={styles.loginRow} onPress={() => router.replace("/login")}>
             <Text style={styles.loginText}>Already have an account? </Text>
-            <Text style={styles.loginLink}>Login</Text>
+            <Text style={styles.loginLink}>Sign In</Text>
           </TouchableOpacity>
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -386,8 +400,9 @@ export default function Register() {
 
       {/* TERMS MODAL */}
       <Modal visible={termsModal} transparent animationType="slide" onRequestClose={() => setTermsModal(false)}>
-        <View style={styles.modalOverlay}>
+        <View style={styles.selectorOverlay}>
           <View style={styles.modalBox}>
+            <View style={styles.selectorHandle} />
             <Text style={styles.modalTitle}>📋 Terms & Conditions</Text>
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
               {[
@@ -399,18 +414,17 @@ export default function Register() {
                 { heading: "Emergency Alerts", text: "LIFELINE may send you emergency alerts and announcements from CTU Danao DRRMO. You can disable notifications in Settings." },
                 { heading: "Disclaimer", text: "LIFELINE is a disaster preparedness tool. Always follow official government advisories and contact emergency services (911) in life-threatening situations." },
               ].map((item, i) => (
-                <View key={i}>
+                <View key={i} style={{ marginBottom: 12 }}>
                   <Text style={styles.modalHeading}>{item.heading}</Text>
                   <Text style={styles.modalText}>{item.text}</Text>
                 </View>
               ))}
             </ScrollView>
-
             <TouchableOpacity
-              style={styles.agreeButton}
+              style={styles.primaryButton}
               onPress={() => { setAgreedToTerms(true); setTermsModal(false); }}
             >
-              <Text style={styles.agreeButtonText}>✅ I Agree & Accept</Text>
+              <Text style={styles.primaryButtonText}>✅ I Agree & Accept</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.declineButton}
@@ -427,32 +441,77 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: COLORS.primary },
-  topSection: { flex: 0.32, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+
+  // TOP
+  topSection: { flex: 0.28, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   circle1: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "rgba(255,255,255,0.07)", top: -80, right: -80 },
   circle2: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.07)", bottom: -40, left: -40 },
-  logoBox: { width: 70, height: 70, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 10, borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
-  logoEmoji: { fontSize: 35 },
-  logoText: { fontSize: 28, fontWeight: "bold", color: "#fff", letterSpacing: 5 },
-  logoSub: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 4 },
-  bottomSection: { flex: 0.68, backgroundColor: "#fff", borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 25, paddingTop: 25 },
-  stepIndicator: { alignItems: "center", marginBottom: 20 },
+  logoBox: { width: 68, height: 68, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 10, borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
+  logoEmoji: { fontSize: 34 },
+  logoText: { fontSize: 26, fontWeight: "bold", color: "#fff", letterSpacing: 5 },
+  logoSub: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 },
+
+  // BOTTOM
+  bottomSection: { flex: 0.72, backgroundColor: "#fff", borderTopLeftRadius: 34, borderTopRightRadius: 34, padding: 24, paddingTop: 22 },
+
+  // STEP INDICATOR
+  stepIndicator: { alignItems: "center", marginBottom: 18 },
   stepRow: { flexDirection: "row", alignItems: "center" },
   stepCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
   stepCircleText: { color: "#fff", fontWeight: "bold" },
   stepLine: { width: 80, height: 3, marginHorizontal: 8 },
   stepLabels: { flexDirection: "row", justifyContent: "space-between", width: 130, marginTop: 6 },
   stepLabel: { fontSize: 12, fontWeight: "bold" },
-  sectionTitle: { fontSize: 15, fontWeight: "bold", color: COLORS.textDark, marginBottom: 4, marginTop: 12 },
-  sectionSub: { color: COLORS.textLight, fontSize: 12, marginBottom: 10 },
+
+  // ROLE PICKER
+  roleRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
+  roleCard: {
+    flex: 1, borderRadius: 16, borderWidth: 1.5,
+    borderColor: COLORS.border, padding: 14,
+    alignItems: "center", backgroundColor: "#F8FAFB",
+    position: "relative",
+  },
+  roleCardActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: "#FFF5F5",
+  },
+  roleIcon: { fontSize: 28, marginBottom: 6 },
+  roleLabel: { fontWeight: "bold", fontSize: 13, color: COLORS.textDark, marginBottom: 3 },
+  roleLabelActive: { color: COLORS.primary },
+  roleDesc: { fontSize: 10, color: COLORS.textLight, textAlign: "center" },
+  roleCheck: {
+    position: "absolute", top: 8, right: 8,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center", alignItems: "center",
+  },
+  roleCheckText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
+
+  // ROLE BADGE (step 2)
+  roleBadge: {
+    backgroundColor: "#FFF5F5", borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+    alignSelf: "flex-start", marginBottom: 14,
+    borderWidth: 1, borderColor: "#FFCDD2",
+  },
+  roleBadgeText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12 },
+
+  // SECTION
+  sectionTitle: { fontSize: 14, fontWeight: "bold", color: COLORS.textDark, marginBottom: 4, marginTop: 10 },
+  sectionSub: { color: COLORS.textLight, fontSize: 11, marginBottom: 8 },
+
+  // INPUTS
   inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, backgroundColor: COLORS.surface },
-  inputIcon: { fontSize: 18, marginRight: 10 },
+  inputIcon: { fontSize: 17, marginRight: 10 },
   input: { flex: 1, fontSize: 14, color: COLORS.textDark },
   showText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12 },
   rowFields: { flexDirection: "row" },
+
   // SELECTOR
   selectorOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   selectorBox: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: "70%" },
-  selectorHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
+  selectorHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  selectorHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
   selectorTitle: { fontSize: 16, fontWeight: "bold", color: COLORS.textDark },
   selectorClose: { fontSize: 18, color: COLORS.textLight, fontWeight: "bold" },
   selectorItem: { paddingVertical: 14, paddingHorizontal: 5, flexDirection: "row", alignItems: "center" },
@@ -460,30 +519,30 @@ const styles = StyleSheet.create({
   selectorItemText: { flex: 1, fontSize: 14, color: COLORS.textDark },
   selectorItemTextActive: { color: COLORS.primary, fontWeight: "bold" },
   selectorCheck: { color: COLORS.primary, fontWeight: "bold", fontSize: 16 },
+
   // TERMS
-  termsRow: { flexDirection: "row", alignItems: "center", marginBottom: 15, marginTop: 5, gap: 10 },
+  termsRow: { flexDirection: "row", alignItems: "center", marginBottom: 14, marginTop: 4, gap: 10 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   checkboxChecked: { backgroundColor: COLORS.primary },
   checkboxCheck: { color: "#fff", fontWeight: "bold", fontSize: 13 },
   termsText: { flex: 1, fontSize: 12, color: COLORS.textMid, lineHeight: 18 },
   termsLink: { color: COLORS.primary, fontWeight: "bold" },
+
   // BUTTONS
-  primaryButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", marginTop: 8, elevation: 4, shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 },
+  primaryButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 14, alignItems: "center", marginTop: 8, elevation: 4, shadowColor: COLORS.primary, shadowOpacity: 0.35, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 },
   primaryButtonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   buttonRow: { flexDirection: "row", gap: 10, marginTop: 8 },
-  backButton: { backgroundColor: COLORS.textLight, width: 90 },
+  backBtn: { backgroundColor: COLORS.textLight, width: 90 },
   loginRow: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
-  loginText: { color: COLORS.textLight },
-  loginLink: { color: COLORS.primary, fontWeight: "bold" },
+  loginText: { color: COLORS.textLight, fontSize: 13 },
+  loginLink: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
+
   // MODAL
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: 30, maxHeight: "85%" },
-  modalTitle: { fontSize: 20, fontWeight: "bold", color: COLORS.textDark, marginBottom: 15, textAlign: "center" },
-  modalScroll: { maxHeight: 350, marginBottom: 15 },
-  modalHeading: { fontWeight: "bold", color: COLORS.primary, fontSize: 14, marginTop: 12, marginBottom: 5 },
-  modalText: { color: COLORS.textMid, fontSize: 13, lineHeight: 20 },
-  agreeButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 10 },
-  agreeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
-  declineButton: { padding: 12, borderRadius: 12, alignItems: "center", borderWidth: 1.5, borderColor: COLORS.border },
+  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 34, maxHeight: "88%" },
+  modalTitle: { fontSize: 18, fontWeight: "bold", color: COLORS.textDark, marginBottom: 14, textAlign: "center" },
+  modalScroll: { maxHeight: 340, marginBottom: 14 },
+  modalHeading: { fontWeight: "bold", color: COLORS.primary, fontSize: 13, marginBottom: 4 },
+  modalText: { color: COLORS.textMid, fontSize: 12, lineHeight: 19 },
+  declineButton: { padding: 13, borderRadius: 12, alignItems: "center", marginTop: 10, borderWidth: 1.5, borderColor: COLORS.border },
   declineButtonText: { color: COLORS.textMid, fontWeight: "bold" },
 });
