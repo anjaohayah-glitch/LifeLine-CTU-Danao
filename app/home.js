@@ -202,22 +202,13 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-
-      {/* ── FLOATING CLOCK ─────────────────────────────
-          Sits outside ScrollView so it stays fixed      */}
-      <View style={styles.floatingClock}>
-        <Text style={styles.floatingClockTime}>{formatTime(currentTime)}</Text>
-        <Text style={styles.floatingClockDate}>{formatDate(currentTime)}</Text>
-      </View>
-
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 0 }}
+        stickyHeaderIndices={[0]}
       >
-        {/* ── HEADER ─────────────────────────────────── */}
+        {/* ── STICKY HEADER (index 0) ─────────────────── */}
         <View style={styles.header}>
-          {/* Top row — greeting + SOS */}
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.headerGreeting}>{getGreeting()}</Text>
@@ -230,8 +221,11 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Clock placeholder — keeps header height consistent */}
-          <View style={styles.clockPlaceholder} />
+          {/* Clock — stays with header when sticky */}
+          <View style={styles.clockRow}>
+            <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
+            <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
+          </View>
 
           {/* Status strip */}
           <View style={styles.statusStrip}>
@@ -432,36 +426,6 @@ const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   container: { flex: 1 },
 
-  // ── FLOATING CLOCK ──────────────────────────────────
-  floatingClock: {
-    position: "absolute",
-    top: 100, // sits below greeting/title
-    left: 24,
-    zIndex: 99,
-    pointerEvents: "none", // doesn't block touches
-  },
-  floatingClockTime: {
-    color: "#fff",
-    fontSize: 42,
-    fontWeight: "200",
-    letterSpacing: 2,
-    textShadowColor: "rgba(0,0,0,0.2)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  floatingClockDate: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 13,
-    marginTop: 2,
-    textShadowColor: "rgba(0,0,0,0.15)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-
-  // ── CLOCK PLACEHOLDER ───────────────────────────────
-  // Keeps header height the same as before
-  clockPlaceholder: { height: 72, marginBottom: 16 },
-
   // ── HEADER ──────────────────────────────────────────
   header: {
     backgroundColor: COLORS.primary,
@@ -486,6 +450,13 @@ const styles = StyleSheet.create({
   },
   sosButtonEmoji: { fontSize: 18 },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
+
+  // ── CLOCK ───────────────────────────────────────────
+  clockRow: { marginBottom: 16 },
+  clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
+  clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
+
+  // ── STATUS STRIP ────────────────────────────────────
   statusStrip: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
