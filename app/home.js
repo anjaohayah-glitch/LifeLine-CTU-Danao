@@ -202,12 +202,22 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[0]}
-      >
-        {/* ── STICKY HEADER (index 0) ─────────────────── */}
+
+      {/* ── COMPACT STICKY BAR — always visible at top ── */}
+      <View style={[styles.stickyBar, { backgroundColor: COLORS.primary }]}>
+        <View style={styles.stickyLeft}>
+          <Text style={styles.stickyTime}>{formatTime(currentTime)}</Text>
+          <Text style={styles.stickyDate}>{formatDate(currentTime)}</Text>
+        </View>
+        <View style={styles.stickyRight}>
+          <View style={[styles.stickyDot, { backgroundColor: isOnline ? "#4CAF50" : "#FF5722" }]} />
+          <Text style={styles.stickyOnline}>{isOnline ? "Online" : "Offline"}</Text>
+        </View>
+      </View>
+
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* ── HEADER — scrolls away ───────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
@@ -221,7 +231,7 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Clock — stays with header when sticky */}
+          {/* Big clock in header — scrolls away with it */}
           <View style={styles.clockRow}>
             <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
             <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
@@ -426,11 +436,25 @@ const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   container: { flex: 1 },
 
+  // ── COMPACT STICKY BAR ──────────────────────────────
+  stickyBar: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 52, paddingBottom: 10,
+  },
+  stickyLeft: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  stickyTime: { color: "#fff", fontSize: 20, fontWeight: "600", letterSpacing: 1 },
+  stickyDate: { color: "rgba(255,255,255,0.7)", fontSize: 11 },
+  stickyRight: { flexDirection: "row", alignItems: "center", gap: 5 },
+  stickyDot: { width: 6, height: 6, borderRadius: 3 },
+  stickyOnline: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600" },
+
   // ── HEADER ──────────────────────────────────────────
   header: {
     backgroundColor: COLORS.primary,
-    paddingTop: 55, paddingBottom: 30,
-    paddingHorizontal: 24,
+    paddingBottom: 30, paddingHorizontal: 24,
+    paddingTop: 12,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -451,7 +475,7 @@ const styles = StyleSheet.create({
   sosButtonEmoji: { fontSize: 18 },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
 
-  // ── CLOCK ───────────────────────────────────────────
+  // ── BIG CLOCK (in scrollable header) ────────────────
   clockRow: { marginBottom: 16 },
   clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
   clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
