@@ -5,10 +5,9 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import * as TaskManager from "expo-task-manager";
 import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
-  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,7 +21,7 @@ import { auth, db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 
 const WEATHER_TASK_NAME = "BACKGROUND_WEATHER_CHECK";
-const WEATHER_API_KEY = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
+const WEATHER_API_KEY = "f1174f62efabb76017f70f21096688b2";
 const DANAO_LAT = 10.52;
 const DANAO_LON = 124.03;
 
@@ -71,9 +70,6 @@ const DISASTER_TIPS = [
   { icon: "🔥", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
 ];
 
-// Header height threshold — when scrolled past this, clock shrinks
-const SCROLL_THRESHOLD = 120;
-
 export default function Home() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
@@ -83,12 +79,10 @@ export default function Home() {
   const [expandedDisaster, setExpandedDisaster] = useState(null);
   const [isSafe, setIsSafe] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [scrolled, setScrolled] = useState(false);
-  const clockAnim = useRef(new Animated.Value(1)).current;
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const { theme } = useSettings();
-  const { bg, card, border, textDark, textLight } = theme;
+  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
   const isDark = theme.bg === "#121212";
 
   const FEATURE_CARDS = QUICK_ACCESS.filter((item) => !item.adminOnly || isAdmin);
@@ -114,37 +108,24 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const unsubAlert = onValue(ref(db, "emergencyAlert"), (snap) => {
+    const alertRef = ref(db, "emergencyAlert");
+    const annRef = ref(db, "announcement");
+    const sosRef = query(ref(db, "sosRequests"), limitToLast(1));
+
+    const unsubAlert = onValue(alertRef, (snap) => {
       const data = snap.val();
       if (data) { setAlertVisible(data.active === true); setAlertMessage(data.message); }
     });
-    const unsubAnn = onValue(ref(db, "announcement"), (snap) => setAnnouncement(snap.val()));
-    const unsubSos = onValue(query(ref(db, "sosRequests"), limitToLast(1)), (snapshot) => {
+    const unsubAnn = onValue(annRef, (snap) => setAnnouncement(snap.val()));
+    const unsubSos = onValue(sosRef, (snapshot) => {
       if (snapshot.exists()) {
         const details = Object.values(snapshot.val())[0];
         if (details.uid !== auth.currentUser?.uid) Vibration.vibrate([500, 300, 500]);
       }
     });
+
     return () => { unsubAlert(); unsubAnn(); unsubSos(); };
   }, []);
-
-  const handleScroll = (event) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const isScrolled = y > SCROLL_THRESHOLD;
-    if (isScrolled !== scrolled) {
-      setScrolled(isScrolled);
-      Animated.timing(clockAnim, {
-        toValue: isScrolled ? 0 : 1,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    }
-  };
-
-  // Interpolated values for clock shrink animation
-  const clockFontSize = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 42] });
-  const clockDateSize = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 13] });
-  const clockMarginBottom = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 16] });
 
   const handleCheckIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -165,7 +146,8 @@ export default function Home() {
     Alert.alert("🚨 Send SOS Alert", "This will broadcast your live location to ALL contacts and admin.", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "🚨 YES, SEND SOS", style: "destructive",
+        text: "🚨 YES, SEND SOS",
+        style: "destructive",
         onPress: async () => {
           try {
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -183,6 +165,7 @@ export default function Home() {
             const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
             const senderName = auth.currentUser?.displayName || auth.currentUser?.email;
             const timestamp = Date.now();
+
             await set(ref(db, `sosRequests/${timestamp}`), {
               uid: auth.currentUser?.uid, name: senderName,
               email: auth.currentUser?.email, latitude, longitude,
@@ -207,6 +190,7 @@ export default function Home() {
                 }
               }
             }, { onlyOnce: true });
+
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert("🚨 SOS Sent!", "✅ All contacts notified\n✅ Admin notified\n\nStay calm. Help is on the way!");
           } catch (e) { Alert.alert("Error", e.message); }
@@ -226,14 +210,9 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0]}
-      >
-        {/* ── STICKY HEADER (index 0) ─────────────────── */}
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* ── HEADER ─────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
@@ -247,15 +226,11 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Animated clock — shrinks when scrolled */}
-          <Animated.View style={{ marginBottom: clockMarginBottom }}>
-            <Animated.Text style={[styles.clockTime, { fontSize: clockFontSize }]}>
-              {formatTime(currentTime)}
-            </Animated.Text>
-            <Animated.Text style={[styles.clockDate, { fontSize: clockDateSize }]}>
-              {formatDate(currentTime)}
-            </Animated.Text>
-          </Animated.View>
+          {/* Clock */}
+          <View style={styles.clockRow}>
+            <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
+            <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
+          </View>
 
           {/* Status strip */}
           <View style={styles.statusStrip}>
@@ -306,7 +281,10 @@ export default function Home() {
             </View>
             <Text style={styles.alertTitle}>🚨 Emergency Alert</Text>
             <Text style={styles.alertMessage}>{alertMessage}</Text>
-            <TouchableOpacity style={styles.alertButton} onPress={() => router.push("/evacuation")}>
+            <TouchableOpacity
+              style={styles.alertButton}
+              onPress={() => router.push("/evacuation")}
+            >
               <Text style={styles.alertButtonText}>View Evacuation Centers →</Text>
             </TouchableOpacity>
           </View>
@@ -329,6 +307,7 @@ export default function Home() {
           <Text style={[styles.sectionTitle, { color: textDark }]}>Quick Access</Text>
           <Text style={[styles.sectionSub, { color: textLight }]}>All features</Text>
         </View>
+
         <View style={styles.quickGrid}>
           {FEATURE_CARDS.map((item, index) => (
             <TouchableOpacity
@@ -348,6 +327,7 @@ export default function Home() {
           <Text style={[styles.sectionTitle, { color: textDark }]}>Disaster Tips</Text>
           <Text style={[styles.sectionSub, { color: textLight }]}>Tap to expand</Text>
         </View>
+
         <View style={styles.disasterGrid}>
           {DISASTER_TIPS.map((item, index) => (
             <View key={index}>
@@ -376,6 +356,8 @@ export default function Home() {
                   {expandedDisaster === index ? "▲" : "▼"}
                 </Text>
               </TouchableOpacity>
+
+              {/* Inline expanded tip */}
               {expandedDisaster === index && (
                 <View style={[styles.expandedTip, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
                   <Text style={styles.expandedTipIcon}>{item.icon}</Text>
@@ -394,6 +376,7 @@ export default function Home() {
             <Text style={styles.liveText}>LIVE</Text>
           </View>
         </View>
+
         <View style={[styles.systemFeed, { backgroundColor: card, borderColor: border }]}>
           {[
             { icon: "🌍", label: "USGS Seismic Watch", status: "Active" },
@@ -480,12 +463,9 @@ const styles = StyleSheet.create({
   },
   sosButtonEmoji: { fontSize: 18 },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
-
-  // ── CLOCK ───────────────────────────────────────────
-  clockTime: { color: "#fff", fontWeight: "200", letterSpacing: 2 },
-  clockDate: { color: "rgba(255,255,255,0.7)", marginTop: 2 },
-
-  // ── STATUS STRIP ────────────────────────────────────
+  clockRow: { marginBottom: 16 },
+  clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
+  clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
   statusStrip: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
@@ -501,7 +481,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginTop: -20,
     borderRadius: 20, padding: 18,
     flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between", borderWidth: 1,
+    justifyContent: "space-between",
+    borderWidth: 1,
     elevation: 12, shadowColor: "#000",
     shadowOpacity: 0.12, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12,
   },
@@ -520,63 +501,119 @@ const styles = StyleSheet.create({
 
   // ── ALERT ───────────────────────────────────────────
   alertCard: {
-    backgroundColor: "#B00020", marginHorizontal: 20, marginTop: 16,
-    borderRadius: 20, padding: 18, borderWidth: 1.5,
-    borderColor: "#FF5252", elevation: 6,
+    backgroundColor: "#B00020",
+    marginHorizontal: 20, marginTop: 16,
+    borderRadius: 20, padding: 18,
+    borderWidth: 1.5, borderColor: "#FF5252",
+    elevation: 6,
   },
   alertTop: { marginBottom: 10 },
-  alertBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start" },
+  alertBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20, paddingHorizontal: 10,
+    paddingVertical: 4, alignSelf: "flex-start",
+  },
   alertBadgeText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
   alertTitle: { color: "#fff", fontWeight: "bold", fontSize: 16, marginBottom: 6 },
   alertMessage: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20, marginBottom: 14 },
-  alertButton: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  alertButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10, padding: 10,
+    alignItems: "center", borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
   alertButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
 
   // ── ANNOUNCEMENT ────────────────────────────────────
-  announcementCard: { marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, overflow: "hidden" },
+  announcementCard: {
+    marginHorizontal: 20, marginTop: 12,
+    borderRadius: 16, padding: 14,
+    flexDirection: "row", alignItems: "center",
+    gap: 12, borderWidth: 1, overflow: "hidden",
+  },
   announcementAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4 },
   announcementIcon: { fontSize: 26, marginLeft: 8 },
   announcementLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 3 },
   announcementText: { fontSize: 13, lineHeight: 18 },
 
   // ── SECTION HEADERS ─────────────────────────────────
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 20, marginTop: 28, marginBottom: 14 },
+  sectionHeader: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 20, marginTop: 28, marginBottom: 14,
+  },
   sectionTitle: { fontSize: 17, fontWeight: "bold" },
   sectionSub: { fontSize: 12 },
 
   // ── QUICK ACCESS ────────────────────────────────────
-  quickGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 10 },
-  quickCard: { width: "22%", borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8, alignItems: "center", elevation: 3, shadowColor: "#000", shadowOpacity: 0.12, shadowOffset: { width: 0, height: 3 }, shadowRadius: 5 },
+  quickGrid: {
+    flexDirection: "row", flexWrap: "wrap",
+    paddingHorizontal: 20, gap: 10,
+  },
+  quickCard: {
+    width: "22%", borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 8,
+    alignItems: "center",
+    elevation: 3, shadowColor: "#000",
+    shadowOpacity: 0.12, shadowOffset: { width: 0, height: 3 }, shadowRadius: 5,
+  },
   quickIcon: { fontSize: 26, marginBottom: 6 },
   quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
 
   // ── DISASTER TIPS ────────────────────────────────────
   disasterGrid: { paddingHorizontal: 20, gap: 8 },
-  disasterCard: { flexDirection: "row", alignItems: "center", borderRadius: 16, padding: 14, gap: 14, borderWidth: 1, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 3 },
-  disasterIconBg: { width: 46, height: 46, borderRadius: 13, justifyContent: "center", alignItems: "center" },
+  disasterCard: {
+    flexDirection: "row", alignItems: "center",
+    borderRadius: 16, padding: 14, gap: 14,
+    borderWidth: 1, elevation: 1,
+    shadowColor: "#000", shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 }, shadowRadius: 3,
+  },
+  disasterIconBg: {
+    width: 46, height: 46, borderRadius: 13,
+    justifyContent: "center", alignItems: "center",
+  },
   disasterIcon: { fontSize: 22 },
   disasterContent: { flex: 1 },
   disasterLabel: { fontWeight: "bold", fontSize: 14 },
   disasterSubLabel: { fontSize: 11, marginTop: 2 },
   disasterChevron: { fontSize: 11 },
-  expandedTip: { borderBottomLeftRadius: 14, borderBottomRightRadius: 14, padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: -4 },
+  expandedTip: {
+    borderBottomLeftRadius: 14, borderBottomRightRadius: 14,
+    padding: 14, flexDirection: "row",
+    gap: 10, alignItems: "flex-start",
+    marginTop: -4,
+  },
   expandedTipIcon: { fontSize: 20 },
   expandedTipText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: "500" },
 
   // ── SYSTEM FEED ──────────────────────────────────────
-  liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  liveBadge: {
+    flexDirection: "row", alignItems: "center",
+    gap: 5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4CAF50" },
   liveText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
   systemFeed: { marginHorizontal: 20, borderRadius: 18, borderWidth: 1, overflow: "hidden" },
   feedItem: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
   feedIcon: { fontSize: 18, width: 28, textAlign: "center" },
   feedLabel: { flex: 1, fontSize: 13, fontWeight: "500" },
-  feedStatus: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  feedStatus: {
+    flexDirection: "row", alignItems: "center",
+    gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
   feedDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#4CAF50" },
   feedStatusText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
 
   // ── BOTTOM NAV ───────────────────────────────────────
-  bottomNav: { flexDirection: "row", borderTopWidth: 1, paddingBottom: 28, paddingTop: 12, position: "absolute", bottom: 0, left: 0, right: 0, elevation: 20, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: -2 } },
+  bottomNav: {
+    flexDirection: "row", borderTopWidth: 1,
+    paddingBottom: 28, paddingTop: 12,
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    elevation: 20, shadowColor: "#000",
+    shadowOpacity: 0.08, shadowOffset: { width: 0, height: -2 },
+  },
   navItem: { flex: 1, alignItems: "center" },
   navIconWrap: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 3 },
   navIcon: { fontSize: 22 },
