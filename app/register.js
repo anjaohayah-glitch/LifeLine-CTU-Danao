@@ -2,7 +2,7 @@
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { ref, set } from "firebase/database";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,30 +20,123 @@ import { CTU_ACADEMIC_DATA } from "../constants/AcademicData";
 import { COLORS } from "../constants/colors";
 import { auth, db } from "../firebase";
 
+const PSGC = "https://psgc.gitlab.io/api";
+
 const ROLES = [
   { key: "student", label: "Student", icon: "🎓", desc: "Enrolled at CTU Danao" },
   { key: "faculty", label: "Faculty Staff", icon: "👨‍🏫", desc: "Teaching or admin staff" },
 ];
 
-const InputField = ({ icon, placeholder, value, onChangeText, keyboardType, secureTextEntry, editable = true, rightElement }) => (
+// ── PHONE INPUT WITH +63 PREFIX ──────────────────────────
+const PhoneField = ({ value, onChangeText }) => (
   <View style={styles.inputWrapper}>
-    <Text style={styles.inputIcon}>{icon}</Text>
+    <View style={styles.phonePrefixBox}>
+      <Text style={styles.phonePrefixFlag}>🇵🇭</Text>
+      <Text style={styles.phonePrefixText}>+63</Text>
+    </View>
+    <View style={styles.phoneDivider} />
     <TextInput
-      style={styles.input}
-      placeholder={placeholder}
+      style={[styles.input, { marginLeft: 8 }]}
+      placeholder="9XX XXX XXXX"
       placeholderTextColor={COLORS.textLight}
       value={value}
-      onChangeText={onChangeText}
-      keyboardType={keyboardType || "default"}
-      secureTextEntry={secureTextEntry}
-      editable={editable}
-      autoCapitalize={keyboardType === "email-address" ? "none" : "words"}
+      onChangeText={(text) => {
+        // Strip leading 0 if user types it
+        const cleaned = text.replace(/^0+/, "").replace(/[^0-9]/g, "");
+        onChangeText(cleaned);
+      }}
+      keyboardType="phone-pad"
+      maxLength={10}
     />
-    {rightElement}
+    <Text style={[styles.inputIcon, { marginLeft: 4 }]}>
+      {value.length === 10 ? "✅" : ""}
+    </Text>
   </View>
 );
 
-const SelectorField = ({ icon, label, value, options, onSelect }) => {
+// ── GENERIC SELECTOR ─────────────────────────────────────
+const SelectorField = ({ icon, label, value, options, onSelect, loading: fieldLoading, disabled }) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = options.filter((o) =>
+    o.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[styles.inputWrapper, disabled && { opacity: 0.5 }]}
+        onPress={() => { if (!disabled) setOpen(true); }}
+      >
+        <Text style={styles.inputIcon}>{icon}</Text>
+        <Text style={[styles.input, !value && { color: COLORS.textLight }]} numberOfLines={1}>
+          {value || label}
+        </Text>
+        {fieldLoading
+          ? <ActivityIndicator size="small" color={COLORS.primary} />
+          : <Text style={{ color: COLORS.textLight, fontSize: 12 }}>▼</Text>
+        }
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => { setOpen(false); setSearch(""); }}>
+        <View style={styles.selectorOverlay}>
+          <View style={styles.selectorBox}>
+            <View style={styles.selectorHandle} />
+            <View style={styles.selectorHeader}>
+              <Text style={styles.selectorTitle}>{label}</Text>
+              <TouchableOpacity onPress={() => { setOpen(false); setSearch(""); }}>
+                <Text style={styles.selectorClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search bar */}
+            <View style={styles.selectorSearch}>
+              <Text style={styles.selectorSearchIcon}>🔍</Text>
+              <TextInput
+                style={styles.selectorSearchInput}
+                placeholder={`Search ${label.toLowerCase()}...`}
+                placeholderTextColor={COLORS.textLight}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch("")}>
+                  <Text style={{ color: COLORS.textLight, fontSize: 14 }}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {filtered.length === 0 ? (
+                <Text style={styles.selectorEmpty}>No results found</Text>
+              ) : filtered.map((option, i) => (
+                <TouchableOpacity
+                  key={option.code || i}
+                  style={[
+                    styles.selectorItem,
+                    value === option.name && styles.selectorItemActive,
+                    i < filtered.length - 1 && { borderBottomWidth: 1, borderColor: COLORS.border },
+                  ]}
+                  onPress={() => { onSelect(option); setOpen(false); setSearch(""); }}
+                >
+                  <Text style={[styles.selectorItemText, value === option.name && styles.selectorItemTextActive]}>
+                    {option.name}
+                  </Text>
+                  {value === option.name && <Text style={styles.selectorCheck}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+};
+
+// ── SIMPLE SELECTOR (for non-API lists) ──────────────────
+const SimpleSelectorField = ({ icon, label, value, options, onSelect }) => {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -54,7 +147,6 @@ const SelectorField = ({ icon, label, value, options, onSelect }) => {
         </Text>
         <Text style={{ color: COLORS.textLight, fontSize: 12 }}>▼</Text>
       </TouchableOpacity>
-
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={styles.selectorOverlay}>
           <View style={styles.selectorBox}>
@@ -90,6 +182,7 @@ const SelectorField = ({ icon, label, value, options, onSelect }) => {
   );
 };
 
+// ── MAIN COMPONENT ───────────────────────────────────────
 export default function Register() {
   const router = useRouter();
 
@@ -102,13 +195,27 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Step 2
+  // Step 2 — Phone
   const [phone, setPhone] = useState("");
-  const [barangay, setBarangay] = useState("");
+
+  // Step 2 — Address (PSGC)
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
+
+  // Step 2 — Academic
   const [college, setCollege] = useState("");
   const [program, setProgram] = useState("");
   const [yearLevel, setYearLevel] = useState("");
   const [schedule, setSchedule] = useState("");
+
+  // Step 2 — Emergency
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyNumber, setEmergencyNumber] = useState("");
 
@@ -119,8 +226,71 @@ export default function Register() {
 
   const availablePrograms = college ? CTU_ACADEMIC_DATA.programs[college] || [] : [];
 
+  // Load provinces on step 2 mount
+  useEffect(() => {
+    if (step !== 2) return;
+    const fetchProvinces = async () => {
+      setLoadingProvinces(true);
+      try {
+        const res = await fetch(`${PSGC}/provinces/`);
+        const data = await res.json();
+        const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+        setProvinces(sorted);
+      } catch (e) {
+        Alert.alert("Network Error", "Could not load provinces. Please check your connection.");
+      } finally {
+        setLoadingProvinces(false);
+      }
+    };
+    fetchProvinces();
+  }, [step]);
+
+  // Load cities when province selected
+  const handleProvinceSelect = async (province) => {
+    setSelectedProvince(province);
+    setSelectedCity(null);
+    setSelectedBarangay(null);
+    setCities([]);
+    setBarangays([]);
+    setLoadingCities(true);
+    try {
+      const res = await fetch(`${PSGC}/provinces/${province.code}/cities-municipalities/`);
+      const data = await res.json();
+      const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+      setCities(sorted);
+    } catch (e) {
+      Alert.alert("Network Error", "Could not load cities.");
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  // Load barangays when city selected
+  const handleCitySelect = async (city) => {
+    setSelectedCity(city);
+    setSelectedBarangay(null);
+    setBarangays([]);
+    setLoadingBarangays(true);
+    try {
+      const res = await fetch(`${PSGC}/cities-municipalities/${city.code}/barangays/`);
+      const data = await res.json();
+      const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+      setBarangays(sorted);
+    } catch (e) {
+      Alert.alert("Network Error", "Could not load barangays.");
+    } finally {
+      setLoadingBarangays(false);
+    }
+  };
+
+  const fullAddress = [
+    selectedBarangay?.name,
+    selectedCity?.name,
+    selectedProvince?.name,
+  ].filter(Boolean).join(", ");
+
   const validateStep1 = () => {
-    if (!role) return "Please select your role (Student or Faculty Staff).";
+    if (!role) return "Please select your role.";
     if (!fullName.trim()) return "Please enter your full name.";
     if (!email.trim()) return "Please enter your email.";
     if (!password.trim()) return "Please enter a password.";
@@ -130,8 +300,10 @@ export default function Register() {
   };
 
   const validateStep2 = () => {
-    if (!phone.trim()) return "Please enter your phone number.";
-    if (!barangay.trim()) return "Please enter your barangay/address.";
+    if (!phone.trim() || phone.length < 10) return "Please enter a valid 10-digit phone number.";
+    if (!selectedProvince) return "Please select your province.";
+    if (!selectedCity) return "Please select your city/municipality.";
+    if (!selectedBarangay) return "Please select your barangay.";
     if (role === "student") {
       if (!college) return "Please select your college.";
       if (!program) return "Please select your program.";
@@ -161,14 +333,20 @@ export default function Register() {
       const uid = userCred.user.uid;
       await updateProfile(userCred.user, { displayName: fullName });
       await set(ref(db, "users/" + uid), {
-        fullName, email, phone, barangay,
+        fullName, email,
+        phone: "+63" + phone,
+        province: selectedProvince?.name || "",
+        city: selectedCity?.name || "",
+        barangay: selectedBarangay?.name || "",
+        fullAddress,
         role,
         college: role === "student" ? college : "",
         program: role === "student" ? program : "",
         yearLevel: role === "student" ? yearLevel : "",
         schedule: role === "student" ? schedule : "",
         addressPublic: true,
-        emergencyName, emergencyNumber,
+        emergencyName,
+        emergencyNumber: emergencyNumber ? "+63" + emergencyNumber.replace(/^0+/, "") : "",
         createdAt: new Date().toISOString(),
       });
       Alert.alert(
@@ -219,29 +397,21 @@ export default function Register() {
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-          {/* ── STEP 1 ─────────────────────────────────── */}
+          {/* ── STEP 1 ───────────────────────────────── */}
           {step === 1 && (
             <>
-              {/* ROLE PICKER */}
               <Text style={styles.sectionTitle}>I am a...</Text>
               <View style={styles.roleRow}>
                 {ROLES.map((r) => (
                   <TouchableOpacity
                     key={r.key}
-                    style={[
-                      styles.roleCard,
-                      role === r.key && styles.roleCardActive,
-                    ]}
+                    style={[styles.roleCard, role === r.key && styles.roleCardActive]}
                     onPress={() => setRole(r.key)}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.roleIcon}>{r.icon}</Text>
-                    <Text style={[styles.roleLabel, role === r.key && styles.roleLabelActive]}>
-                      {r.label}
-                    </Text>
-                    <Text style={[styles.roleDesc, role === r.key && { color: COLORS.primary }]}>
-                      {r.desc}
-                    </Text>
+                    <Text style={[styles.roleLabel, role === r.key && styles.roleLabelActive]}>{r.label}</Text>
+                    <Text style={[styles.roleDesc, role === r.key && { color: COLORS.primary }]}>{r.desc}</Text>
                     {role === r.key && (
                       <View style={styles.roleCheck}>
                         <Text style={styles.roleCheckText}>✓</Text>
@@ -252,35 +422,60 @@ export default function Register() {
               </View>
 
               <Text style={styles.sectionTitle}>Account Information</Text>
-              <InputField
-                icon="👤" placeholder="Full Name"
-                value={fullName} onChangeText={setFullName}
-              />
-              <InputField
-                icon="✉️" placeholder="Email Address"
-                value={email} onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-              <InputField
-                icon="🔒" placeholder="Password (min 6 characters)"
-                value={password} onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                rightElement={
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
-                  </TouchableOpacity>
-                }
-              />
-              <InputField
-                icon="🔒" placeholder="Confirm Password"
-                value={confirmPassword} onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirm}
-                rightElement={
-                  <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-                    <Text style={styles.showText}>{showConfirm ? "Hide" : "Show"}</Text>
-                  </TouchableOpacity>
-                }
-              />
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>👤</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor={COLORS.textLight}
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>✉️</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email Address"
+                  placeholderTextColor={COLORS.textLight}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>🔒</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password (min 6 characters)"
+                  placeholderTextColor={COLORS.textLight}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>🔒</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={COLORS.textLight}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirm}
+                />
+                <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+                  <Text style={styles.showText}>{showConfirm ? "Hide" : "Show"}</Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
                 <Text style={styles.primaryButtonText}>Next →</Text>
@@ -288,40 +483,88 @@ export default function Register() {
             </>
           )}
 
-          {/* ── STEP 2 ─────────────────────────────────── */}
+          {/* ── STEP 2 ───────────────────────────────── */}
           {step === 2 && (
             <>
               {/* Role badge */}
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>
-                  {ROLES.find((r) => r.key === role)?.icon}{" "}
-                  Registering as {ROLES.find((r) => r.key === role)?.label}
+                  {ROLES.find((r) => r.key === role)?.icon} Registering as {ROLES.find((r) => r.key === role)?.label}
                 </Text>
               </View>
 
+              {/* PHONE */}
               <Text style={styles.sectionTitle}>📋 Personal Information</Text>
-              <InputField
-                icon="📱" placeholder="Phone Number"
-                value={phone} onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-              <InputField
-                icon="📍" placeholder="Barangay / Address"
-                value={barangay} onChangeText={setBarangay}
+              <Text style={styles.sectionSub}>Enter your Philippine mobile number</Text>
+              <PhoneField value={phone} onChangeText={setPhone} />
+              {phone.length > 0 && phone.length < 10 && (
+                <Text style={styles.phoneHint}>⚠️ Enter 10 digits after +63 (e.g. 9171234567)</Text>
+              )}
+              {phone.length === 10 && (
+                <Text style={styles.phonePreview}>📱 Full number: +63 {phone}</Text>
+              )}
+
+              {/* ADDRESS */}
+              <Text style={styles.sectionTitle}>📍 Address</Text>
+              <Text style={styles.sectionSub}>Select your province, city, and barangay</Text>
+
+              {/* Province */}
+              {loadingProvinces ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={COLORS.primary} />
+                  <Text style={styles.loadingText}>Loading provinces...</Text>
+                </View>
+              ) : (
+                <SelectorField
+                  icon="🗺"
+                  label="Select Province"
+                  value={selectedProvince?.name || ""}
+                  options={provinces}
+                  onSelect={handleProvinceSelect}
+                />
+              )}
+
+              {/* City */}
+              <SelectorField
+                icon="🏙"
+                label={selectedProvince ? "Select City / Municipality" : "Select Province First"}
+                value={selectedCity?.name || ""}
+                options={cities}
+                onSelect={handleCitySelect}
+                loading={loadingCities}
+                disabled={!selectedProvince || loadingCities}
               />
 
-              {/* Academic info — students only */}
+              {/* Barangay */}
+              <SelectorField
+                icon="🏘"
+                label={selectedCity ? "Select Barangay" : "Select City First"}
+                value={selectedBarangay?.name || ""}
+                options={barangays}
+                onSelect={(b) => setSelectedBarangay(b)}
+                loading={loadingBarangays}
+                disabled={!selectedCity || loadingBarangays}
+              />
+
+              {/* Full address preview */}
+              {fullAddress ? (
+                <View style={styles.addressPreview}>
+                  <Text style={styles.addressPreviewIcon}>📍</Text>
+                  <Text style={styles.addressPreviewText}>{fullAddress}</Text>
+                </View>
+              ) : null}
+
+              {/* ACADEMIC — students only */}
               {role === "student" && (
                 <>
                   <Text style={styles.sectionTitle}>🎓 Academic Information</Text>
                   <Text style={styles.sectionSub}>Select your college, program, year level, and schedule.</Text>
-
-                  <SelectorField
+                  <SimpleSelectorField
                     icon="🏫" label="Select College"
                     value={college} options={CTU_ACADEMIC_DATA.colleges}
                     onSelect={(val) => { setCollege(val); setProgram(""); }}
                   />
-                  <SelectorField
+                  <SimpleSelectorField
                     icon="📚"
                     label={college ? "Select Program" : "Select College First"}
                     value={program} options={availablePrograms}
@@ -329,7 +572,7 @@ export default function Register() {
                   />
                   <View style={styles.rowFields}>
                     <View style={{ flex: 1 }}>
-                      <SelectorField
+                      <SimpleSelectorField
                         icon="📅" label="Year Level"
                         value={yearLevel} options={CTU_ACADEMIC_DATA.yearLevels}
                         onSelect={setYearLevel}
@@ -337,7 +580,7 @@ export default function Register() {
                     </View>
                     <View style={{ width: 10 }} />
                     <View style={{ flex: 1 }}>
-                      <SelectorField
+                      <SimpleSelectorField
                         icon="🌙" label="Schedule"
                         value={schedule} options={CTU_ACADEMIC_DATA.schedules}
                         onSelect={setSchedule}
@@ -347,17 +590,22 @@ export default function Register() {
                 </>
               )}
 
+              {/* EMERGENCY CONTACT */}
               <Text style={styles.sectionTitle}>🆘 Emergency Contact</Text>
               <Text style={styles.sectionSub}>Who should we contact in case of emergency?</Text>
-              <InputField
-                icon="👥" placeholder="Contact Name (optional)"
-                value={emergencyName} onChangeText={setEmergencyName}
-              />
-              <InputField
-                icon="📞" placeholder="Contact Number (optional)"
-                value={emergencyNumber} onChangeText={setEmergencyNumber}
-                keyboardType="phone-pad"
-              />
+
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputIcon}>👥</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact Name (optional)"
+                  placeholderTextColor={COLORS.textLight}
+                  value={emergencyName}
+                  onChangeText={setEmergencyName}
+                />
+              </View>
+
+              <PhoneField value={emergencyNumber} onChangeText={setEmergencyNumber} />
 
               {/* TERMS */}
               <TouchableOpacity style={styles.termsRow} onPress={() => setTermsModal(true)}>
@@ -370,10 +618,7 @@ export default function Register() {
               </TouchableOpacity>
 
               <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.primaryButton, styles.backBtn]}
-                  onPress={() => setStep(1)}
-                >
+                <TouchableOpacity style={[styles.primaryButton, styles.backBtn]} onPress={() => setStep(1)}>
                   <Text style={styles.primaryButtonText}>← Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -426,10 +671,7 @@ export default function Register() {
             >
               <Text style={styles.primaryButtonText}>✅ I Agree & Accept</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.declineButton}
-              onPress={() => setTermsModal(false)}
-            >
+            <TouchableOpacity style={styles.declineButton} onPress={() => setTermsModal(false)}>
               <Text style={styles.declineButtonText}>Decline</Text>
             </TouchableOpacity>
           </View>
@@ -454,7 +696,7 @@ const styles = StyleSheet.create({
   // BOTTOM
   bottomSection: { flex: 0.72, backgroundColor: "#fff", borderTopLeftRadius: 34, borderTopRightRadius: 34, padding: 24, paddingTop: 22 },
 
-  // STEP INDICATOR
+  // STEP
   stepIndicator: { alignItems: "center", marginBottom: 18 },
   stepRow: { flexDirection: "row", alignItems: "center" },
   stepCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
@@ -463,42 +705,44 @@ const styles = StyleSheet.create({
   stepLabels: { flexDirection: "row", justifyContent: "space-between", width: 130, marginTop: 6 },
   stepLabel: { fontSize: 12, fontWeight: "bold" },
 
-  // ROLE PICKER
+  // ROLE
   roleRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
-  roleCard: {
-    flex: 1, borderRadius: 16, borderWidth: 1.5,
-    borderColor: COLORS.border, padding: 14,
-    alignItems: "center", backgroundColor: "#F8FAFB",
-    position: "relative",
-  },
-  roleCardActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: "#FFF5F5",
-  },
+  roleCard: { flex: 1, borderRadius: 16, borderWidth: 1.5, borderColor: COLORS.border, padding: 14, alignItems: "center", backgroundColor: "#F8FAFB", position: "relative" },
+  roleCardActive: { borderColor: COLORS.primary, backgroundColor: "#FFF5F5" },
   roleIcon: { fontSize: 28, marginBottom: 6 },
   roleLabel: { fontWeight: "bold", fontSize: 13, color: COLORS.textDark, marginBottom: 3 },
   roleLabelActive: { color: COLORS.primary },
   roleDesc: { fontSize: 10, color: COLORS.textLight, textAlign: "center" },
-  roleCheck: {
-    position: "absolute", top: 8, right: 8,
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center", alignItems: "center",
-  },
+  roleCheck: { position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 9, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   roleCheckText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
-
-  // ROLE BADGE (step 2)
-  roleBadge: {
-    backgroundColor: "#FFF5F5", borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8,
-    alignSelf: "flex-start", marginBottom: 14,
-    borderWidth: 1, borderColor: "#FFCDD2",
-  },
+  roleBadge: { backgroundColor: "#FFF5F5", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: "flex-start", marginBottom: 14, borderWidth: 1, borderColor: "#FFCDD2" },
   roleBadgeText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12 },
 
   // SECTION
   sectionTitle: { fontSize: 14, fontWeight: "bold", color: COLORS.textDark, marginBottom: 4, marginTop: 10 },
   sectionSub: { color: COLORS.textLight, fontSize: 11, marginBottom: 8 },
+
+  // PHONE
+  phonePrefixBox: { flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 },
+  phonePrefixFlag: { fontSize: 18 },
+  phonePrefixText: { fontWeight: "bold", color: COLORS.textDark, fontSize: 14 },
+  phoneDivider: { width: 1, height: 22, backgroundColor: COLORS.border },
+  phoneHint: { color: "#E65100", fontSize: 11, marginTop: -6, marginBottom: 8, marginLeft: 4 },
+  phonePreview: { color: "#2e7d32", fontSize: 11, marginTop: -6, marginBottom: 8, marginLeft: 4, fontWeight: "600" },
+
+  // ADDRESS PREVIEW
+  addressPreview: {
+    flexDirection: "row", alignItems: "flex-start",
+    backgroundColor: "#E8F5E9", borderRadius: 10,
+    padding: 10, marginBottom: 10, gap: 8,
+    borderWidth: 1, borderColor: "#A5D6A7",
+  },
+  addressPreviewIcon: { fontSize: 16 },
+  addressPreviewText: { flex: 1, fontSize: 12, color: "#2e7d32", fontWeight: "600", lineHeight: 18 },
+
+  // LOADING
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, marginBottom: 10 },
+  loadingText: { color: COLORS.textLight, fontSize: 13 },
 
   // INPUTS
   inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, backgroundColor: COLORS.surface },
@@ -509,11 +753,15 @@ const styles = StyleSheet.create({
 
   // SELECTOR
   selectorOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  selectorBox: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: "70%" },
+  selectorBox: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: "75%" },
   selectorHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
-  selectorHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  selectorHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   selectorTitle: { fontSize: 16, fontWeight: "bold", color: COLORS.textDark },
   selectorClose: { fontSize: 18, color: COLORS.textLight, fontWeight: "bold" },
+  selectorSearch: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 12, backgroundColor: COLORS.surface, gap: 8 },
+  selectorSearchIcon: { fontSize: 14 },
+  selectorSearchInput: { flex: 1, fontSize: 14, color: COLORS.textDark },
+  selectorEmpty: { textAlign: "center", color: COLORS.textLight, padding: 20, fontSize: 13 },
   selectorItem: { paddingVertical: 14, paddingHorizontal: 5, flexDirection: "row", alignItems: "center" },
   selectorItemActive: { backgroundColor: "#FFF5F5" },
   selectorItemText: { flex: 1, fontSize: 14, color: COLORS.textDark },
