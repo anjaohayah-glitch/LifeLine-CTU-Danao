@@ -5,9 +5,10 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import * as TaskManager from "expo-task-manager";
 import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -70,6 +71,9 @@ const DISASTER_TIPS = [
   { icon: "🔥", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
 ];
 
+// Header height threshold — when scrolled past this, clock shrinks
+const SCROLL_THRESHOLD = 120;
+
 export default function Home() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
@@ -79,6 +83,8 @@ export default function Home() {
   const [expandedDisaster, setExpandedDisaster] = useState(null);
   const [isSafe, setIsSafe] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [scrolled, setScrolled] = useState(false);
+  const clockAnim = useRef(new Animated.Value(1)).current;
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const { theme } = useSettings();
@@ -121,6 +127,24 @@ export default function Home() {
     });
     return () => { unsubAlert(); unsubAnn(); unsubSos(); };
   }, []);
+
+  const handleScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const isScrolled = y > SCROLL_THRESHOLD;
+    if (isScrolled !== scrolled) {
+      setScrolled(isScrolled);
+      Animated.timing(clockAnim, {
+        toValue: isScrolled ? 0 : 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  // Interpolated values for clock shrink animation
+  const clockFontSize = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 42] });
+  const clockDateSize = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 13] });
+  const clockMarginBottom = clockAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 16] });
 
   const handleCheckIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -202,22 +226,14 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-
-      {/* ── COMPACT STICKY BAR — always visible at top ── */}
-      <View style={[styles.stickyBar, { backgroundColor: COLORS.primary }]}>
-        <View style={styles.stickyLeft}>
-          <Text style={styles.stickyTime}>{formatTime(currentTime)}</Text>
-          <Text style={styles.stickyDate}>{formatDate(currentTime)}</Text>
-        </View>
-        <View style={styles.stickyRight}>
-          <View style={[styles.stickyDot, { backgroundColor: isOnline ? "#4CAF50" : "#FF5722" }]} />
-          <Text style={styles.stickyOnline}>{isOnline ? "Online" : "Offline"}</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
-        {/* ── HEADER — scrolls away ───────────────────── */}
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        stickyHeaderIndices={[0]}
+      >
+        {/* ── STICKY HEADER (index 0) ─────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
@@ -231,11 +247,15 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Big clock in header — scrolls away with it */}
-          <View style={styles.clockRow}>
-            <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
-            <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
-          </View>
+          {/* Animated clock — shrinks when scrolled */}
+          <Animated.View style={{ marginBottom: clockMarginBottom }}>
+            <Animated.Text style={[styles.clockTime, { fontSize: clockFontSize }]}>
+              {formatTime(currentTime)}
+            </Animated.Text>
+            <Animated.Text style={[styles.clockDate, { fontSize: clockDateSize }]}>
+              {formatDate(currentTime)}
+            </Animated.Text>
+          </Animated.View>
 
           {/* Status strip */}
           <View style={styles.statusStrip}>
@@ -436,25 +456,11 @@ const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   container: { flex: 1 },
 
-  // ── COMPACT STICKY BAR ──────────────────────────────
-  stickyBar: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 52, paddingBottom: 10,
-  },
-  stickyLeft: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  stickyTime: { color: "#fff", fontSize: 20, fontWeight: "600", letterSpacing: 1 },
-  stickyDate: { color: "rgba(255,255,255,0.7)", fontSize: 11 },
-  stickyRight: { flexDirection: "row", alignItems: "center", gap: 5 },
-  stickyDot: { width: 6, height: 6, borderRadius: 3 },
-  stickyOnline: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600" },
-
   // ── HEADER ──────────────────────────────────────────
   header: {
     backgroundColor: COLORS.primary,
-    paddingBottom: 30, paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 55, paddingBottom: 30,
+    paddingHorizontal: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -475,10 +481,9 @@ const styles = StyleSheet.create({
   sosButtonEmoji: { fontSize: 18 },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
 
-  // ── BIG CLOCK (in scrollable header) ────────────────
-  clockRow: { marginBottom: 16 },
-  clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
-  clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
+  // ── CLOCK ───────────────────────────────────────────
+  clockTime: { color: "#fff", fontWeight: "200", letterSpacing: 2 },
+  clockDate: { color: "rgba(255,255,255,0.7)", marginTop: 2 },
 
   // ── STATUS STRIP ────────────────────────────────────
   statusStrip: {
