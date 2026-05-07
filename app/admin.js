@@ -17,6 +17,7 @@ import { useSettings } from "../context/SettingsContext";
 import { db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
+import { sendPushToAllUsers } from "../utils/sendPushNotification"; // 👈 ADD THIS
 
 export default function Admin() {
   const { isAdmin, loading } = useAdmin();
@@ -52,9 +53,26 @@ export default function Admin() {
     return () => unsubscribe();
   }, []);
 
+  // 🚨 UPDATED - now also sends push to closed apps
   const sendAlert = async () => {
-    await set(ref(db, "emergencyAlert"), { active: true, message: "Emergency alert issued!" });
-    Alert.alert("Alert Sent", "🚨 Emergency alert is now live!");
+    try {
+      await set(ref(db, "emergencyAlert"), {
+        active: true,
+        message: "Emergency alert issued!",
+        timestamp: Date.now(),
+      });
+
+      // 👇 Send push to ALL users even if app is closed
+      await sendPushToAllUsers(
+        "🚨 EMERGENCY ALERT — LIFELINE",
+        "A disaster alert has been issued for CTU Danao Campus. Stay safe!",
+        { screen: "/home" }
+      );
+
+      Alert.alert("Alert Sent", "🚨 Emergency alert is now live!");
+    } catch (e) {
+      Alert.alert("Error", "Failed to send alert. Check internet connection.");
+    }
   };
 
   const clearAlert = async () => {
@@ -62,17 +80,30 @@ export default function Admin() {
     Alert.alert("Alert Cleared", "Emergency alert has been turned off.");
   };
 
+  // 📢 UPDATED - now also sends push to closed apps
   const sendAnnouncement = async () => {
     if (!announcement.trim()) {
       Alert.alert("Empty", "Please type an announcement first.");
       return;
     }
-    await set(ref(db, "announcement"), {
-      message: announcement,
-      timestamp: new Date().toISOString(),
-    });
-    setAnnouncement("");
-    Alert.alert("Sent!", "📢 Announcement broadcast to all users.");
+    try {
+      await set(ref(db, "announcement"), {
+        message: announcement,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 👇 Send push to ALL users even if app is closed
+      await sendPushToAllUsers(
+        "📢 New Announcement — LIFELINE",
+        announcement,
+        { screen: "/home" }
+      );
+
+      setAnnouncement("");
+      Alert.alert("Sent!", "📢 Announcement broadcast to all users.");
+    } catch (e) {
+      Alert.alert("Error", "Failed to send announcement.");
+    }
   };
 
   const deleteSOS = async (id) => {
@@ -84,6 +115,12 @@ export default function Admin() {
     try {
       const found = await checkEarthquakes();
       if (found) {
+        // 👇 Also push notify when earthquake detected
+        await sendPushToAllUsers(
+          "🌍 EARTHQUAKE DETECTED — LIFELINE",
+          "A significant earthquake has been detected near Danao City. Take cover!",
+          { screen: "/home" }
+        );
         Alert.alert(
           "🌍 Earthquake Detected!",
           "A significant earthquake has been detected near Danao City.\n\nEmergency alert has been automatically activated for ALL users."
@@ -157,7 +194,7 @@ export default function Admin() {
           <View>
             <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>Emergency Alert Control</Text>
             <Text style={[styles.description, { color: textMid }]}>
-              Sending an alert will show a banner to ALL users instantly.
+              Sending an alert will notify ALL users instantly — even if their app is closed.
             </Text>
             <TouchableOpacity style={styles.sosButton} onPress={sendAlert}>
               <Text style={styles.buttonText}>🚨 SEND EMERGENCY ALERT</Text>
@@ -206,7 +243,7 @@ export default function Admin() {
           <View>
             <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>Broadcast Announcement</Text>
             <Text style={[styles.description, { color: textMid }]}>
-              Message will be shown to all users on their home screen.
+              Message will be sent to ALL users — even if their app is closed.
             </Text>
             <TextInput
               style={[styles.input, { backgroundColor: surface, borderColor: border, color: textDark }]}
@@ -230,8 +267,6 @@ export default function Admin() {
             <Text style={[styles.description, { color: textMid }]}>
               Monitor real-time earthquake activity near Danao City using USGS data. If detected, all users are automatically alerted.
             </Text>
-
-            {/* STATUS CARD */}
             <View style={[styles.quakeStatusCard, { backgroundColor: card, borderColor: border }]}>
               <Text style={styles.quakeStatusIcon}>🌍</Text>
               <View style={{ flex: 1 }}>
@@ -241,8 +276,6 @@ export default function Admin() {
                 </Text>
               </View>
             </View>
-
-            {/* MANUAL CHECK */}
             <TouchableOpacity
               style={[styles.quakeCheckButton, checkingQuake && { opacity: 0.7 }]}
               onPress={handleCheckEarthquake}
@@ -253,21 +286,15 @@ export default function Admin() {
                 : <Text style={styles.buttonText}>🔍 CHECK EARTHQUAKES NOW</Text>
               }
             </TouchableOpacity>
-
-            {/* VIEW USGS MAP */}
             <TouchableOpacity
               style={styles.quakeViewButton}
               onPress={() => Linking.openURL("https://earthquake.usgs.gov/earthquakes/map/")}
             >
               <Text style={styles.buttonText}>🌍 VIEW USGS EARTHQUAKE MAP</Text>
             </TouchableOpacity>
-
-            {/* CLEAR EARTHQUAKE ALERT */}
             <TouchableOpacity style={styles.clearButton} onPress={clearAlert}>
               <Text style={styles.buttonText}>✅ CLEAR EMERGENCY ALERT</Text>
             </TouchableOpacity>
-
-            {/* INFO BOX */}
             <View style={[styles.quakeInfoBox, { backgroundColor: card, borderColor: "#4527A0" }]}>
               <Text style={[styles.quakeInfoTitle, { color: "#4527A0" }]}>⚙️ How Automatic Detection Works</Text>
               <Text style={[styles.quakeInfoText, { color: textMid }]}>
