@@ -16,6 +16,17 @@ const DANAO_LAT = 10.52;
 const DANAO_LON = 124.03;
 const USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
 
+// ── HELPER: Get weather emoji ─────────────────────────────
+const getWeatherEmoji = (main) => {
+  const map = {
+    Thunderstorm: "⛈", Drizzle: "🌦", Rain: "🌧",
+    Snow: "❄️", Clear: "☀️", Clouds: "☁️",
+    Mist: "🌫", Fog: "🌫", Haze: "🌫",
+    Tornado: "🌪", Squall: "💨",
+  };
+  return map[main] || "🌡";
+};
+
 // ── HELPER: Get all user FCM tokens ──────────────────────
 const getAllTokens = async () => {
   try {
@@ -29,9 +40,12 @@ const getAllTokens = async () => {
 };
 
 // ── HELPER: Send notification to all users ───────────────
-const sendToAll = async (title, body, data = {}) => {
+const sendToAll = async (title, body, data = {}, vibrate = [0, 500, 200, 500, 200, 500]) => {
   const tokens = await getAllTokens();
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    console.log("No tokens found — no users to notify");
+    return;
+  }
 
   const message = {
     notification: { title, body },
@@ -43,7 +57,7 @@ const sendToAll = async (title, body, data = {}) => {
         channelId: "lifeline_alerts",
         priority: "max",
         defaultVibrateTimings: false,
-        vibrateTimingsMillis: [0, 500, 200, 500, 200, 500],
+        vibrateTimingsMillis: vibrate,
         color: "#B00020",
       },
     },
@@ -68,52 +82,38 @@ const sendToAll = async (title, body, data = {}) => {
 };
 
 // ── TRIGGER 1: Admin Emergency Alert ─────────────────────
-// Fires instantly when admin sets emergencyAlert in Firebase
 exports.onEmergencyAlert = onValueWritten(
   { ref: "/emergencyAlert", region: "us-central1" },
   async (event) => {
     const after = event.data.after.val();
     if (!after || after.active !== true) return;
-
     console.log("🚨 Emergency alert detected — notifying all users");
-
     await sendToAll(
       "🚨 EMERGENCY ALERT — LIFELINE",
       after.message || "Emergency alert issued for CTU Danao Campus! Open the app immediately.",
-      { type: "emergency", screen: "evacuation" }
+      { type: "emergency", screen: "evacuation" },
+      [0, 1000, 300, 1000, 300, 1000]
     );
   }
 );
 
 // ── TRIGGER 2: SOS Request ───────────────────────────────
-// Fires instantly when any user sends an SOS
 exports.onSOSRequest = onValueWritten(
   { ref: "/sosRequests/{timestamp}", region: "us-central1" },
   async (event) => {
     const sos = event.data.after.val();
     if (!sos) return;
-
     console.log(`🆘 SOS received from ${sos.name}`);
-
-    // Get contacts of the SOS sender
     try {
       const contactsSnapshot = await db.ref(`contacts/${sos.uid}`).get();
       if (!contactsSnapshot.exists()) return;
-
-      const contacts = Object.values(contactsSnapshot.val())
-        .filter((c) => c.status === "accepted");
-
-      // Get tokens only for the sender's contacts
+      const contacts = Object.values(contactsSnapshot.val()).filter((c) => c.status === "accepted");
       const contactTokens = [];
       for (const contact of contacts) {
         const tokenSnapshot = await db.ref(`fcmTokens/${contact.uid}`).get();
-        if (tokenSnapshot.exists()) {
-          contactTokens.push(tokenSnapshot.val());
-        }
+        if (tokenSnapshot.exists()) contactTokens.push(tokenSnapshot.val());
       }
-
       if (contactTokens.length === 0) return;
-
       const message = {
         notification: {
           title: "🆘 SOS RECEIVED — LIFELINE",
@@ -136,12 +136,9 @@ exports.onSOSRequest = onValueWritten(
             color: "#B00020",
           },
         },
-        apns: {
-          payload: { aps: { sound: "default", badge: 1 } },
-        },
+        apns: { payload: { aps: { sound: "default", badge: 1 } } },
         tokens: contactTokens,
       };
-
       const response = await getMessaging().sendEachForMulticast(message);
       console.log(`✅ SOS notification sent to ${response.successCount} contacts`);
     } catch (e) {
@@ -150,13 +147,13 @@ exports.onSOSRequest = onValueWritten(
   }
 );
 
-// ── TRIGGER 3: Weather + Earthquake Check (every 15 min) ─
+// ── TRIGGER 3: Weather + Earthquake (every 15 min) ───────
 exports.scheduledWeatherCheck = onSchedule(
   { schedule: "every 15 minutes", region: "us-central1" },
   async () => {
     console.log("⏰ Running scheduled weather + earthquake check");
 
-    // ── WEATHER CHECK ────────────────────────────────────
+    // WEATHER CHECK
     try {
       const weatherRes = await axios.get(
         `https://api.openweathermap.org/data/2.5/weather?lat=${DANAO_LAT}&lon=${DANAO_LON}&appid=${WEATHER_API_KEY}&units=metric`
@@ -172,44 +169,41 @@ exports.scheduledWeatherCheck = onSchedule(
 
       if (windKmh >= 62) {
         title = "🌪 TYPHOON WARNING — LIFELINE";
-        body = `Winds at ${windKmh.toFixed(0)} km/h detected near Danao City! Take shelter immediately and proceed to the nearest evacuation center.`;
+        body = `Winds at ${windKmh.toFixed(0)} km/h near Danao City! Take shelter immediately and proceed to the nearest evacuation center.`;
       } else if (windKmh >= 39) {
         title = "⚠️ Strong Wind Warning — LIFELINE";
         body = `Wind speed of ${windKmh.toFixed(0)} km/h detected. Stay indoors and avoid open areas.`;
       } else if (condition === "Thunderstorm") {
         title = "⛈ Thunderstorm Warning — LIFELINE";
-        body = "A thunderstorm has been detected near Danao City. Stay indoors and away from windows.";
+        body = "Thunderstorm detected near Danao City. Stay indoors and away from windows.";
       } else if (condition === "Rain") {
         title = "🌧 Heavy Rain Advisory — LIFELINE";
-        body = `Heavy rain detected near Danao City (${temp}°C). Avoid flood-prone areas and stay safe.`;
+        body = `Heavy rain near Danao City (${temp}°C). Avoid flood-prone areas and stay safe.`;
       } else if (condition === "Squall" || condition === "Tornado") {
         title = "🌪 Severe Weather Alert — LIFELINE";
-        body = "Severe weather detected near Danao City. Take immediate shelter.";
+        body = "Severe weather near Danao City. Take immediate shelter.";
       }
 
       if (title && body) {
-        // Check last weather notification time to avoid spam
         const lastNotifSnap = await db.ref("systemLogs/lastWeatherNotif").get();
         const lastNotif = lastNotifSnap.exists() ? lastNotifSnap.val() : 0;
         const oneHour = 60 * 60 * 1000;
-
         if (Date.now() - lastNotif >= oneHour) {
           await sendToAll(title, body, { type: "weather", screen: "weather" });
           await db.ref("systemLogs/lastWeatherNotif").set(Date.now());
           console.log(`✅ Weather alert sent: ${title}`);
         }
       } else {
-        console.log(`☀️ No weather warning — ${condition}, ${windKmh.toFixed(0)} km/h`);
+        console.log(`☀️ No warning — ${condition}, ${windKmh.toFixed(0)} km/h`);
       }
     } catch (e) {
       console.log("Weather check error:", e);
     }
 
-    // ── EARTHQUAKE CHECK ─────────────────────────────────
+    // EARTHQUAKE CHECK
     try {
       const quakeRes = await axios.get(USGS_URL);
       const quakeData = quakeRes.data;
-
       const nearbyQuake = quakeData.features.find((quake) => {
         const [lon, lat] = quake.geometry.coordinates;
         const mag = quake.properties.mag;
@@ -221,34 +215,165 @@ exports.scheduledWeatherCheck = onSchedule(
         const mag = nearbyQuake.properties.mag;
         const place = nearbyQuake.properties.place;
         const quakeTime = nearbyQuake.properties.time;
-
-        // Avoid duplicate earthquake notifications
         const lastQuakeSnap = await db.ref("systemLogs/lastQuakeNotif").get();
         const lastQuake = lastQuakeSnap.exists() ? lastQuakeSnap.val() : 0;
-
         if (quakeTime > lastQuake) {
-          // Auto-activate emergency alert for all users
           await db.ref("emergencyAlert").set({
             active: true,
             message: `🌍 EARTHQUAKE DETECTED: Magnitude ${mag} near ${place}. Proceed to nearest evacuation center immediately!`,
             timestamp: Date.now(),
             type: "seismic_alert",
           });
-
           await sendToAll(
             "🌍 EARTHQUAKE ALERT — LIFELINE",
-            `Magnitude ${mag} earthquake detected near ${place}! Open LIFELINE for evacuation instructions immediately.`,
-            { type: "earthquake", screen: "evacuation" }
+            `Magnitude ${mag} earthquake near ${place}! Open LIFELINE for evacuation instructions immediately.`,
+            { type: "earthquake", screen: "evacuation" },
+            [0, 1000, 200, 1000, 200, 1000]
           );
-
           await db.ref("systemLogs/lastQuakeNotif").set(quakeTime);
           console.log(`✅ Earthquake alert sent: Mag ${mag} at ${place}`);
         }
       } else {
-        console.log("✅ No significant earthquake detected near Danao");
+        console.log("✅ No significant earthquake near Danao");
       }
     } catch (e) {
       console.log("Earthquake check error:", e);
+    }
+  }
+);
+
+// ── TRIGGER 4: Daily Morning Weather Briefing (6AM) ──────
+exports.dailyMorningWeather = onSchedule(
+  {
+    schedule: "0 6 * * *",
+    timeZone: "Asia/Manila",
+    region: "us-central1",
+  },
+  async () => {
+    console.log("🌅 Sending daily morning weather briefing...");
+    try {
+      const weatherRes = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${DANAO_LAT}&lon=${DANAO_LON}&appid=${WEATHER_API_KEY}&units=metric`
+      );
+      const data = weatherRes.data;
+      const condition = data?.weather?.[0]?.description || "clear";
+      const weatherMain = data?.weather?.[0]?.main || "Clear";
+      const temp = Math.round(data?.main?.temp || 0);
+      const feelsLike = Math.round(data?.main?.feels_like || 0);
+      const humidity = data?.main?.humidity || 0;
+      const windKmh = ((data?.wind?.speed || 0) * 3.6).toFixed(0);
+      const emoji = getWeatherEmoji(weatherMain);
+      const windNum = parseFloat(windKmh);
+
+      let warningLine = "";
+      if (windNum >= 62) warningLine = "🌪 TYPHOON WARNING — Take shelter immediately!";
+      else if (windNum >= 39) warningLine = "⚠️ Strong winds today — Stay cautious!";
+      else if (weatherMain === "Thunderstorm") warningLine = "⛈ Thunderstorm expected — Stay indoors!";
+      else if (weatherMain === "Rain") warningLine = "🌧 Rain expected — Bring an umbrella!";
+      else if (weatherMain === "Clear") warningLine = "☀️ Clear skies — Great day ahead!";
+      else warningLine = "✅ Weather looks stable — Stay prepared!";
+
+      const title = `${emoji} Good Morning, CTU Danao! — Daily Weather`;
+      const body = `${temp}°C | Feels like ${feelsLike}°C | ${condition}\n💧 Humidity: ${humidity}% | 💨 Wind: ${windKmh} km/h\n\n${warningLine}`;
+
+      await sendToAll(title, body, { type: "daily_weather", screen: "weather" }, [0, 300, 100, 300]);
+
+      // Save to Firebase for in-app display
+      await db.ref("dailyWeather").set({
+        temp, feelsLike, condition, weatherMain,
+        humidity, windKmh, emoji, warningLine,
+        timestamp: Date.now(),
+      });
+
+      console.log(`✅ Morning briefing sent: ${temp}°C, ${condition}`);
+    } catch (e) {
+      console.log("Morning briefing error:", e);
+    }
+  }
+);
+
+// ── TRIGGER 5: Evening Forecast Summary (6PM) ────────────
+exports.eveningWeatherSummary = onSchedule(
+  {
+    schedule: "0 18 * * *",
+    timeZone: "Asia/Manila",
+    region: "us-central1",
+  },
+  async () => {
+    console.log("🌙 Sending evening weather summary...");
+    try {
+      const forecastRes = await axios.get(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${DANAO_LAT}&lon=${DANAO_LON}&appid=${WEATHER_API_KEY}&units=metric&cnt=8`
+      );
+      const data = forecastRes.data;
+      const tonight = data?.list?.[0];
+      const tomorrow = data?.list?.[4];
+      if (!tonight || !tomorrow) return;
+
+      const tonightTemp = Math.round(tonight?.main?.temp || 0);
+      const tonightCondition = tonight?.weather?.[0]?.description || "clear";
+      const tomorrowTemp = Math.round(tomorrow?.main?.temp || 0);
+      const tomorrowCondition = tomorrow?.weather?.[0]?.description || "clear";
+      const tomorrowRain = Math.round((tomorrow?.pop || 0) * 100);
+      const tomorrowMain = tomorrow?.weather?.[0]?.main || "Clear";
+      const tomorrowEmoji = getWeatherEmoji(tomorrowMain);
+
+      let tomorrowTip = "";
+      if (tomorrowRain > 70) tomorrowTip = "⚠️ High rain chance — Prepare your go-bag tonight!";
+      else if (tomorrowRain > 40) tomorrowTip = "🌂 Moderate rain chance — Bring an umbrella!";
+      else tomorrowTip = "✅ Tomorrow looks okay — Stay prepared as always!";
+
+      const title = `🌙 Good Evening! — LIFELINE Weather Update`;
+      const body = `Tonight: ${tonightTemp}°C — ${tonightCondition}\n${tomorrowEmoji} Tomorrow: ${tomorrowTemp}°C — ${tomorrowCondition}\n🌧 Rain chance: ${tomorrowRain}%\n\n${tomorrowTip}`;
+
+      await sendToAll(title, body, { type: "evening_weather", screen: "weather" }, [0, 300, 100, 300]);
+      console.log(`✅ Evening summary sent: Tomorrow ${tomorrowTemp}°C, ${tomorrowRain}% rain`);
+    } catch (e) {
+      console.log("Evening summary error:", e);
+    }
+  }
+);
+
+// ── TRIGGER 6: Noon Weather Check (12PM) ─────────────────
+exports.noonWeatherCheck = onSchedule(
+  {
+    schedule: "0 12 * * *",
+    timeZone: "Asia/Manila",
+    region: "us-central1",
+  },
+  async () => {
+    console.log("☀️ Running noon weather check...");
+    try {
+      const weatherRes = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${DANAO_LAT}&lon=${DANAO_LON}&appid=${WEATHER_API_KEY}&units=metric`
+      );
+      const data = weatherRes.data;
+      const weatherMain = data?.weather?.[0]?.main || "Clear";
+      const condition = data?.weather?.[0]?.description || "clear";
+      const temp = Math.round(data?.main?.temp || 0);
+      const windKmh = ((data?.wind?.speed || 0) * 3.6).toFixed(0);
+      const emoji = getWeatherEmoji(weatherMain);
+      const windNum = parseFloat(windKmh);
+
+      // Only send noon update if there's a warning
+      // or if weather changed significantly
+      if (windNum >= 39 || weatherMain === "Thunderstorm" || weatherMain === "Rain") {
+        const title = `${emoji} Noon Weather Alert — LIFELINE`;
+        const body = `Current: ${temp}°C — ${condition} | 💨 Wind: ${windKmh} km/h\n\n${windNum >= 62
+          ? "🌪 TYPHOON WARNING — Take shelter now!"
+          : windNum >= 39
+            ? "⚠️ Strong winds — Be careful outside!"
+            : weatherMain === "Thunderstorm"
+              ? "⛈ Thunderstorm active — Stay indoors!"
+              : "🌧 Rain ongoing — Avoid flood-prone areas!"
+        }`;
+        await sendToAll(title, body, { type: "noon_weather", screen: "weather" }, [0, 300, 100, 300]);
+        console.log(`✅ Noon weather alert sent: ${temp}°C, ${condition}`);
+      } else {
+        console.log(`☀️ Noon check — no alert needed: ${temp}°C, ${condition}`);
+      }
+    } catch (e) {
+      console.log("Noon weather check error:", e);
     }
   }
 );
