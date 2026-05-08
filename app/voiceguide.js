@@ -33,7 +33,7 @@ const GUIDES = {
     ],
   },
   fil: {
-    label: "Filipino", flag: "🇵🇭",
+    label: "Tagalog", flag: "🇵🇭",
     disasters: [
       { id: 1, title: "Lindol", icon: "🌍", color: "#4527A0", steps: ["Lindol! Manatiling kalmado. Huwag matakot.", "Unang hakbang. Lumuhod agad sa iyong mga kamay at tuhod.", "Ikalawang hakbang. Magtago sa ilalim ng matibay na mesa. Protektahan ang ulo at leeg.", "Ikatlong hakbang. Manatili hanggang huminto ang pagyanig. Huwag tumakbo palabas.", "Ikaapat na hakbang. Lumayo sa mga bintana at mabibigat na kasangkapan.", "Ikalimang hakbang. Pagkatapos ng pagyanig, suriin ang mga sugat. Maingat na lumabas.", "Pumunta sa pinakamalapit na lugar ng paglikas sa CTU Danao. Manatiling ligtas."] },
       { id: 2, title: "Bagyo", icon: "🌪", color: "#1565C0", steps: ["Babala sa bagyo! Manatiling kalmado at makinig nang mabuti.", "Unang hakbang. Manatili sa loob ng bahay. Huwag lumabas habang may bagyo.", "Ikalawang hakbang. Lumayo sa mga bintana at salamin na pinto.", "Ikatlong hakbang. I-unplug ang lahat ng elektrikal na kagamitan.", "Ikaapat na hakbang. Subaybayan ang mga update sa radyo o telepono.", "Ikalimang hakbang. Kung may baha sa loob, pumunta sa pinakamataas na palapag.", "Hintayin ang opisyal na pahintulot bago lumabas. Manatiling ligtas."] },
@@ -168,7 +168,7 @@ export default function VoiceGuide() {
         <View style={styles.infoContent}>
           <Text style={[styles.infoTitle, { color: "#1565C0" }]}>How to use</Text>
           <Text style={[styles.infoDesc, { color: textMid }]}>
-            Select a disaster type below, then tap "Start Voice Guide" to hear step-by-step evacuation instructions. Tap any step to replay it.
+            Select a disaster type below, then tap Start Voice Guide to hear step-by-step evacuation instructions. Tap any step to replay it.
           </Text>
         </View>
       </View>

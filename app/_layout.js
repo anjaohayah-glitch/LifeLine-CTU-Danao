@@ -261,6 +261,8 @@ function AppLayout() {
         AsyncStorage.setItem("userUID", user.uid).catch(() => {});
         unsubContactReq = setupContactRequestListener();
         unsubSafety = setupSafetyListener();
+      } else {
+        AsyncStorage.removeItem("userUID").catch(() => {});
       }
     });
 

@@ -76,7 +76,7 @@ export default function Settings() {
   const LANGUAGES = [
     { key: "en", label: "English", flag: "🇺🇸" },
     { key: "ceb", label: "Cebuano", flag: "🇵🇭" },
-    { key: "fil", label: "Filipino", flag: "🇵🇭" },
+    { key: "fil", label: "Tagalog", flag: "🇵🇭" },
   ];
 
   const VOICE_SPEEDS = [
@@ -176,7 +176,7 @@ export default function Settings() {
             ))}
           </View>
           <Text style={[styles.langNote, { color: textLight }]}>
-            {language === "en" ? "🇺🇸 App is in English" : language === "ceb" ? "🇵🇭 Ang app kay Cebuano" : "🇵🇭 Ang app ay Filipino"}
+            {language === "en" ? "🇺🇸 App is in English" : language === "ceb" ? "🇵🇭 Ang app kay Cebuano" : "🇵🇭 Ang app ay Tagalog"}
           </Text>
         </SectionCard>
 

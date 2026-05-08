@@ -1,7 +1,8 @@
 // app/login.js
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
+import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +29,17 @@ export default function Login() {
   const [resetLoading, setResetLoading] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
+      await AsyncStorage.setItem("userUID", user.uid);
+      router.replace("/home");
+    });
+
+    return unsubscribe;
+  }, [router]);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Missing Fields", "Please enter your email and password.");
@@ -35,7 +47,8 @@ export default function Login() {
     }
     try {
       setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      await AsyncStorage.setItem("userUID", credential.user.uid);
       router.replace("/home");
     } catch (error) {
       Alert.alert("Login Failed", error.message);
@@ -197,7 +210,7 @@ export default function Login() {
               </View>
               <Text style={styles.modalTitle}>Reset Password</Text>
               <Text style={styles.modalSub}>
-                Enter your registered email and we'll send you a reset link instantly.
+                Enter your registered email and we&apos;ll send you a reset link instantly.
               </Text>
             </View>
 
