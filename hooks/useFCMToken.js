@@ -1,29 +1,36 @@
-// hooks/useFCMToken.js
-import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ref, set } from "firebase/database";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { auth, db } from "../firebase";
+import { getNotifications, isAndroidExpoGo } from "../utils/notifications";
+
+const PROJECT_ID = "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df";
 
 export function useFCMToken() {
   useEffect(() => {
     const saveToken = async () => {
       try {
-        // Only works on real device with built APK
-        const user = auth.currentUser;
-        if (!user) {
-          console.log("No user logged in — skipping token save");
+        if (isAndroidExpoGo) {
+          console.log("Skipping push token save in Android Expo Go.");
           return;
         }
 
-        // Request permission first
+        const user = auth.currentUser;
+        if (!user) {
+          console.log("No user logged in - skipping token save");
+          return;
+        }
+
+        const Notifications = await getNotifications();
+        if (!Notifications) return;
+
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== "granted") {
           console.log("Notification permission denied");
           return;
         }
 
-        // Set up Android notification channel
         if (Platform.OS === "android") {
           await Notifications.setNotificationChannelAsync("lifeline_alerts", {
             name: "LIFELINE Alerts",
@@ -47,9 +54,8 @@ export function useFCMToken() {
           });
         }
 
-        // Get Expo push token
         const tokenData = await Notifications.getExpoPushTokenAsync({
-          projectId: "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df",
+          projectId: PROJECT_ID,
         });
 
         const token = tokenData.data;
@@ -58,20 +64,17 @@ export function useFCMToken() {
           return;
         }
 
-        console.log("✅ Push token:", token);
-
-        // Save to Firebase in TWO places
+        console.log("Push token:", token);
         await set(ref(db, `fcmTokens/${user.uid}`), token);
         await set(ref(db, `users/${user.uid}/expoPushToken`), token);
-
-        console.log("✅ Token saved to Firebase successfully");
-
+        await AsyncStorage.setItem("expoPushToken", token);
+        await AsyncStorage.setItem("userUID", user.uid);
+        console.log("Token saved to Firebase successfully");
       } catch (e) {
         console.log("FCM token error:", e.message);
       }
     };
 
-    // Small delay to make sure auth is ready
     const timer = setTimeout(saveToken, 2000);
     return () => clearTimeout(timer);
   }, []);

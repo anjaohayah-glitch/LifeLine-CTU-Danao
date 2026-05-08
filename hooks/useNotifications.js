@@ -1,22 +1,23 @@
-// hooks/useNotifications.js
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { ref, set } from "firebase/database";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { auth, db } from "../firebase";
+import { getNotifications, isAndroidExpoGo } from "../utils/notifications";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+const PROJECT_ID = "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df";
 
 export async function registerForPushNotifications() {
+  if (isAndroidExpoGo) {
+    console.log("Push notifications require a development build on Android.");
+    return null;
+  }
+
   if (!Device.isDevice) return null;
+
+  const Notifications = await getNotifications();
+  if (!Notifications) return null;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -39,7 +40,6 @@ export async function registerForPushNotifications() {
       showBadge: true,
     });
 
-    // Extra channel for emergency
     await Notifications.setNotificationChannelAsync("lifeline_emergency", {
       name: "LIFELINE Emergency",
       importance: Notifications.AndroidImportance.MAX,
@@ -48,15 +48,12 @@ export async function registerForPushNotifications() {
       sound: "default",
       enableVibrate: true,
       showBadge: true,
-      bypassDnd: true, // bypasses Do Not Disturb for emergencies
+      bypassDnd: true,
     });
   }
 
   try {
-    const token = (await Notifications.getExpoPushTokenAsync({
-      projectId: "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df",
-    })).data;
-    return token;
+    return (await Notifications.getExpoPushTokenAsync({ projectId: PROJECT_ID })).data;
   } catch (e) {
     console.log("Push token error:", e);
     return null;
@@ -69,23 +66,24 @@ export function useNotifications() {
   const responseListener = useRef();
 
   useEffect(() => {
-    // Register and save token
+    let mounted = true;
+
     registerForPushNotifications().then((token) => {
-      if (token && auth.currentUser) {
-        set(ref(db, "users/" + auth.currentUser.uid + "/expoPushToken"), token);
-        set(ref(db, "fcmTokens/" + auth.currentUser.uid), token);
+      if (mounted && token && auth.currentUser) {
+        set(ref(db, `users/${auth.currentUser.uid}/expoPushToken`), token);
+        set(ref(db, `fcmTokens/${auth.currentUser.uid}`), token);
       }
     });
 
-    // Listen for notifications received while app is open
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        console.log("✅ Notification received:", notification.request.content.title);
+    const setupListeners = async () => {
+      const Notifications = await getNotifications();
+      if (!mounted || !Notifications) return;
+
+      notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+        console.log("Notification received:", notification.request.content.title);
       });
 
-    // Listen for notification tapped by user
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
+      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
         const screen = response.notification.request.content.data?.screen;
         if (screen) {
           try {
@@ -95,11 +93,14 @@ export function useNotifications() {
           }
         }
       });
+    };
 
-    // ✅ FIXED — use .remove() instead of removeNotificationSubscription
+    setupListeners();
+
     return () => {
+      mounted = false;
       notificationListener.current?.remove();
       responseListener.current?.remove();
     };
-  }, []);
+  }, [router]);
 }

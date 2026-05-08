@@ -1,6 +1,5 @@
 // app/weather.js
 import * as Location from "expo-location";
-import * as Notifications from "expo-notifications";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +15,7 @@ import {
 import { WebView } from "react-native-webview";
 import { useSettings } from "../context/SettingsContext";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
+import { getNotifications, scheduleNotification } from "../utils/notifications";
 
 const API_KEY = "f1174f62efabb76017f70f21096688b2";
 
@@ -27,14 +27,6 @@ const WEATHER_ICONS = {
 
 const HOURS = ["12AM","1AM","2AM","3AM","4AM","5AM","6AM","7AM","8AM","9AM","10AM","11AM",
   "12PM","1PM","2PM","3PM","4PM","5PM","6PM","7PM","8PM","9PM","10PM","11PM"];
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 export default function Weather() {
   const [weather, setWeather] = useState(null);
@@ -56,6 +48,9 @@ export default function Weather() {
 
   const registerForNotifications = async () => {
     try {
+      const Notifications = await getNotifications();
+      if (!Notifications) return;
+
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== "granted") console.log("Notification permission not granted");
     } catch (e) { console.log(e); }
@@ -64,12 +59,11 @@ export default function Weather() {
   const sendWeatherNotification = async (warning) => {
     if (notificationSentRef.current) return;
     notificationSentRef.current = true;
-    await Notifications.scheduleNotificationAsync({
+    await scheduleNotification({
       content: {
         title: "⚠️ LIFELINE Weather Alert",
         body: warning.text,
         sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
         color: warning.color,
         vibrate: [0, 500, 200, 500, 200, 500],
       },
@@ -153,7 +147,7 @@ export default function Weather() {
       } else {
         Alert.alert("✅ No Earthquake Detected", "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours.");
       }
-    } catch (e) {
+    } catch (_e) {
       Alert.alert("Error", "Could not check earthquake data. Check your internet connection.");
     } finally {
       setCheckingQuake(false);

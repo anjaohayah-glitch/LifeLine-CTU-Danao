@@ -1,155 +1,49 @@
-// app/_layout.js
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
-import { onValue, ref } from "firebase/database";
-import { useEffect } from "react";
-import { SettingsProvider } from "../context/SettingsContext";
-import { db } from "../firebase";
-import { useAlertNotifications } from "../hooks/useAlertNotifications";
-import { fetchNearbyEarthquake, handleQuakeFound } from "../hooks/useEarthquakeCheck";
-import { useFCMToken } from "../hooks/useFCMToken";
-import { useNotifications } from "../hooks/useNotifications";
-import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
+import * as BackgroundFetch from "expo-background-fetch";
+import * as TaskManager from "expo-task-manager";
+import { fetchNearbyEarthquake, handleQuakeFound } from "./useEarthquakeCheck";
 
-// Set notification handler globally
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+const EARTHQUAKE_TASK = "lifeline-earthquake-check";
 
-function AppLayout() {
-  useNotifications();
-  useAlertNotifications();
-  useFCMToken();
+export async function checkEarthquakes() {
+  const quake = await fetchNearbyEarthquake();
+  if (!quake) return false;
 
-  useEffect(() => {
-
-    // ✅ Check earthquakes every time app opens
-    const checkQuakeOnOpen = async () => {
-      try {
-        console.log("🌍 Checking earthquakes on app open...");
-        const quake = await fetchNearbyEarthquake();
-        if (quake) {
-          console.log(`🌍 Quake found: Mag ${quake.mag} at ${quake.place}`);
-          await handleQuakeFound(quake);
-        } else {
-          console.log("✅ No nearby earthquakes detected");
-        }
-      } catch (e) {
-        console.log("Earthquake check failed:", e);
-      }
-    };
-    checkQuakeOnOpen();
-
-    // ✅ Listen for admin emergency alerts in real-time
-    const alertRef = ref(db, "emergencyAlert");
-    const unsubAlert = onValue(alertRef, async (snapshot) => {
-      const data = snapshot.val();
-      if (data?.active === true) {
-        const lastNotif = await AsyncStorage.getItem("lastEmergencyNotif");
-        const alertTime = data.timestamp || 0;
-
-        if (!lastNotif || alertTime > parseInt(lastNotif)) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "🚨 EMERGENCY ALERT — LIFELINE",
-              body: data.message || "Emergency alert issued for CTU Danao Campus!",
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority.MAX,
-              vibrate: [0, 1000, 300, 1000, 300, 1000],
-              color: "#B00020",
-              sticky: true,
-            },
-            trigger: null,
-          });
-          await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
-        }
-      }
-    });
-
-    // ✅ Listen for new SOS requests in real-time
-    const sosRef = ref(db, "sosRequests");
-    const unsubSOS = onValue(sosRef, async (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-
-      const savedUID = await AsyncStorage.getItem("userUID");
-      if (!savedUID) return;
-
-      const requests = Object.values(data);
-      const now = Date.now();
-      const fiveMin = 5 * 60 * 1000;
-      const lastSOS = await AsyncStorage.getItem("lastSOSNotif");
-
-      const recentSOS = requests.find((req) => {
-        const reqTime = new Date(req.timestamp).getTime();
-        return (
-          now - reqTime < fiveMin &&
-          req.uid !== savedUID &&
-          (!lastSOS || reqTime > parseInt(lastSOS))
-        );
-      });
-
-      if (recentSOS) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🆘 SOS RECEIVED — LIFELINE",
-            body: `${recentSOS.name || "A contact"} needs help!\n📍 ${recentSOS.address || "See app for details"}`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
-            color: "#B00020",
-          },
-          trigger: null,
-        });
-        await AsyncStorage.setItem(
-          "lastSOSNotif",
-          String(new Date(recentSOS.timestamp).getTime())
-        );
-      }
-    });
-
-    return () => {
-      unsubAlert();
-      unsubSOS();
-    };
-  }, []);
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="splash" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
-      <Stack.Screen name="home" />
-      <Stack.Screen name="admin" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="evacuation" />
-      <Stack.Screen name="hotlines" />
-      <Stack.Screen name="weather" />
-      <Stack.Screen name="firstaid" />
-      <Stack.Screen name="guides" />
-      <Stack.Screen name="checklist" />
-      <Stack.Screen name="family" />
-      <Stack.Screen name="drrm" />
-      <Stack.Screen name="voiceguide" />
-      <Stack.Screen name="settings" />
-    </Stack>
-  );
+  await handleQuakeFound(quake);
+  return true;
 }
 
-export default function Layout() {
-  useEffect(() => {
-    registerWeatherBackgroundFetch();
-  }, []);
+if (!TaskManager.isTaskDefined(EARTHQUAKE_TASK)) {
+  TaskManager.defineTask(EARTHQUAKE_TASK, async () => {
+    try {
+      const found = await checkEarthquakes();
+      return found
+        ? BackgroundFetch.BackgroundFetchResult.NewData
+        : BackgroundFetch.BackgroundFetchResult.NoData;
+    } catch (error) {
+      console.log("Earthquake background check failed:", error);
+      return BackgroundFetch.BackgroundFetchResult.Failed;
+    }
+  });
+}
 
-  return (
-    <SettingsProvider>
-      <AppLayout />
-    </SettingsProvider>
-  );
+export async function registerWeatherBackgroundFetch() {
+  const status = await BackgroundFetch.getStatusAsync();
+  if (
+    status === BackgroundFetch.BackgroundFetchStatus.Restricted ||
+    status === BackgroundFetch.BackgroundFetchStatus.Denied
+  ) {
+    console.log("Background fetch is unavailable");
+    return;
+  }
+
+  const registeredTasks = await TaskManager.getRegisteredTasksAsync();
+  const isRegistered = registeredTasks.some((task) => task.taskName === EARTHQUAKE_TASK);
+
+  if (!isRegistered) {
+    await BackgroundFetch.registerTaskAsync(EARTHQUAKE_TASK, {
+      minimumInterval: 15 * 60,
+      stopOnTerminate: false,
+      startOnBoot: true,
+    });
+  }
 }

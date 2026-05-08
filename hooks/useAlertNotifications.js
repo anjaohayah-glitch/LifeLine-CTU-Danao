@@ -1,23 +1,21 @@
-// hooks/useAlertNotifications.js
-import * as Notifications from "expo-notifications";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useRef } from "react";
 import { db } from "../firebase";
+import { scheduleNotification } from "../utils/notifications";
 
 export function useAlertNotifications() {
   const prevAlert = useRef(null);
   const prevAnnouncement = useRef(null);
   const prevSOSCount = useRef(null);
 
-  // 🚨 Watch Emergency Alert
   useEffect(() => {
     const alertRef = ref(db, "emergencyAlert");
     const unsubscribe = onValue(alertRef, (snapshot) => {
       const data = snapshot.val();
       if (prevAlert.current === false && data === true) {
-        Notifications.scheduleNotificationAsync({
+        scheduleNotification({
           content: {
-            title: "🚨 EMERGENCY ALERT",
+            title: "Emergency Alert",
             body: "A disaster alert has been issued. Stay safe!",
             sound: true,
             data: { screen: "/home" },
@@ -30,7 +28,6 @@ export function useAlertNotifications() {
     return () => unsubscribe();
   }, []);
 
-  // 📢 Watch Announcements
   useEffect(() => {
     const annRef = ref(db, "announcement");
     const unsubscribe = onValue(annRef, (snapshot) => {
@@ -40,9 +37,9 @@ export function useAlertNotifications() {
         prevAnnouncement.current !== null &&
         prevAnnouncement.current !== data.message
       ) {
-        Notifications.scheduleNotificationAsync({
+        scheduleNotification({
           content: {
-            title: "📢 New Announcement",
+            title: "New Announcement",
             body: data.message,
             sound: true,
             data: { screen: "/home" },
@@ -55,16 +52,15 @@ export function useAlertNotifications() {
     return () => unsubscribe();
   }, []);
 
-  // 🆘 Watch SOS Requests
   useEffect(() => {
     const sosRef = ref(db, "sosRequests");
     const unsubscribe = onValue(sosRef, (snapshot) => {
       const data = snapshot.val();
       const count = data ? Object.keys(data).length : 0;
       if (prevSOSCount.current !== null && count > prevSOSCount.current) {
-        Notifications.scheduleNotificationAsync({
+        scheduleNotification({
           content: {
-            title: "🆘 New SOS Request",
+            title: "New SOS Request",
             body: "Someone needs help! Check the admin dashboard.",
             sound: true,
             data: { screen: "/admin" },
