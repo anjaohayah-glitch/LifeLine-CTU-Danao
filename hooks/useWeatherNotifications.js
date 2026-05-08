@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { SettingsProvider } from "../context/SettingsContext";
 import { db } from "../firebase";
 import { useAlertNotifications } from "../hooks/useAlertNotifications";
+import { fetchNearbyEarthquake, handleQuakeFound } from "../hooks/useEarthquakeCheck";
+import { useFCMToken } from "../hooks/useFCMToken";
 import { useNotifications } from "../hooks/useNotifications";
 import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
 
@@ -22,8 +24,27 @@ Notifications.setNotificationHandler({
 function AppLayout() {
   useNotifications();
   useAlertNotifications();
+  useFCMToken();
 
   useEffect(() => {
+
+    // ✅ Check earthquakes every time app opens
+    const checkQuakeOnOpen = async () => {
+      try {
+        console.log("🌍 Checking earthquakes on app open...");
+        const quake = await fetchNearbyEarthquake();
+        if (quake) {
+          console.log(`🌍 Quake found: Mag ${quake.mag} at ${quake.place}`);
+          await handleQuakeFound(quake);
+        } else {
+          console.log("✅ No nearby earthquakes detected");
+        }
+      } catch (e) {
+        console.log("Earthquake check failed:", e);
+      }
+    };
+    checkQuakeOnOpen();
+
     // ✅ Listen for admin emergency alerts in real-time
     const alertRef = ref(db, "emergencyAlert");
     const unsubAlert = onValue(alertRef, async (snapshot) => {
@@ -77,7 +98,7 @@ function AppLayout() {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "🆘 SOS RECEIVED — LIFELINE",
-            body: `${recentSOS.name || "A contact"} needs help! Location: ${recentSOS.address || "See app for details"}`,
+            body: `${recentSOS.name || "A contact"} needs help!\n📍 ${recentSOS.address || "See app for details"}`,
             sound: true,
             priority: Notifications.AndroidNotificationPriority.MAX,
             vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
@@ -85,7 +106,10 @@ function AppLayout() {
           },
           trigger: null,
         });
-        await AsyncStorage.setItem("lastSOSNotif", String(new Date(recentSOS.timestamp).getTime()));
+        await AsyncStorage.setItem(
+          "lastSOSNotif",
+          String(new Date(recentSOS.timestamp).getTime())
+        );
       }
     });
 
