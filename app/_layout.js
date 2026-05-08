@@ -40,7 +40,6 @@ const registerForPushNotifications = async () => {
     return null;
   }
 
-  // Android notification channels
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "General",
@@ -104,28 +103,6 @@ const registerForPushNotifications = async () => {
   }
 };
 
-// ── SEND PUSH TO ONE TOKEN ───────────────────────────────
-const sendPush = async (token, title, body, data = {}, channelId = "default") => {
-  if (!token) return;
-  try {
-    await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: token,
-        title,
-        body,
-        data,
-        sound: "default",
-        priority: "high",
-        channelId,
-      }),
-    });
-  } catch (e) {
-    console.log("Push send error:", e);
-  }
-};
-
 // ── SEND PUSH TO MULTIPLE TOKENS ────────────────────────
 const sendPushToMany = async (tokens, title, body, data = {}, channelId = "default") => {
   const validTokens = tokens.filter(Boolean);
@@ -173,7 +150,11 @@ const getContactTokens = async (uid) => {
       const tokens = await Promise.all(
         accepted.map((contact) =>
           new Promise((res) => {
-            onValue(ref(db, `fcmTokens/${contact.uid}`), (s) => res(s.val()), { onlyOnce: true });
+            onValue(
+              ref(db, `fcmTokens/${contact.uid}`),
+              (s) => res(s.val()),
+              { onlyOnce: true }
+            );
           })
         )
       );
@@ -189,162 +170,177 @@ function AppLayout() {
 
   useEffect(() => {
 
-    // ── REGISTER PUSH TOKEN ────────────────────────────
+    // ── REGISTER PUSH TOKEN ──────────────────────────
     const setupPush = async () => {
-      const token = await registerForPushNotifications();
-      if (!token) return;
+      try {
+        const token = await registerForPushNotifications();
+        if (!token) return;
 
-      const unsubAuth = auth.onAuthStateChanged(async (user) => {
-        if (user) {
-          // ✅ Save to BOTH locations
-          await set(ref(db, `users/${user.uid}/expoPushToken`), token);
-          await set(ref(db, `fcmTokens/${user.uid}`), token);
-          await AsyncStorage.setItem("expoPushToken", token);
-          await AsyncStorage.setItem("userUID", user.uid);
-          console.log("✅ Token saved to Firebase:", token);
-        }
-      });
-      return unsubAuth;
+        const unsubAuth = auth.onAuthStateChanged(async (user) => {
+          if (user) {
+            await set(ref(db, `users/${user.uid}/expoPushToken`), token);
+            await set(ref(db, `fcmTokens/${user.uid}`), token);
+            await AsyncStorage.setItem("expoPushToken", token);
+            await AsyncStorage.setItem("userUID", user.uid);
+            console.log("✅ Token saved to Firebase");
+          }
+        });
+        return unsubAuth;
+      } catch (e) {
+        console.log("Push setup error:", e);
+      }
     };
 
     const unsubAuthPromise = setupPush();
 
-    // ── CHECK EARTHQUAKES ON APP OPEN ─────────────────
+    // ── CHECK EARTHQUAKES ON APP OPEN ────────────────
+    // ✅ 5 second timeout so it never hangs the app
     const checkQuakeOnOpen = async () => {
       try {
-        console.log("🌍 Checking earthquakes on app open...");
-        const quake = await fetchNearbyEarthquake();
+        const quake = await Promise.race([
+          fetchNearbyEarthquake(),
+          new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
         if (quake) {
-          console.log(`🌍 Quake found: Mag ${quake.mag} at ${quake.place}`);
           await handleQuakeFound(quake);
         } else {
-          console.log("✅ No nearby earthquakes detected");
+          console.log("✅ No nearby earthquakes or timed out");
         }
       } catch (e) {
-        console.log("Earthquake check failed silently:", e);
+        console.log("Earthquake check skipped:", e);
       }
     };
-    checkQuakeOnOpen();
 
-    // ── EMERGENCY ALERTS ──────────────────────────────
+    // ✅ Delay earthquake check by 3 seconds so app loads first
+    const quakeTimer = setTimeout(checkQuakeOnOpen, 3000);
+
+    // ── EMERGENCY ALERTS ────────────────────────────
     const unsubAlert = onValue(ref(db, "emergencyAlert"), async (snapshot) => {
-      const data = snapshot.val();
-      if (!data?.active) return;
+      try {
+        const data = snapshot.val();
+        if (!data?.active) return;
 
-      const alertTime = data.timestamp || 0;
-      const lastNotif = await AsyncStorage.getItem("lastEmergencyNotif");
+        const alertTime = data.timestamp || 0;
+        const lastNotif = await AsyncStorage.getItem("lastEmergencyNotif");
 
-      if (!lastNotif || alertTime > parseInt(lastNotif)) {
-        // Local notification (when app is open)
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🚨 EMERGENCY ALERT — LIFELINE",
-            body: data.message || "Emergency alert issued for CTU Danao Campus!",
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            vibrate: [0, 1000, 300, 1000, 300, 1000],
-            data: { type: "emergency", screen: "evacuation" },
-          },
-          trigger: null,
-        });
+        if (!lastNotif || alertTime > parseInt(lastNotif)) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "🚨 EMERGENCY ALERT — LIFELINE",
+              body: data.message || "Emergency alert issued for CTU Danao Campus!",
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.MAX,
+              vibrate: [0, 1000, 300, 1000, 300, 1000],
+              data: { type: "emergency", screen: "evacuation" },
+            },
+            trigger: null,
+          });
 
-        // Push to ALL users (when app is closed)
-        const allTokens = await getAllFCMTokens();
-        await sendPushToMany(
-          allTokens,
-          "🚨 EMERGENCY ALERT — LIFELINE",
-          data.message || "Emergency alert issued for CTU Danao Campus!",
-          { type: "emergency", screen: "evacuation" },
-          "emergency"
-        );
+          const allTokens = await getAllFCMTokens();
+          await sendPushToMany(
+            allTokens,
+            "🚨 EMERGENCY ALERT — LIFELINE",
+            data.message || "Emergency alert issued for CTU Danao Campus!",
+            { type: "emergency", screen: "evacuation" },
+            "emergency"
+          );
 
-        await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
+          await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
+        }
+      } catch (e) {
+        console.log("Emergency alert error:", e);
       }
     });
 
-    // ── SOS ALERTS ────────────────────────────────────
+    // ── SOS ALERTS ──────────────────────────────────
     const unsubSOS = onValue(ref(db, "sosRequests"), async (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
+      try {
+        const data = snapshot.val();
+        if (!data) return;
 
-      const user = auth.currentUser;
-      if (!user) return;
+        const user = auth.currentUser;
+        if (!user) return;
 
-      const now = Date.now();
-      const lastSOS = await AsyncStorage.getItem("lastSOSNotif");
-      const requests = Object.values(data);
+        const now = Date.now();
+        const lastSOS = await AsyncStorage.getItem("lastSOSNotif");
+        const requests = Object.values(data);
 
-      const recentSOS = requests.find((req) => {
-        const reqTime = new Date(req.timestamp).getTime();
-        return (
-          now - reqTime < 300000 &&
-          req.uid !== user.uid &&
-          (!lastSOS || reqTime > parseInt(lastSOS))
-        );
-      });
-
-      if (recentSOS) {
-        // Local notification
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🆘 SOS RECEIVED — LIFELINE",
-            body: `${recentSOS.name || "A contact"} needs help!\n📍 ${recentSOS.address || "See app for details"}`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
-            data: { type: "sos", screen: "family" },
-          },
-          trigger: null,
+        const recentSOS = requests.find((req) => {
+          const reqTime = new Date(req.timestamp).getTime();
+          return (
+            now - reqTime < 300000 &&
+            req.uid !== user.uid &&
+            (!lastSOS || reqTime > parseInt(lastSOS))
+          );
         });
 
-        // Push to contacts (when app is closed)
-        const tokens = await getContactTokens(user.uid);
-        await sendPushToMany(
-          tokens,
-          "🆘 SOS RECEIVED — LIFELINE",
-          `${recentSOS.name || "A contact"} needs help! Tap to navigate to their location.`,
-          { type: "sos", screen: "family" },
-          "sos"
-        );
+        if (recentSOS) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "🆘 SOS RECEIVED — LIFELINE",
+              body: `${recentSOS.name || "A contact"} needs help!\n📍 ${recentSOS.address || "See app for details"}`,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.MAX,
+              vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
+              data: { type: "sos", screen: "family" },
+            },
+            trigger: null,
+          });
 
-        await AsyncStorage.setItem(
-          "lastSOSNotif",
-          String(new Date(recentSOS.timestamp).getTime())
-        );
+          const tokens = await getContactTokens(user.uid);
+          await sendPushToMany(
+            tokens,
+            "🆘 SOS RECEIVED — LIFELINE",
+            `${recentSOS.name || "A contact"} needs help! Tap to navigate.`,
+            { type: "sos", screen: "family" },
+            "sos"
+          );
+
+          await AsyncStorage.setItem(
+            "lastSOSNotif",
+            String(new Date(recentSOS.timestamp).getTime())
+          );
+        }
+      } catch (e) {
+        console.log("SOS alert error:", e);
       }
     });
 
-    // ── CONTACT REQUESTS ─────────────────────────────
+    // ── CONTACT REQUESTS ────────────────────────────
     const setupContactRequestListener = () => {
       const user = auth.currentUser;
       if (!user) return null;
       return onValue(ref(db, `contactRequests/${user.uid}`), async (snap) => {
-        const data = snap.val();
-        if (!data) return;
-        const pending = Object.values(data).filter((r) => r.status === "pending");
-        const lastReq = await AsyncStorage.getItem("lastContactRequestNotif");
-        const newReq = pending.find(
-          (r) => !lastReq || new Date(r.sentAt).getTime() > parseInt(lastReq)
-        );
-        if (newReq) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "📨 New Contact Request",
-              body: `${newReq.name || "Someone"} wants to add you as a contact.`,
-              sound: true,
-              data: { type: "request", screen: "family" },
-            },
-            trigger: null,
-          });
-          await AsyncStorage.setItem(
-            "lastContactRequestNotif",
-            String(new Date(newReq.sentAt).getTime())
+        try {
+          const data = snap.val();
+          if (!data) return;
+          const pending = Object.values(data).filter((r) => r.status === "pending");
+          const lastReq = await AsyncStorage.getItem("lastContactRequestNotif");
+          const newReq = pending.find(
+            (r) => !lastReq || new Date(r.sentAt).getTime() > parseInt(lastReq)
           );
+          if (newReq) {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "📨 New Contact Request",
+                body: `${newReq.name || "Someone"} wants to add you as a contact.`,
+                sound: true,
+                data: { type: "request", screen: "family" },
+              },
+              trigger: null,
+            });
+            await AsyncStorage.setItem(
+              "lastContactRequestNotif",
+              String(new Date(newReq.sentAt).getTime())
+            );
+          }
+        } catch (e) {
+          console.log("Contact request error:", e);
         }
       });
     };
 
-    // ── SAFETY STATUS UPDATES ─────────────────────────
+    // ── SAFETY STATUS ────────────────────────────────
     const setupSafetyListener = () => {
       const user = auth.currentUser;
       if (!user) return null;
@@ -356,29 +352,32 @@ function AppLayout() {
           .filter((c) => c.status === "accepted");
         accepted.forEach((contact) => {
           onValue(ref(db, `safetyStatus/${contact.uid}`), async (statusSnap) => {
-            const status = statusSnap.val();
-            if (!status) return;
-            const lastKey = `lastSafetyNotif_${contact.uid}`;
-            const lastNotif = await AsyncStorage.getItem(lastKey);
-            if (!lastNotif || status.timestamp > parseInt(lastNotif)) {
-              const isSafe = status.status === "safe";
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title: isSafe ? "🟢 Contact is Safe" : "🔴 Contact Needs Help",
-                  body: `${contact.name || "Your contact"} ${isSafe ? "is safe!" : "needs help!"}`,
-                  sound: true,
-                  data: { type: "safety", screen: "family" },
-                },
-                trigger: null,
-              });
-              await AsyncStorage.setItem(lastKey, String(status.timestamp));
+            try {
+              const status = statusSnap.val();
+              if (!status) return;
+              const lastKey = `lastSafetyNotif_${contact.uid}`;
+              const lastNotif = await AsyncStorage.getItem(lastKey);
+              if (!lastNotif || status.timestamp > parseInt(lastNotif)) {
+                const isSafe = status.status === "safe";
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: isSafe ? "🟢 Contact is Safe" : "🔴 Contact Needs Help",
+                    body: `${contact.name || "Your contact"} ${isSafe ? "is safe!" : "needs help!"}`,
+                    sound: true,
+                    data: { type: "safety", screen: "family" },
+                  },
+                  trigger: null,
+                });
+                await AsyncStorage.setItem(lastKey, String(status.timestamp));
+              }
+            } catch (e) {
+              console.log("Safety status error:", e);
             }
           });
         });
       }, { onlyOnce: true });
     };
 
-    // Set up auth-dependent listeners
     let unsubContactReq = null;
     let unsubSafety = null;
     const unsubAuthState = auth.onAuthStateChanged((user) => {
@@ -388,7 +387,7 @@ function AppLayout() {
       }
     });
 
-    // ── NOTIFICATION TAP HANDLER ──────────────────────
+    // ── NOTIFICATION HANDLERS ────────────────────────
     notifListener.current = Notifications.addNotificationReceivedListener((notification) => {
       console.log("✅ Notification received:", notification.request.content.title);
     });
@@ -401,13 +400,13 @@ function AppLayout() {
     });
 
     return () => {
+      clearTimeout(quakeTimer);
       unsubAlert();
       unsubSOS();
       unsubAuthState();
       if (unsubContactReq) unsubContactReq();
       if (unsubSafety) unsubSafety();
       if (unsubAuthPromise) unsubAuthPromise.then((unsub) => unsub?.());
-      // ✅ FIXED — use .remove() instead of removeNotificationSubscription
       notifListener.current?.remove();
       responseListener.current?.remove();
     };
@@ -441,7 +440,10 @@ function AppLayout() {
 
 export default function Layout() {
   useEffect(() => {
-    registerWeatherBackgroundFetch();
+    // ✅ Register background fetch with try/catch
+    registerWeatherBackgroundFetch().catch((e) => {
+      console.log("Background fetch registration error:", e);
+    });
   }, []);
 
   return (
