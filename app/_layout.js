@@ -8,6 +8,8 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { SettingsProvider } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
+import { fetchNearbyEarthquake, handleQuakeFound } from "../hooks/useEarthquakeCheck";
+import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
 
 // Foreground notification handler
 Notifications.setNotificationHandler({
@@ -20,7 +22,10 @@ Notifications.setNotificationHandler({
 
 // ── REGISTER FOR PUSH NOTIFICATIONS ─────────────────────
 const registerForPushNotifications = async () => {
-  if (!Device.isDevice) return null;
+  if (!Device.isDevice) {
+    console.log("Not a real device — push notifications unavailable");
+    return null;
+  }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -30,7 +35,10 @@ const registerForPushNotifications = async () => {
     finalStatus = status;
   }
 
-  if (finalStatus !== "granted") return null;
+  if (finalStatus !== "granted") {
+    console.log("Notification permission denied");
+    return null;
+  }
 
   // Android notification channels
   if (Platform.OS === "android") {
@@ -41,12 +49,31 @@ const registerForPushNotifications = async () => {
       lightColor: "#B00020",
       sound: "default",
     });
+    await Notifications.setNotificationChannelAsync("lifeline_alerts", {
+      name: "LIFELINE Alerts",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 500, 200, 500],
+      lightColor: "#B00020",
+      sound: "default",
+      enableVibrate: true,
+      showBadge: true,
+    });
     await Notifications.setNotificationChannelAsync("emergency", {
       name: "Emergency Alerts",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 500, 250, 500, 250, 500],
       lightColor: "#FF0000",
       sound: "default",
+    });
+    await Notifications.setNotificationChannelAsync("lifeline_emergency", {
+      name: "LIFELINE Emergency",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
+      lightColor: "#B00020",
+      sound: "default",
+      enableVibrate: true,
+      showBadge: true,
+      bypassDnd: true,
     });
     await Notifications.setNotificationChannelAsync("sos", {
       name: "SOS Alerts",
@@ -65,7 +92,11 @@ const registerForPushNotifications = async () => {
   }
 
   try {
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df",
+    });
+    const token = tokenData.data;
+    console.log("✅ Push token:", token);
     return token;
   } catch (e) {
     console.log("Push token error:", e);
@@ -115,9 +146,21 @@ const sendPushToMany = async (tokens, title, body, data = {}, channelId = "defau
         }))
       ),
     });
+    console.log(`✅ Push sent to ${validTokens.length} users`);
   } catch (e) {
     console.log("Push multi-send error:", e);
   }
+};
+
+// ── GET ALL FCM TOKENS ───────────────────────────────────
+const getAllFCMTokens = async () => {
+  return new Promise((resolve) => {
+    onValue(ref(db, "fcmTokens"), (snap) => {
+      const data = snap.val();
+      if (!data) { resolve([]); return; }
+      resolve(Object.values(data).filter(Boolean));
+    }, { onlyOnce: true });
+  });
 };
 
 // ── GET CONTACT PUSH TOKENS ─────────────────────────────
@@ -126,12 +169,11 @@ const getContactTokens = async (uid) => {
     onValue(ref(db, `contacts/${uid}`), async (snap) => {
       const data = snap.val();
       if (!data) { resolve([]); return; }
-
       const accepted = Object.values(data).filter((c) => c.status === "accepted");
       const tokens = await Promise.all(
         accepted.map((contact) =>
           new Promise((res) => {
-            onValue(ref(db, `users/${contact.uid}/expoPushToken`), (s) => res(s.val()), { onlyOnce: true });
+            onValue(ref(db, `fcmTokens/${contact.uid}`), (s) => res(s.val()), { onlyOnce: true });
           })
         )
       );
@@ -146,22 +188,43 @@ function AppLayout() {
   const responseListener = useRef();
 
   useEffect(() => {
+
     // ── REGISTER PUSH TOKEN ────────────────────────────
     const setupPush = async () => {
       const token = await registerForPushNotifications();
       if (!token) return;
 
-      // Wait for auth to be ready then save token
       const unsubAuth = auth.onAuthStateChanged(async (user) => {
         if (user) {
+          // ✅ Save to BOTH locations
           await set(ref(db, `users/${user.uid}/expoPushToken`), token);
+          await set(ref(db, `fcmTokens/${user.uid}`), token);
           await AsyncStorage.setItem("expoPushToken", token);
+          await AsyncStorage.setItem("userUID", user.uid);
+          console.log("✅ Token saved to Firebase:", token);
         }
       });
       return unsubAuth;
     };
 
     const unsubAuthPromise = setupPush();
+
+    // ── CHECK EARTHQUAKES ON APP OPEN ─────────────────
+    const checkQuakeOnOpen = async () => {
+      try {
+        console.log("🌍 Checking earthquakes on app open...");
+        const quake = await fetchNearbyEarthquake();
+        if (quake) {
+          console.log(`🌍 Quake found: Mag ${quake.mag} at ${quake.place}`);
+          await handleQuakeFound(quake);
+        } else {
+          console.log("✅ No nearby earthquakes detected");
+        }
+      } catch (e) {
+        console.log("Earthquake check failed silently:", e);
+      }
+    };
+    checkQuakeOnOpen();
 
     // ── EMERGENCY ALERTS ──────────────────────────────
     const unsubAlert = onValue(ref(db, "emergencyAlert"), async (snapshot) => {
@@ -172,30 +235,28 @@ function AppLayout() {
       const lastNotif = await AsyncStorage.getItem("lastEmergencyNotif");
 
       if (!lastNotif || alertTime > parseInt(lastNotif)) {
-        // Local notification (works when app is open)
+        // Local notification (when app is open)
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "🚨 EMERGENCY ALERT — LIFELINE",
             body: data.message || "Emergency alert issued for CTU Danao Campus!",
             sound: true,
             priority: Notifications.AndroidNotificationPriority.MAX,
+            vibrate: [0, 1000, 300, 1000, 300, 1000],
             data: { type: "emergency", screen: "evacuation" },
           },
           trigger: null,
         });
 
-        // Push to all contacts of current user (works when app is closed)
-        const user = auth.currentUser;
-        if (user) {
-          const tokens = await getContactTokens(user.uid);
-          await sendPushToMany(
-            tokens,
-            "🚨 EMERGENCY ALERT — LIFELINE",
-            data.message || "Emergency alert issued for CTU Danao Campus!",
-            { type: "emergency", screen: "evacuation" },
-            "emergency"
-          );
-        }
+        // Push to ALL users (when app is closed)
+        const allTokens = await getAllFCMTokens();
+        await sendPushToMany(
+          allTokens,
+          "🚨 EMERGENCY ALERT — LIFELINE",
+          data.message || "Emergency alert issued for CTU Danao Campus!",
+          { type: "emergency", screen: "evacuation" },
+          "emergency"
+        );
 
         await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
       }
@@ -227,24 +288,29 @@ function AppLayout() {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "🆘 SOS RECEIVED — LIFELINE",
-            body: `${recentSOS.name || "A contact"} needs help! Tap to see location.`,
+            body: `${recentSOS.name || "A contact"} needs help!\n📍 ${recentSOS.address || "See app for details"}`,
             sound: true,
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            vibrate: [0, 500, 100, 500, 100, 500, 100, 500],
             data: { type: "sos", screen: "family" },
           },
           trigger: null,
         });
 
-        // Push notify user's contacts
+        // Push to contacts (when app is closed)
         const tokens = await getContactTokens(user.uid);
         await sendPushToMany(
           tokens,
           "🆘 SOS RECEIVED — LIFELINE",
-          `${recentSOS.name || "A contact"} needs help! Tap to see location.`,
+          `${recentSOS.name || "A contact"} needs help! Tap to navigate to their location.`,
           { type: "sos", screen: "family" },
           "sos"
         );
 
-        await AsyncStorage.setItem("lastSOSNotif", String(new Date(recentSOS.timestamp).getTime()));
+        await AsyncStorage.setItem(
+          "lastSOSNotif",
+          String(new Date(recentSOS.timestamp).getTime())
+        );
       }
     });
 
@@ -252,17 +318,15 @@ function AppLayout() {
     const setupContactRequestListener = () => {
       const user = auth.currentUser;
       if (!user) return null;
-
       return onValue(ref(db, `contactRequests/${user.uid}`), async (snap) => {
         const data = snap.val();
         if (!data) return;
-
         const pending = Object.values(data).filter((r) => r.status === "pending");
         const lastReq = await AsyncStorage.getItem("lastContactRequestNotif");
-        const newReq = pending.find((r) => !lastReq || new Date(r.sentAt).getTime() > parseInt(lastReq));
-
+        const newReq = pending.find(
+          (r) => !lastReq || new Date(r.sentAt).getTime() > parseInt(lastReq)
+        );
         if (newReq) {
-          // Local notification
           await Notifications.scheduleNotificationAsync({
             content: {
               title: "📨 New Contact Request",
@@ -272,8 +336,10 @@ function AppLayout() {
             },
             trigger: null,
           });
-
-          await AsyncStorage.setItem("lastContactRequestNotif", String(new Date(newReq.sentAt).getTime()));
+          await AsyncStorage.setItem(
+            "lastContactRequestNotif",
+            String(new Date(newReq.sentAt).getTime())
+          );
         }
       });
     };
@@ -282,26 +348,20 @@ function AppLayout() {
     const setupSafetyListener = () => {
       const user = auth.currentUser;
       if (!user) return null;
-
       return onValue(ref(db, `contacts/${user.uid}`), (snap) => {
         const contacts = snap.val();
         if (!contacts) return;
-
         const accepted = Object.entries(contacts)
           .map(([id, val]) => ({ id, ...val }))
           .filter((c) => c.status === "accepted");
-
         accepted.forEach((contact) => {
           onValue(ref(db, `safetyStatus/${contact.uid}`), async (statusSnap) => {
             const status = statusSnap.val();
             if (!status) return;
-
             const lastKey = `lastSafetyNotif_${contact.uid}`;
             const lastNotif = await AsyncStorage.getItem(lastKey);
-
             if (!lastNotif || status.timestamp > parseInt(lastNotif)) {
               const isSafe = status.status === "safe";
-
               await Notifications.scheduleNotificationAsync({
                 content: {
                   title: isSafe ? "🟢 Contact is Safe" : "🔴 Contact Needs Help",
@@ -311,7 +371,6 @@ function AppLayout() {
                 },
                 trigger: null,
               });
-
               await AsyncStorage.setItem(lastKey, String(status.timestamp));
             }
           });
@@ -319,7 +378,7 @@ function AppLayout() {
       }, { onlyOnce: true });
     };
 
-    // Set up auth-dependent listeners after auth is ready
+    // Set up auth-dependent listeners
     let unsubContactReq = null;
     let unsubSafety = null;
     const unsubAuthState = auth.onAuthStateChanged((user) => {
@@ -329,9 +388,9 @@ function AppLayout() {
       }
     });
 
-    // ── HANDLE NOTIFICATION TAP ───────────────────────
+    // ── NOTIFICATION TAP HANDLER ──────────────────────
     notifListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log("Notification received:", notification.request.content.title);
+      console.log("✅ Notification received:", notification.request.content.title);
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -348,8 +407,9 @@ function AppLayout() {
       if (unsubContactReq) unsubContactReq();
       if (unsubSafety) unsubSafety();
       if (unsubAuthPromise) unsubAuthPromise.then((unsub) => unsub?.());
-      Notifications.removeNotificationSubscription(notifListener.current);
-      Notifications.removeNotificationSubscription(responseListener.current);
+      // ✅ FIXED — use .remove() instead of removeNotificationSubscription
+      notifListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
@@ -380,6 +440,10 @@ function AppLayout() {
 }
 
 export default function Layout() {
+  useEffect(() => {
+    registerWeatherBackgroundFetch();
+  }, []);
+
   return (
     <SettingsProvider>
       <AppLayout />
