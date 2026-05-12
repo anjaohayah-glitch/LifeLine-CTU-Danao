@@ -142,7 +142,7 @@ export default function Weather() {
   const [userCoords, setUserCoords] = useState(null);
   const [activeTab, setActiveTab] = useState("weather");
   const [checkingQuake, setCheckingQuake] = useState(false);
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight } = theme;
   const notificationSentRef = useRef(false);
 
@@ -166,7 +166,7 @@ export default function Weather() {
     notificationSentRef.current = true;
     await scheduleNotification({
       content: {
-        title: "LIFELINE Weather Alert",
+        title: `LIFELINE ${t("weather")} ${t("emergency_alert")}`,
         body: warning.text,
         sound: true,
         color: warning.color,
@@ -184,7 +184,7 @@ export default function Weather() {
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Denied", "Location access is required.");
+        Alert.alert(t("permission_denied"), t("location_required"));
         setLoading(false);
         return;
       }
@@ -221,7 +221,7 @@ export default function Weather() {
 
     } catch (err) {
       console.log(err);
-      setError("Could not fetch weather. Check your internet connection.");
+      setError(t("could_not_fetch_weather"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -248,12 +248,12 @@ export default function Weather() {
     try {
       const found = await checkEarthquakes();
       if (found) {
-        Alert.alert("Earthquake Detected!", "A significant earthquake has been detected near Danao City. Emergency alert has been activated for ALL users automatically.");
+        Alert.alert(t("quake_detected"), t("quake_detected_msg"));
       } else {
-        Alert.alert("No Earthquake Detected", "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours.");
+        Alert.alert(t("no_quake_detected"), t("no_quake_msg"));
       }
     } catch (_e) {
-      Alert.alert("Error", "Could not check earthquake data. Check your internet connection.");
+      Alert.alert("Error", t("check_quake_error"));
     } finally {
       setCheckingQuake(false);
     }
@@ -272,7 +272,7 @@ export default function Weather() {
         <Text style={[styles.errorText, { color: textMid }]}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchWeather}>
           <MaterialCommunityIcons name="restart" size={16} color="#fff" />
-          <Text style={styles.retryText}>Try Again</Text>
+          <Text style={styles.retryText}>{t("try_again")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -281,10 +281,10 @@ export default function Weather() {
   if (!weather) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
-        <Text style={[styles.errorText, { color: textMid }]}>No weather data available.</Text>
+        <Text style={[styles.errorText, { color: textMid }]}>{t("no_weather_data")}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchWeather}>
           <MaterialCommunityIcons name="restart" size={16} color="#fff" />
-          <Text style={styles.retryText}>Try Again</Text>
+          <Text style={styles.retryText}>{t("try_again")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -304,11 +304,11 @@ export default function Weather() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <MaterialCommunityIcons name="weather-partly-cloudy" size={24} color="#fff" />
-          <Text style={styles.headerTitle}>Weather</Text>
+          <Text style={styles.headerTitle}>{t("weather")}</Text>
         </View>
         <View style={styles.headerSubRow}>
           <Ionicons name="location" size={13} color="rgba(255,255,255,0.75)" />
-          <Text style={styles.headerSub}>{weather?.name || "Unknown"}, {weather?.sys?.country || ""}</Text>
+          <Text style={styles.headerSub}>{weather?.name || t("unknown")}, {weather?.sys?.country || ""}</Text>
         </View>
       </View>
 
@@ -319,15 +319,15 @@ export default function Weather() {
             <Ionicons name="notifications" size={16} color="#fff" />
             <Text style={styles.warningText}>{warning.text}</Text>
           </View>
-          <Text style={styles.warningSubText}>Notification sent to your device</Text>
+          <Text style={styles.warningSubText}>{t("notification_sent")}</Text>
         </View>
       )}
 
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "weather", label: "Weather", icon: "thermometer" },
-          { key: "windy", label: "Windy Map", icon: "map" },
+          { key: "weather", label: t("weather"), icon: "thermometer" },
+          { key: "windy", label: t("windy_map"), icon: "map" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -355,13 +355,13 @@ export default function Weather() {
             <MaterialCommunityIcons name={icon} size={70} color="#B00020" style={styles.weatherIcon} />
             <Text style={styles.temperature}>{Math.round(weather?.main?.temp ?? 0)}°C</Text>
             <Text style={[styles.condition, { color: textMid }]}>{weather?.weather?.[0]?.description || ""}</Text>
-            <Text style={[styles.feelsLike, { color: textLight }]}>Feels like {Math.round(weather?.main?.feels_like ?? 0)}°C</Text>
+            <Text style={[styles.feelsLike, { color: textLight }]}>{t("feels_like")} {Math.round(weather?.main?.feels_like ?? 0)}°C</Text>
             <View style={styles.statsRow}>
               {[
-                { icon: "water-percent", value: `${weather?.main?.humidity ?? 0}%`, label: "Humidity" },
-                { icon: "weather-windy", value: `${((weather?.wind?.speed ?? 0) * 3.6).toFixed(1)} km/h`, label: "Wind" },
-                { icon: "eye", value: `${((weather?.visibility ?? 0) / 1000).toFixed(1)} km`, label: "Visibility" },
-                { icon: "gauge", value: `${weather?.main?.pressure ?? 0} hPa`, label: "Pressure" },
+                { icon: "water-percent", value: `${weather?.main?.humidity ?? 0}%`, label: t("humidity") },
+                { icon: "weather-windy", value: `${((weather?.wind?.speed ?? 0) * 3.6).toFixed(1)} km/h`, label: t("wind") },
+                { icon: "eye", value: `${((weather?.visibility ?? 0) / 1000).toFixed(1)} km`, label: t("visibility") },
+                { icon: "gauge", value: `${weather?.main?.pressure ?? 0} hPa`, label: t("pressure") },
               ].map((stat, i) => (
                 <View key={i} style={styles.statItem}>
                   <MaterialCommunityIcons name={stat.icon} size={22} color="#B00020" />
@@ -377,7 +377,7 @@ export default function Weather() {
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <Ionicons name="time" size={18} color="#B00020" />
-                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Next 24 Hours</Text>
+                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>{t("next_24_hours")}</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {forecast.map((item, index) => {
@@ -405,12 +405,12 @@ export default function Weather() {
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <MaterialCommunityIcons name="weather-sunset-up" size={18} color="#B00020" />
-                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Sun Schedule</Text>
+                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>{t("sun_schedule")}</Text>
               </View>
               <View style={styles.sunRow}>
                 {[
-                  { icon: "weather-sunset-up", label: "Sunrise", time: weather.sys.sunrise },
-                  { icon: "weather-sunset-down", label: "Sunset", time: weather.sys.sunset },
+                  { icon: "weather-sunset-up", label: t("sunrise"), time: weather.sys.sunrise },
+                  { icon: "weather-sunset-down", label: t("sunset"), time: weather.sys.sunset },
                 ].map((sun, i) => (
                   <View key={i} style={[styles.sunCard, { backgroundColor: card, borderColor: border }]}>
                     <MaterialCommunityIcons name={sun.icon} size={30} color="#B00020" style={styles.sunIcon} />
@@ -428,15 +428,15 @@ export default function Weather() {
           <View style={styles.section}>
             <View style={styles.sectionTitleRow}>
               <MaterialCommunityIcons name="earth" size={18} color="#B00020" />
-              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Earthquake Monitor</Text>
+              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>{t("earthquake_monitor")}</Text>
             </View>
             <View style={[styles.quakeCard, { backgroundColor: card, borderColor: border }]}>
               <View style={styles.quakeTitleRow}>
                 <Ionicons name="search" size={16} color={textDark} />
-                <Text style={[styles.quakeTitle, { color: textDark }]}>USGS Real-Time Detection</Text>
+                <Text style={[styles.quakeTitle, { color: textDark }]}>{t("usgs_detection")}</Text>
               </View>
               <Text style={[styles.quakeDesc, { color: textMid }]}>
-                LIFELINE automatically monitors USGS earthquake data every 15 minutes. If a Magnitude 4.0+ earthquake is detected near Danao City, all users will be alerted automatically with a buzzer notification.
+                {t("quake_desc")}
               </Text>
               <TouchableOpacity
                 style={[styles.quakeButton, checkingQuake && { opacity: 0.7 }]}
@@ -447,7 +447,7 @@ export default function Weather() {
                   ? <ActivityIndicator color="#fff" size="small" />
                   : <View style={styles.buttonTextRow}>
                       <Ionicons name="search" size={15} color="#fff" />
-                      <Text style={styles.quakeButtonText}>Check Now</Text>
+                      <Text style={styles.quakeButtonText}>{t("check_now")}</Text>
                     </View>
                 }
               </TouchableOpacity>
@@ -458,7 +458,7 @@ export default function Weather() {
           <View style={styles.section}>
             <View style={styles.sectionTitleRow}>
               <MaterialCommunityIcons name="broadcast" size={18} color="#B00020" />
-              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Official Updates</Text>
+              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>{t("official_updates")}</Text>
             </View>
             {[
               { icon: "weather-rainy", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#1565C0" },
@@ -481,7 +481,7 @@ export default function Weather() {
           {/* REFRESH */}
           <TouchableOpacity style={styles.refreshButton} onPress={fetchWeather}>
             <MaterialCommunityIcons name="refresh" size={16} color="#fff" />
-            <Text style={styles.refreshText}>Refresh Weather</Text>
+            <Text style={styles.refreshText}>{t("refresh_weather")}</Text>
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
@@ -493,7 +493,7 @@ export default function Weather() {
         <View style={{ flex: 1 }}>
           <View style={[styles.windyInfo, { backgroundColor: card, borderColor: border }]}>
             <Text style={[styles.windyInfoText, { color: textDark }]}>
-              Live wind, rain, and typhoon map powered by Windy
+              {t("windy_info")}
             </Text>
           </View>
           <WebView
@@ -505,7 +505,7 @@ export default function Weather() {
             renderLoading={() => (
               <View style={[styles.loadingContainer, { backgroundColor: bg, position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }]}>
                 <ActivityIndicator size="large" color="#B00020" />
-                <Text style={{ color: "#B00020", marginTop: 10 }}>Loading Windy Map...</Text>
+                <Text style={{ color: "#B00020", marginTop: 10 }}>{t("loading_windy")}</Text>
               </View>
             )}
           />

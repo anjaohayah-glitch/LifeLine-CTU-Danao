@@ -56,7 +56,7 @@ export default function Evacuation() {
   const [sortedCenters, setSortedCenters] = useState(EVACUATION_CENTERS);
   const [locationLoading, setLocationLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("centers");
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   useEffect(() => {
@@ -108,30 +108,30 @@ export default function Evacuation() {
       <View style={[styles.header, isEmergency && styles.headerEmergency]}>
         {isEmergency && (
           <View style={styles.emergencyPulse}>
-            <Text style={styles.emergencyPulseText}>EMERGENCY MODE ACTIVE</Text>
+            <Text style={styles.emergencyPulseText}>{t("emergency_mode_active")}</Text>
           </View>
         )}
         <Text style={styles.headerTitle}>
-          {isEmergency ? "EVACUATION ALERT" : "Evacuation Centers"}
+          {isEmergency ? t("evacuation_alert") : t("evacuation_title")}
         </Text>
         <Text style={styles.headerSub}>
-          {isEmergency ? "State of Emergency — Evacuate Now!" : "Danao City Safe Zones & Evacuation Guide"}
+          {isEmergency ? t("evacuate_now") : t("evacuation_sub")}
         </Text>
         {!isEmergency && (
           <View style={styles.headerStats}>
             <View style={styles.headerStat}>
               <Text style={styles.headerStatNum}>{EVACUATION_CENTERS.length}</Text>
-              <Text style={styles.headerStatLabel}>Safe Zones</Text>
+              <Text style={styles.headerStatLabel}>{t("safe_zones")}</Text>
             </View>
             <View style={styles.headerStatDivider} />
             <View style={styles.headerStat}>
               <Text style={styles.headerStatNum}>{DANGER_ZONES.length}</Text>
-              <Text style={styles.headerStatLabel}>Danger Zones</Text>
+              <Text style={styles.headerStatLabel}>{t("danger_zones")}</Text>
             </View>
             <View style={styles.headerStatDivider} />
             <View style={styles.headerStat}>
               <Text style={styles.headerStatNum}>24/7</Text>
-              <Text style={styles.headerStatLabel}>Monitoring</Text>
+              <Text style={styles.headerStatLabel}>{t("monitoring")}</Text>
             </View>
           </View>
         )}
@@ -143,12 +143,12 @@ export default function Evacuation() {
           <View style={styles.emergencyBannerTop}>
             <Ionicons name="warning" size={24} color="#fff" style={styles.emergencyBannerIcon} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.emergencyBannerTitle}>STATE OF EMERGENCY</Text>
+              <Text style={styles.emergencyBannerTitle}>{t("state_emergency")}</Text>
               <Text style={styles.emergencyBannerMsg}>{emergencyMessage}</Text>
             </View>
           </View>
           <Text style={styles.emergencyBannerInstr}>
-            Proceed IMMEDIATELY to the nearest evacuation center below
+            {t("proceed_nearest")}
           </Text>
         </View>
       )}
@@ -162,11 +162,11 @@ export default function Evacuation() {
           <View style={styles.nearestTop}>
             <View style={styles.nearestBadge}>
               <Text style={[styles.nearestBadgeText, { color: isEmergency ? "#fff" : COLORS.primary }]}>
-                {isEmergency ? "GO HERE NOW" : "NEAREST"}
+                {isEmergency ? t("go_here_now") : t("nearest")}
               </Text>
             </View>
             <Text style={[styles.nearestDist, { color: isEmergency ? "rgba(255,255,255,0.8)" : textLight }]}>
-              ~{nearestCenter.distanceM}m away
+              ~{nearestCenter.distanceM}m {t("away")}
             </Text>
           </View>
           <Text style={[styles.nearestName, { color: isEmergency ? "#fff" : textDark }]}>
@@ -178,12 +178,12 @@ export default function Evacuation() {
           <View style={styles.nearestMeta}>
             <View style={[styles.nearestMetaItem, { backgroundColor: isEmergency ? "rgba(255,255,255,0.15)" : surface }]}>
               <Text style={[styles.nearestMetaText, { color: isEmergency ? "#fff" : textMid }]}>
-                {nearestCenter.capacity} persons
+                {nearestCenter.capacity} {t("persons")}
               </Text>
             </View>
             <View style={[styles.nearestMetaItem, { backgroundColor: isEmergency ? "rgba(255,255,255,0.15)" : surface }]}>
               <Text style={[styles.nearestMetaText, { color: isEmergency ? "#fff" : textMid }]}>
-                {nearestCenter.type === "primary" ? "Primary" : "Secondary"}
+                {nearestCenter.type === "primary" ? t("primary") : t("secondary")}
               </Text>
             </View>
           </View>
@@ -192,7 +192,7 @@ export default function Evacuation() {
             onPress={() => handleDirections(nearestCenter)}
           >
             <Text style={[styles.directionsText, { color: isEmergency ? "#B71C1C" : "#fff" }]}>
-              START NAVIGATION
+              {t("start_navigation")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -200,10 +200,10 @@ export default function Evacuation() {
         <View style={[styles.locatingCard, { backgroundColor: card, borderColor: border }]}>
           <MaterialCommunityIcons name="radar" size={35} color={COLORS.primary} style={styles.locatingIcon} />
           <Text style={[styles.locatingTitle, { color: textDark }]}>
-            {locationLoading ? "Calculating nearest safe zone..." : "Location Unavailable"}
+            {locationLoading ? t("calculating_safe_zone") : t("location_unavailable")}
           </Text>
           <Text style={[styles.locatingDesc, { color: textLight }]}>
-            Allow location access for accurate results
+            {t("allow_location")}
           </Text>
         </View>
       )}
@@ -211,9 +211,9 @@ export default function Evacuation() {
       {/* ── TABS ───────────────────────────────────── */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "centers", label: "Centers" },
-          { key: "danger", label: "Danger Zones" },
-          { key: "tips", label: "Tips" },
+          { key: "centers", label: t("centers") },
+          { key: "danger", label: t("danger_zones") },
+          { key: "tips", label: t("tips") },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -239,8 +239,8 @@ export default function Evacuation() {
             >
               <MaterialCommunityIcons name="map" size={24} color={COLORS.primary} style={styles.mapCardIcon} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.mapCardTitle, { color: textDark }]}>View All on Google Maps</Text>
-                <Text style={[styles.mapCardDesc, { color: textLight }]}>See all safe zones near Danao City</Text>
+                <Text style={[styles.mapCardTitle, { color: textDark }]}>{t("view_all_maps")}</Text>
+                <Text style={[styles.mapCardDesc, { color: textLight }]}>{t("see_all_safe_zones")}</Text>
               </View>
               <Text style={[styles.mapCardArrow, { color: COLORS.primary }]}>→</Text>
             </TouchableOpacity>
@@ -260,17 +260,17 @@ export default function Evacuation() {
                     <Text style={[styles.centerName, { color: textDark }]}>{center.name}</Text>
                     <View style={[styles.centerTypeBadge, { backgroundColor: center.type === "primary" ? "#E8F5E9" : "#E3F2FD" }]}>
                       <Text style={[styles.centerTypeText, { color: center.type === "primary" ? "#2e7d32" : "#1565C0" }]}>
-                        {center.type === "primary" ? "Primary" : "Secondary"}
+                        {center.type === "primary" ? t("primary") : t("secondary")}
                       </Text>
                     </View>
                   </View>
                   <Text style={[styles.centerDesc, { color: textLight }]}>{center.description}</Text>
                   <View style={styles.centerMeta}>
                     <Text style={styles.centerDistance}>
-                      {center.distanceM ? `${center.distanceM}m` : "--"} away
+                      {center.distanceM ? `${center.distanceM}m` : "--"} {t("away")}
                     </Text>
                     <Text style={[styles.centerCapacity, { color: textLight }]}>
-                      {center.capacity} persons
+                      {center.capacity} {t("persons")}
                     </Text>
                   </View>
                 </View>
@@ -278,7 +278,7 @@ export default function Evacuation() {
                   style={[styles.goButton, { backgroundColor: index === 0 ? COLORS.primary : "#2e7d32" }]}
                   onPress={() => handleDirections(center)}
                 >
-                  <Text style={styles.goButtonText}>GO</Text>
+                  <Text style={styles.goButtonText}>{t("go")}</Text>
                   <Text style={styles.goButtonArrow}>→</Text>
                 </TouchableOpacity>
               </View>
@@ -292,9 +292,9 @@ export default function Evacuation() {
             <View style={styles.dangerHeader}>
               <MaterialCommunityIcons name="alert" size={24} color="#FF6B6B" style={styles.dangerHeaderIcon} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.dangerHeaderTitle, { color: textDark }]}>Avoid These Areas</Text>
+                <Text style={[styles.dangerHeaderTitle, { color: textDark }]}>{t("avoid_areas")}</Text>
                 <Text style={[styles.dangerHeaderDesc, { color: textLight }]}>
-                  Stay away from these zones during emergencies
+                  {t("stay_away_zones")}
                 </Text>
               </View>
             </View>
@@ -322,7 +322,7 @@ export default function Evacuation() {
             <View style={[styles.dangerNote, { backgroundColor: card, borderColor: border }]}>
               <Ionicons name="information" size={20} color={COLORS.primary} style={styles.dangerNoteIcon} />
               <Text style={[styles.dangerNoteText, { color: textMid }]}>
-                Danger zones are identified by local DRRMO. Always follow official evacuation orders and avoid these areas during disasters.
+                {t("danger_note")}
               </Text>
             </View>
           </>
@@ -334,8 +334,8 @@ export default function Evacuation() {
             <View style={[styles.tipsHeader, { backgroundColor: COLORS.primary }]}>
               <MaterialCommunityIcons name="lightbulb" size={24} color="#fff" style={styles.tipsHeaderIcon} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.tipsHeaderTitle}>Evacuation Tips</Text>
-                <Text style={styles.tipsHeaderSub}>Follow these during emergencies</Text>
+                <Text style={styles.tipsHeaderTitle}>{t("evacuation_tips")}</Text>
+                <Text style={styles.tipsHeaderSub}>{t("follow_emergencies")}</Text>
               </View>
             </View>
 
@@ -355,9 +355,9 @@ export default function Evacuation() {
             >
               <Ionicons name="call" size={32} color="#fff" style={styles.hotlineIcon} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.hotlineLabel}>CTU Danao DRRMO Hotline</Text>
+                <Text style={styles.hotlineLabel}>{t("ctu_drrmo_hotline")}</Text>
                 <Text style={styles.hotlineNumber}>0917-723-6262</Text>
-                <Text style={styles.hotlineTap}>Tap to call</Text>
+                <Text style={styles.hotlineTap}>{t("call_now")}</Text>
               </View>
             </TouchableOpacity>
           </>

@@ -59,7 +59,7 @@ const HOTLINES = [
 ];
 
 export default function Hotlines() {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, textDark, textLight } = theme;
 
   const handleCall = (number) => { Linking.openURL(`tel:${number}`); };
@@ -68,9 +68,9 @@ export default function Hotlines() {
     <ScrollView style={[styles.container, { backgroundColor: bg }]}>
       <View style={styles.headerRow}>
         <Ionicons name="call" size={28} color="#B00020" />
-        <Text style={styles.header}>Emergency Hotlines</Text>
+        <Text style={styles.header}>{t("emergency_hotlines")}</Text>
       </View>
-      <Text style={[styles.subHeader, { color: textLight }]}>Tap any number to call directly</Text>
+      <Text style={[styles.subHeader, { color: textLight }]}>{t("tap_number_call")}</Text>
 
       {HOTLINES.map((section, sIndex) => (
         <View key={sIndex} style={styles.section}>
@@ -95,7 +95,7 @@ export default function Hotlines() {
                 <Text style={styles.number}>{item.number}</Text>
                 <View style={styles.callBadge}>
                   <Ionicons name="call" size={12} color="#fff" />
-                  <Text style={styles.callText}>Call</Text>
+                  <Text style={styles.callText}>{t("call")}</Text>
                 </View>
               </View>
             </TouchableOpacity>

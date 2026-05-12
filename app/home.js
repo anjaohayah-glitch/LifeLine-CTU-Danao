@@ -47,36 +47,36 @@ TaskManager.defineTask(WEATHER_TASK_NAME, async () => {
 });
 
 const NAV_ITEMS = [
-  { icon: "home", label: "Home", route: "/home" },
-  { icon: "map", label: "Evacuate", route: "/evacuation" },
-  { icon: "call", label: "Hotlines", route: "/hotlines" },
-  { icon: "partly-sunny", label: "Weather", route: "/weather" },
-  { icon: "person", label: "Profile", route: "/profile" },
+  { icon: "home", labelKey: "home", route: "/home" },
+  { icon: "map", labelKey: "evacuate", route: "/evacuation" },
+  { icon: "call", labelKey: "hotlines", route: "/hotlines" },
+  { icon: "partly-sunny", labelKey: "weather", route: "/weather" },
+  { icon: "person", labelKey: "profile", route: "/profile" },
 ];
 
 const QUICK_ACCESS = [
-  { icon: "shield-account", label: "Admin", route: "/admin", color: "#7F0000", adminOnly: true },
-  { icon: "medical-bag", label: "First Aid", route: "/firstaid", color: "#C62828" },
-  { icon: "book-open-page-variant", label: "Guides", route: "/guides", color: "#00695C" },
-  { icon: "clipboard-check", label: "Checklist", route: "/checklist", color: "#00838F" },
-  { icon: "account-group", label: "Family", route: "/family", color: "#6A1B9A" },
-  { icon: "shield-alert", label: "DRRM", route: "/drrm", color: "#B00020" },
-  { icon: "account-voice", label: "Voice", route: "/voiceguide", color: "#1565C0" },
-  { icon: "cog", label: "Settings", route: "/settings", color: "#37474F" },
+  { icon: "shield-account", labelKey: "admin", route: "/admin", color: "#7F0000", adminOnly: true },
+  { icon: "medical-bag", labelKey: "first_aid", route: "/firstaid", color: "#C62828" },
+  { icon: "book-open-page-variant", labelKey: "guides", route: "/guides", color: "#00695C" },
+  { icon: "clipboard-check", labelKey: "checklist", route: "/checklist", color: "#00838F" },
+  { icon: "account-group", labelKey: "family_title", route: "/family", color: "#6A1B9A" },
+  { icon: "shield-alert", labelKey: "drrm", route: "/drrm", color: "#B00020" },
+  { icon: "account-voice", labelKey: "voice", route: "/voiceguide", color: "#1565C0" },
+  { icon: "cog", labelKey: "settings", route: "/settings", color: "#37474F" },
 ];
 
 const DISASTER_TIPS = [
-  { icon: "home-flood", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
-  { icon: "earth", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
-  { icon: "weather-hurricane", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
-  { icon: "fire", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
+  { icon: "home-flood", labelKey: "flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tipKey: "flood_tip" },
+  { icon: "earth", labelKey: "earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tipKey: "earthquake_tip" },
+  { icon: "weather-hurricane", labelKey: "typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tipKey: "typhoon_tip" },
+  { icon: "fire", labelKey: "fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tipKey: "fire_tip" },
 ];
 
 const PREPAREDNESS_TIPS = [
-  { icon: "bag-personal", label: "Go Bag", desc: "3-day supplies: food, water, meds, documents.", color: "#B00020" },
-  { icon: "account-group", label: "Family Plan", desc: "Have a meeting point and contact list ready.", color: "#1565C0" },
-  { icon: "heart-pulse", label: "First Aid", desc: "Know basic first aid and CPR procedures.", color: "#2E7D32" },
-  { icon: "map-marker-radius", label: "Know Routes", desc: "Know your nearest evacuation center.", color: "#6A1B9A" },
+  { icon: "bag-personal", labelKey: "go_bag", descKey: "go_bag_desc", color: "#B00020" },
+  { icon: "account-group", labelKey: "family_plan", descKey: "family_plan_desc", color: "#1565C0" },
+  { icon: "heart-pulse", labelKey: "first_aid", descKey: "first_aid_desc", color: "#2E7D32" },
+  { icon: "map-marker-radius", labelKey: "know_routes", descKey: "know_routes_desc", color: "#6A1B9A" },
 ];
 
 export default function Home() {
@@ -91,7 +91,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const { isAdmin } = useAdmin();
   const router = useRouter();
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textLight } = theme;
   const isDark = theme.bg === "#121212";
 
@@ -172,7 +172,7 @@ export default function Home() {
   };
 
   const handleSOS = async () => {
-    if (!isOnline) { Alert.alert("Offline", "Internet required for SOS."); return; }
+    if (!isOnline) { Alert.alert(t("offline"), "Internet required for SOS."); return; }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       "Send SOS Alert",
@@ -247,9 +247,9 @@ export default function Home() {
   const formatDate = (date) => date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
   const getGreeting = () => {
     const h = currentTime.getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (h < 12) return t("good_morning");
+    if (h < 17) return t("good_afternoon");
+    return t("good_evening");
   };
 
   return (
@@ -272,7 +272,7 @@ export default function Home() {
             <View>
               <Text style={styles.headerGreeting}>{getGreeting()}</Text>
               <Text style={styles.headerTitle}>LIFELINE</Text>
-              <Text style={styles.headerSub}>CTU Danao Campus · DRRMO System</Text>
+              <Text style={styles.headerSub}>{t("ctu_drrmo_system")}</Text>
             </View>
             <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
               <Ionicons name="warning" size={18} color={COLORS.primary} />
@@ -291,14 +291,14 @@ export default function Home() {
         {/* ── STATUS CARD ────────────────────────────── */}
         <View style={[styles.statusCard, { backgroundColor: card, borderColor: border }]}>
           <View style={styles.statusCardLeft}>
-            <Text style={[styles.statusCardLabel, { color: textLight }]}>YOUR STATUS</Text>
+            <Text style={[styles.statusCardLabel, { color: textLight }]}>{t("your_status")}</Text>
             <Text style={[styles.statusCardName, { color: textDark }]} numberOfLines={1}>
-              {auth.currentUser?.displayName || "Student"}
+              {auth.currentUser?.displayName || t("student")}
             </Text>
             <View style={styles.statusBadgeRow}>
               <View style={[styles.statusPulseDot, { backgroundColor: isSafe ? "#4CAF50" : "#FF9800" }]} />
               <Text style={[styles.statusBadgeText, { color: isSafe ? "#4CAF50" : "#FF9800" }]}>
-                {isSafe ? "Marked Safe" : "Status Unknown"}
+                {isSafe ? t("marked_safe") : t("status_unknown")}
               </Text>
             </View>
           </View>
@@ -307,7 +307,7 @@ export default function Home() {
             onPress={handleCheckIn}
           >
             <Ionicons name={isSafe ? "checkmark-circle" : "help-circle"} size={24} color="#fff" />
-            <Text style={styles.safeButtonLabel}>{isSafe ? "SAFE" : "MARK\nSAFE"}</Text>
+            <Text style={styles.safeButtonLabel}>{isSafe ? t("safe") : t("mark_safe")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -317,19 +317,19 @@ export default function Home() {
             <View style={styles.alertTop}>
               <View style={styles.alertBadge}>
                 <Ionicons name="warning" size={12} color="#fff" />
-                <Text style={styles.alertBadgeText}>EMERGENCY ACTIVE</Text>
+                <Text style={styles.alertBadgeText}>{t("emergency_active")}</Text>
               </View>
             </View>
             <View style={styles.alertTitleRow}>
               <MaterialCommunityIcons name="alarm-light" size={18} color="#fff" />
-              <Text style={styles.alertTitle}>Emergency Alert</Text>
+              <Text style={styles.alertTitle}>{t("emergency_alert")}</Text>
             </View>
             <Text style={styles.alertMessage}>{alertMessage}</Text>
             <TouchableOpacity
               style={styles.alertButton}
               onPress={() => router.push("/evacuation")}
             >
-              <Text style={styles.alertButtonText}>View Evacuation Centers</Text>
+              <Text style={styles.alertButtonText}>{t("view_evacuation_centers")}</Text>
               <Ionicons name="arrow-forward" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -341,7 +341,7 @@ export default function Home() {
             <View style={[styles.announcementAccent, { backgroundColor: COLORS.primary }]} />
             <Ionicons name="megaphone" size={26} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.announcementLabel, { color: textLight }]}>DRRMO ANNOUNCEMENT</Text>
+              <Text style={[styles.announcementLabel, { color: textLight }]}>{t("drrmo_announcement")}</Text>
               <Text style={[styles.announcementText, { color: textDark }]}>{announcement.message}</Text>
             </View>
           </View>
@@ -349,8 +349,8 @@ export default function Home() {
 
         {/* ── QUICK ACCESS ───────────────────────────── */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: textDark }]}>Quick Access</Text>
-          <Text style={[styles.sectionSub, { color: textLight }]}>All features</Text>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>{t("quick_access")}</Text>
+          <Text style={[styles.sectionSub, { color: textLight }]}>{t("all_features")}</Text>
         </View>
 
         <View style={styles.quickGrid}>
@@ -362,15 +362,15 @@ export default function Home() {
               activeOpacity={0.85}
             >
               <MaterialCommunityIcons name={item.icon} size={26} color="#fff" style={{ marginBottom: 6 }} />
-              <Text style={styles.quickLabel}>{item.label}</Text>
+              <Text style={styles.quickLabel}>{t(item.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* ── DISASTER TIPS ──────────────────────────── */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: textDark }]}>Disaster Tips</Text>
-          <Text style={[styles.sectionSub, { color: textLight }]}>Tap to expand</Text>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>{t("disaster_tips")}</Text>
+          <Text style={[styles.sectionSub, { color: textLight }]}>{t("tap_to_expand")}</Text>
         </View>
 
         <View style={styles.disasterGrid}>
@@ -392,9 +392,9 @@ export default function Home() {
                   <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
                 </View>
                 <View style={styles.disasterContent}>
-                  <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
+                  <Text style={[styles.disasterLabel, { color: item.color }]}>{t(item.labelKey)}</Text>
                   <Text style={[styles.disasterSubLabel, { color: textLight }]}>
-                    {expandedDisaster === index ? "Tap to collapse" : "Tap for quick tip"}
+                    {expandedDisaster === index ? t("tap_to_collapse") : t("tap_for_quick_tip")}
                   </Text>
                 </View>
                 <Ionicons
@@ -407,7 +407,7 @@ export default function Home() {
               {expandedDisaster === index && (
                 <View style={[styles.expandedTip, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
                   <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
-                  <Text style={[styles.expandedTipText, { color: item.color }]}>{item.tip}</Text>
+                  <Text style={[styles.expandedTipText, { color: item.color }]}>{t(item.tipKey)}</Text>
                 </View>
               )}
             </View>
@@ -416,8 +416,8 @@ export default function Home() {
 
         {/* ── PREPAREDNESS TIPS ──────────────────────── */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: textDark }]}>Stay Prepared</Text>
-          <Text style={[styles.sectionSub, { color: textLight }]}>Always ready</Text>
+          <Text style={[styles.sectionTitle, { color: textDark }]}>{t("stay_prepared")}</Text>
+          <Text style={[styles.sectionSub, { color: textLight }]}>{t("always_ready")}</Text>
         </View>
 
         <View style={[styles.prepGrid, { marginHorizontal: 20 }]}>
@@ -426,8 +426,8 @@ export default function Home() {
               <View style={[styles.prepIconBg, { backgroundColor: item.color + "18" }]}>
                 <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
               </View>
-              <Text style={[styles.prepLabel, { color: textDark }]}>{item.label}</Text>
-              <Text style={[styles.prepDesc, { color: textLight }]}>{item.desc}</Text>
+              <Text style={[styles.prepLabel, { color: textDark }]}>{t(item.labelKey)}</Text>
+              <Text style={[styles.prepDesc, { color: textLight }]}>{t(item.descKey)}</Text>
             </View>
           ))}
         </View>
@@ -462,7 +462,7 @@ export default function Home() {
               { color: textLight },
               activeNav === item.route && { color: COLORS.primary, fontWeight: "bold" },
             ]}>
-              {item.label}
+              {t(item.labelKey)}
             </Text>
             {activeNav === item.route && <View style={styles.navActiveDot} />}
           </TouchableOpacity>

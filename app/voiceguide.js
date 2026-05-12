@@ -46,11 +46,10 @@ const GUIDES = {
 };
 
 export default function VoiceGuide() {
-  const [language, setLanguage] = useState("en");
   const [selectedDisaster, setSelectedDisaster] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const { theme } = useSettings();
+  const { language, updateLanguage, theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   const currentGuide = GUIDES[language];
@@ -81,23 +80,23 @@ export default function VoiceGuide() {
       <View style={[styles.wrapper, { backgroundColor: bg }]}>
         <View style={[styles.detailHeader, { backgroundColor: selectedDisaster.color }]}>
           <TouchableOpacity onPress={() => { stopSpeaking(); setSelectedDisaster(null); }} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>← {t("back")}</Text>
           </TouchableOpacity>
           <MaterialCommunityIcons name={selectedDisaster.icon} size={55} color="#fff" style={styles.detailIcon} />
           <Text style={styles.detailTitle}>{selectedDisaster.title}</Text>
-          <Text style={styles.detailSub}>Voice-Guided Evacuation Instructions</Text>
+          <Text style={styles.detailSub}>{t("voice_detail_sub")}</Text>
         </View>
 
         <View style={styles.controls}>
           {!isSpeaking ? (
             <TouchableOpacity style={styles.speakButton} onPress={() => speakSteps(selectedDisaster)}>
               <Ionicons name="volume-high" size={24} color="#fff" style={styles.speakButtonIcon} />
-              <Text style={styles.speakButtonText}>Start Voice Guide</Text>
+              <Text style={styles.speakButtonText}>{t("start_voice")}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={[styles.speakButton, { backgroundColor: "#e53935" }]} onPress={stopSpeaking}>
               <Ionicons name="stop" size={24} color="#fff" style={styles.speakButtonIcon} />
-              <Text style={styles.speakButtonText}>Stop</Text>
+              <Text style={styles.speakButtonText}>{t("stop")}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -135,16 +134,16 @@ export default function VoiceGuide() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <MaterialCommunityIcons name="account-voice" size={24} color="#fff" />
-          <Text style={styles.headerTitle}>Voice Guide</Text>
+          <Text style={styles.headerTitle}>{t("voice_guide")}</Text>
         </View>
-        <Text style={styles.headerSub}>Audio evacuation instructions</Text>
+        <Text style={styles.headerSub}>{t("voice_sub")}</Text>
       </View>
 
       {/* LANGUAGE SELECTOR */}
       <View style={styles.langContainer}>
         <View style={styles.langLabelRow}>
           <MaterialCommunityIcons name="web" size={16} color={textDark} />
-          <Text style={[styles.langLabel, { color: textDark }]}>Select Language:</Text>
+          <Text style={[styles.langLabel, { color: textDark }]}>{t("select_language")}</Text>
         </View>
         <View style={styles.langButtons}>
           {Object.entries(GUIDES).map(([key, val]) => (
@@ -155,7 +154,7 @@ export default function VoiceGuide() {
                 { borderColor: border, backgroundColor: surface },
                 language === key && styles.langButtonActive,
               ]}
-              onPress={() => { setLanguage(key); stopSpeaking(); }}
+              onPress={() => { updateLanguage(key); stopSpeaking(); }}
             >
               <Text style={[styles.langFlag, language === key && { color: "#fff" }]}>{val.code}</Text>
               <Text style={[styles.langText, { color: textMid }, language === key && { color: "#fff" }]}>
@@ -173,15 +172,15 @@ export default function VoiceGuide() {
       }]}>
         <MaterialCommunityIcons name="lightbulb" size={28} color="#1565C0" style={styles.infoIcon} />
         <View style={styles.infoContent}>
-          <Text style={[styles.infoTitle, { color: "#1565C0" }]}>How to use</Text>
+          <Text style={[styles.infoTitle, { color: "#1565C0" }]}>{t("how_to_use")}</Text>
           <Text style={[styles.infoDesc, { color: textMid }]}>
-            Select a disaster type below, then tap Start Voice Guide to hear step-by-step evacuation instructions. Tap any step to replay it.
+            {t("voice_how_desc")}
           </Text>
         </View>
       </View>
 
       <ScrollView style={[styles.container, { backgroundColor: bg }]}>
-        <Text style={[styles.sectionTitle, { color: textDark }]}>Choose Disaster Type</Text>
+        <Text style={[styles.sectionTitle, { color: textDark }]}>{t("choose_disaster")}</Text>
         {currentGuide.disasters.map((disaster) => (
           <TouchableOpacity
             key={disaster.id}
@@ -194,7 +193,7 @@ export default function VoiceGuide() {
             <View style={styles.disasterContent}>
               <Text style={[styles.disasterTitle, { color: textDark }]}>{disaster.title}</Text>
               <Text style={[styles.disasterSub, { color: textLight }]}>
-                {disaster.steps.length} steps • Tap to start voice guide
+                {disaster.steps.length} {t("steps_tap")}
               </Text>
             </View>
             <Ionicons name="volume-high" size={22} color={disaster.color} style={styles.disasterArrow} />

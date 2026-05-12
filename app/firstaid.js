@@ -116,17 +116,17 @@ const GUIDES = [
 ];
 
 const CATEGORIES = [
-  { key: "all", label: "All", icon: "medical-bag" },
-  { key: "critical", label: "Critical", icon: "alarm-light" },
-  { key: "injury", label: "Injury", icon: "bandage" },
-  { key: "disaster", label: "Disaster", icon: "weather-tornado" },
+  { key: "all", labelKey: "all", icon: "medical-bag" },
+  { key: "critical", labelKey: "critical", icon: "alarm-light" },
+  { key: "injury", labelKey: "injury", icon: "bandage" },
+  { key: "disaster", labelKey: "disaster", icon: "weather-tornado" },
 ];
 
 export default function FirstAid() {
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [completedSteps, setCompletedSteps] = useState({});
   const [activeCategory, setActiveCategory] = useState("all");
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
   const isDark = theme.bg === "#121212";
 
@@ -163,23 +163,23 @@ export default function FirstAid() {
           {guide.emergency && (
             <View style={styles.emergencyBadge}>
               <MaterialCommunityIcons name="alarm-light" size={13} color="#fff" />
-              <Text style={styles.emergencyBadgeText}>EMERGENCY PROCEDURE</Text>
+              <Text style={styles.emergencyBadgeText}>{t("firstaid_emergency_procedure")}</Text>
             </View>
           )}
           <View style={styles.guideHeaderStats}>
             <View style={styles.guideHeaderStat}>
               <Text style={styles.guideHeaderStatNum}>{guide.steps.length}</Text>
-              <Text style={styles.guideHeaderStatLabel}>Steps</Text>
+              <Text style={styles.guideHeaderStatLabel}>{t("steps")}</Text>
             </View>
             <View style={styles.guideHeaderStatDivider} />
             <View style={styles.guideHeaderStat}>
               <Text style={styles.guideHeaderStatNum}>{completedCount}</Text>
-              <Text style={styles.guideHeaderStatLabel}>Done</Text>
+              <Text style={styles.guideHeaderStatLabel}>{t("done")}</Text>
             </View>
             <View style={styles.guideHeaderStatDivider} />
             <View style={styles.guideHeaderStat}>
               <Text style={styles.guideHeaderStatNum}>{Math.round(progress)}%</Text>
-              <Text style={styles.guideHeaderStatLabel}>Progress</Text>
+              <Text style={styles.guideHeaderStatLabel}>{t("progress")}</Text>
             </View>
           </View>
         </View>
@@ -272,9 +272,9 @@ export default function FirstAid() {
           >
             <Ionicons name="call" size={32} color="#fff" style={styles.hotlineCtaIcon} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.hotlineCtaLabel}>Emergency Hotline</Text>
+              <Text style={styles.hotlineCtaLabel}>{t("emergency_hotline")}</Text>
               <Text style={styles.hotlineCtaNumber}>911</Text>
-              <Text style={styles.hotlineCtaTap}>Tap to call</Text>
+              <Text style={styles.hotlineCtaTap}>{t("call_now")}</Text>
             </View>
           </TouchableOpacity>
 
@@ -292,23 +292,23 @@ export default function FirstAid() {
       <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
         <View style={styles.headerTitleRow}>
           <MaterialCommunityIcons name="medical-bag" size={25} color="#fff" />
-          <Text style={styles.headerTitle}>First Aid Guide</Text>
+          <Text style={styles.headerTitle}>{t("firstaid_title")}</Text>
         </View>
-        <Text style={styles.headerSub}>Step-by-step emergency instructions</Text>
+        <Text style={styles.headerSub}>{t("firstaid_sub")}</Text>
         <View style={styles.headerStats}>
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>{GUIDES.length}</Text>
-            <Text style={styles.headerStatLabel}>Guides</Text>
+            <Text style={styles.headerStatLabel}>{t("guides")}</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>{GUIDES.filter((g) => g.emergency).length}</Text>
-            <Text style={styles.headerStatLabel}>Emergency</Text>
+            <Text style={styles.headerStatLabel}>{t("emergency")}</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>Free</Text>
-            <Text style={styles.headerStatLabel}>Offline</Text>
+            <Text style={styles.headerStatLabel}>{t("offline_label")}</Text>
           </View>
         </View>
       </View>
@@ -353,7 +353,7 @@ export default function FirstAid() {
                 { color: textLight },
                 activeCategory === cat.key && styles.activeTabText,
               ]}>
-                {cat.label}
+                {t(cat.labelKey)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -407,9 +407,9 @@ export default function FirstAid() {
         >
           <Ionicons name="call" size={32} color="#fff" style={styles.hotlineIcon} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.hotlineLabel}>CTU Danao DRRMO Hotline</Text>
+            <Text style={styles.hotlineLabel}>{t("ctu_drrmo_hotline")}</Text>
             <Text style={styles.hotlineNumber}>0917-723-6262</Text>
-            <Text style={styles.hotlineTap}>Tap to call</Text>
+            <Text style={styles.hotlineTap}>{t("call_now")}</Text>
           </View>
         </TouchableOpacity>
 

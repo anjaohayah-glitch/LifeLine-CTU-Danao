@@ -29,7 +29,7 @@ const ROLES = {
 export default function Profile() {
   const router = useRouter();
   const user = auth.currentUser;
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
   const isDark = theme.bg === "#121212";
 
@@ -97,7 +97,7 @@ export default function Profile() {
         photoURL, role, college, program, yearLevel,
       });
       setEditing(false);
-      Alert.alert("Saved!", "Your profile has been updated.");
+      Alert.alert(t("saved"), t("profile_updated"));
     } catch (error) {
       Alert.alert("Error", error.message);
     }
@@ -105,7 +105,7 @@ export default function Profile() {
 
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { Alert.alert("Permission Denied", "Photo library access is required."); return; }
+    if (status !== "granted") { Alert.alert(t("permission_denied"), "Photo library access is required."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true,
@@ -114,9 +114,9 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: async () => { await signOut(auth); router.replace("/login"); } },
+    Alert.alert(t("logout"), "Are you sure you want to logout?", [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("logout"), style: "destructive", onPress: async () => { await signOut(auth); router.replace("/login"); } },
     ]);
   };
 
@@ -145,9 +145,9 @@ export default function Profile() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Ionicons name="person" size={24} color="#fff" />
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={styles.headerTitle}>{t("profile_title")}</Text>
         </View>
-        <Text style={styles.headerSub}>Manage your personal information</Text>
+        <Text style={styles.headerSub}>{t("profile_sub")}</Text>
         {role ? (
           <View style={styles.rolePill}>
             <MaterialCommunityIcons name={ROLES[role]?.icon || "account"} size={13} color="#fff" />
@@ -173,7 +173,7 @@ export default function Profile() {
           )}
         </TouchableOpacity>
         <View style={styles.photoInfo}>
-          <Text style={[styles.photoName, { color: textDark }]}>{name || "Your Name"}</Text>
+          <Text style={[styles.photoName, { color: textDark }]}>{name || t("your_name")}</Text>
           <Text style={[styles.photoEmail, { color: textLight }]}>{user?.email}</Text>
           {college ? (
             <View style={styles.photoMetaRow}>
@@ -196,7 +196,7 @@ export default function Profile() {
           <View style={styles.sectionCardTop}>
             <Ionicons name="location" size={20} color="#2e7d32" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.sectionCardTitle, { color: "#2e7d32" }]}>Current Location</Text>
+              <Text style={[styles.sectionCardTitle, { color: "#2e7d32" }]}>{t("current_location")}</Text>
               <Text style={[styles.sectionCardDesc, { color: textMid }]}>{liveAddress}</Text>
             </View>
           </View>
@@ -207,15 +207,15 @@ export default function Profile() {
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
           <MaterialCommunityIcons name="lock" size={20} color={textDark} />
-          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Address Privacy</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>{t("address_privacy")}</Text>
         </View>
         <View style={[styles.privacyRow, { backgroundColor: isDark ? "#1a1a1a" : surface, borderColor: border }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.privacyLabel, { color: textDark }]}>
-              {addressPublic ? "Address is Public" : "Address is Private"}
+              {addressPublic ? t("address_public") : t("address_private")}
             </Text>
             <Text style={[styles.privacyDesc, { color: textLight }]}>
-              {addressPublic ? "Your contacts can see your address" : "Only you can see your address"}
+              {addressPublic ? t("contacts_can_see_address") : t("only_you_address")}
             </Text>
           </View>
           <Switch
@@ -234,22 +234,22 @@ export default function Profile() {
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
           <Ionicons name="person" size={20} color={textDark} />
-          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Personal Information</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>{t("personal_info")}</Text>
         </View>
-        <Field label="Full Name" value={name} setter={setName} placeholder="Enter your name" />
-        <Field label="Email" value={user?.email} placeholder="" editable={false} />
-        <Field label="Phone Number" value={phone} setter={setPhone} placeholder="Enter phone number" keyboard="phone-pad" />
-        <Field label="Barangay / Address" value={barangay} setter={setBarangay} placeholder="Enter your address" />
+        <Field label={t("full_name")} value={name} setter={setName} placeholder={t("enter_name")} />
+        <Field label={t("email")} value={user?.email} placeholder="" editable={false} />
+        <Field label={t("phone_number")} value={phone} setter={setPhone} placeholder={t("enter_phone")} keyboard="phone-pad" />
+        <Field label={t("barangay_address")} value={barangay} setter={setBarangay} placeholder={t("enter_address")} />
       </View>
 
       {/* EMERGENCY CONTACT */}
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
           <MaterialCommunityIcons name="lifebuoy" size={20} color={textDark} />
-          <Text style={[styles.sectionCardTitle, { color: textDark }]}>Emergency Contact</Text>
+          <Text style={[styles.sectionCardTitle, { color: textDark }]}>{t("emergency_contact")}</Text>
         </View>
-        <Field label="Contact Name" value={emergencyName} setter={setEmergencyName} placeholder="e.g. Juan Dela Cruz" />
-        <Field label="Contact Number" value={emergencyContact} setter={setEmergencyContact} placeholder="e.g. 09171234567" keyboard="phone-pad" />
+        <Field label={t("contact_name")} value={emergencyName} setter={setEmergencyName} placeholder="e.g. Juan Dela Cruz" />
+        <Field label={t("contact_number")} value={emergencyContact} setter={setEmergencyContact} placeholder="e.g. 09171234567" keyboard="phone-pad" />
       </View>
 
       {/* EDIT / SAVE BUTTONS */}
@@ -259,14 +259,14 @@ export default function Profile() {
             style={[styles.btn, { backgroundColor: isDark ? "#333" : "#90A4AE", flex: 0.4 }]}
             onPress={() => setEditing(false)}
           >
-            <Text style={styles.btnText}>Cancel</Text>
+            <Text style={styles.btnText}>{t("cancel")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: "#2e7d32", flex: 1 }]}
             onPress={handleSave}
           >
             <MaterialCommunityIcons name="content-save" size={17} color="#fff" />
-            <Text style={styles.btnText}>Save Changes</Text>
+            <Text style={styles.btnText}>{t("save_changes")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -275,7 +275,7 @@ export default function Profile() {
           onPress={() => setEditing(true)}
         >
           <MaterialCommunityIcons name="pencil" size={17} color="#fff" />
-          <Text style={styles.btnText}>Edit Profile</Text>
+          <Text style={styles.btnText}>{t("edit_profile")}</Text>
         </TouchableOpacity>
       )}
 
@@ -285,7 +285,7 @@ export default function Profile() {
         onPress={handleLogout}
       >
         <MaterialCommunityIcons name="logout" size={17} color="#fff" />
-        <Text style={styles.btnText}>Logout</Text>
+        <Text style={styles.btnText}>{t("logout")}</Text>
       </TouchableOpacity>
 
       <View style={{ height: 60 }} />

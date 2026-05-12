@@ -36,7 +36,7 @@ export default function Family() {
   const [myStatus, setMyStatus] = useState(null);
 
   const user = auth.currentUser;
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textLight, surface } = theme;
   const isDark = theme.bg === "#121212";
 
@@ -247,7 +247,7 @@ export default function Family() {
                       <View style={styles.tapHint}>
                         <View style={styles.tapHintRow}>
                           <MaterialCommunityIcons name="map" size={12} color="#fff" />
-                          <Text style={styles.tapHintText}>Tap to open in Google Maps</Text>
+                          <Text style={styles.tapHintText}>{t("tap_navigate")}</Text>
                         </View>
                       </View>
                     )}
@@ -263,7 +263,7 @@ export default function Family() {
           <View style={[styles.chatInputRow, { backgroundColor: card, borderColor: border }]}>
             <TextInput
               style={[styles.chatInput, { backgroundColor: surface, borderColor: border, color: textDark }]}
-              placeholder="Type a message..."
+              placeholder={t("message_placeholder")}
               placeholderTextColor={textLight}
               value={messageText}
               onChangeText={setMessageText}
@@ -285,18 +285,18 @@ export default function Family() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Ionicons name="people" size={24} color="#fff" />
-          <Text style={styles.headerTitle}>Family & Peers</Text>
+          <Text style={styles.headerTitle}>{t("family_title")}</Text>
         </View>
-        <Text style={styles.headerSub}>Stay connected during emergencies</Text>
+        <Text style={styles.headerSub}>{t("family_sub")}</Text>
         <View style={styles.headerStats}>
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>{contacts.length}</Text>
-            <Text style={styles.headerStatLabel}>Contacts</Text>
+            <Text style={styles.headerStatLabel}>{t("contacts")}</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>{pendingRequests.length}</Text>
-            <Text style={styles.headerStatLabel}>Requests</Text>
+            <Text style={styles.headerStatLabel}>{t("requests")}</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
@@ -305,7 +305,7 @@ export default function Family() {
             ) : (
               <Text style={styles.headerStatNum}>—</Text>
             )}
-            <Text style={styles.headerStatLabel}>My Status</Text>
+            <Text style={styles.headerStatLabel}>{t("my_status")}</Text>
           </View>
         </View>
       </View>
@@ -320,7 +320,7 @@ export default function Family() {
             ? <ActivityIndicator color="#fff" size="small" />
             : <View style={styles.statusTextRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                <Text style={styles.statusText}>I Am Safe</Text>
+                <Text style={styles.statusText}>{t("i_am_safe")}</Text>
               </View>
           }
         </TouchableOpacity>
@@ -330,7 +330,7 @@ export default function Family() {
         >
           <View style={styles.statusTextRow}>
             <MaterialCommunityIcons name="lifebuoy" size={16} color="#fff" />
-            <Text style={styles.statusText}>Need Help</Text>
+            <Text style={styles.statusText}>{t("need_help")}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -360,9 +360,9 @@ export default function Family() {
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "contacts", label: `Contacts (${contacts.length})`, icon: "people" },
-          { key: "requests", label: `Requests (${pendingRequests.length})`, icon: "mail-unread" },
-          { key: "search", label: "Find", icon: "search" },
+          { key: "contacts", label: `${t("contacts")} (${contacts.length})`, icon: "people" },
+          { key: "requests", label: `${t("requests")} (${pendingRequests.length})`, icon: "mail-unread" },
+          { key: "search", label: t("find"), icon: "search" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -385,11 +385,11 @@ export default function Family() {
           {contacts.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="people" size={48} color={COLORS.primary} />
-              <Text style={[styles.emptyTitle, { color: textDark }]}>No contacts yet</Text>
-              <Text style={[styles.emptyDesc, { color: textLight }]}>Search for family or peers to add them.</Text>
+              <Text style={[styles.emptyTitle, { color: textDark }]}>{t("no_contacts")}</Text>
+              <Text style={[styles.emptyDesc, { color: textLight }]}>{t("search_add_people")}</Text>
               <TouchableOpacity style={styles.emptyButton} onPress={() => setActiveTab("search")}>
                 <Ionicons name="search" size={15} color="#fff" />
-                <Text style={styles.emptyButtonText}>Find People</Text>
+                <Text style={styles.emptyButtonText}>{t("find_people")}</Text>
               </TouchableOpacity>
             </View>
           ) : contacts.map((contact) => (
@@ -433,8 +433,8 @@ export default function Family() {
           {pendingRequests.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="mail-unread" size={48} color={COLORS.primary} />
-              <Text style={[styles.emptyTitle, { color: textDark }]}>No pending requests</Text>
-              <Text style={[styles.emptyDesc, { color: textLight }]}>Contact requests will appear here.</Text>
+              <Text style={[styles.emptyTitle, { color: textDark }]}>{t("no_pending_requests")}</Text>
+              <Text style={[styles.emptyDesc, { color: textLight }]}>{t("contact_requests_here")}</Text>
             </View>
           ) : pendingRequests.map((request) => (
             <View key={request.id} style={[styles.requestCard, {
@@ -469,7 +469,7 @@ export default function Family() {
             <Ionicons name="search" size={16} color={textLight} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: textDark }]}
-              placeholder="Search by name..."
+              placeholder={t("search")}
               placeholderTextColor={textLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -479,7 +479,7 @@ export default function Family() {
             {filteredUsers.length === 0 ? (
               <View style={styles.empty}>
                 <Ionicons name="search" size={48} color={COLORS.primary} />
-                <Text style={[styles.emptyTitle, { color: textDark }]}>No users found</Text>
+                <Text style={[styles.emptyTitle, { color: textDark }]}>{t("no_users_found")}</Text>
                 <Text style={[styles.emptyDesc, { color: textLight }]}>Try a different name or email.</Text>
               </View>
             ) : filteredUsers.map((u) => {
@@ -491,13 +491,13 @@ export default function Family() {
                   </View>
                   <View style={styles.contactInfo}>
                     <Text style={[styles.contactName, { color: textDark }]}>{u.fullName || "Unknown"}</Text>
-                    <Text style={[styles.contactEmail, { color: textLight }]}>LIFELINE User</Text>
+                    <Text style={[styles.contactEmail, { color: textLight }]}>{t("lifeline_user")}</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.addButton, isAccepted && { backgroundColor: "#2e7d32" }]}
                     onPress={() => !isAccepted && sendContactRequest(u)}
                   >
-                    <Text style={styles.addButtonText}>{isAccepted ? "Added" : "+ Add"}</Text>
+                    <Text style={styles.addButtonText}>{isAccepted ? t("added") : t("add")}</Text>
                   </TouchableOpacity>
                 </View>
               );

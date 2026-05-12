@@ -81,9 +81,9 @@ export default function Settings() {
   ];
 
   const VOICE_SPEEDS = [
-    { key: "slow", label: "Slow", icon: "speedometer-slow" },
-    { key: "normal", label: "Normal", icon: "walk" },
-    { key: "fast", label: "Fast", icon: "run-fast" },
+    { key: "slow", labelKey: "slow", icon: "speedometer-slow" },
+    { key: "normal", labelKey: "normal", icon: "walk" },
+    { key: "fast", labelKey: "fast", icon: "run-fast" },
   ];
 
   const SectionCard = ({ children }) => (
@@ -149,7 +149,7 @@ export default function Settings() {
           </View>
           <View style={[styles.onlineBadge, { backgroundColor: isDark ? "#1a3a1a" : "#E8F5E9" }]}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Active</Text>
+            <Text style={styles.onlineText}>{t("active")}</Text>
           </View>
         </View>
 
@@ -180,7 +180,7 @@ export default function Settings() {
             ))}
           </View>
           <Text style={[styles.langNote, { color: textLight }]}>
-            {language === "en" ? "App is in English" : language === "ceb" ? "Ang app kay Cebuano" : "Ang app ay Tagalog"}
+            {language === "en" ? t("app_language_en") : language === "ceb" ? t("app_language_ceb") : t("app_language_fil")}
           </Text>
         </SectionCard>
 
@@ -192,7 +192,7 @@ export default function Settings() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleLabel, { color: textDark }]}>{t("dark_mode")}</Text>
               <Text style={[styles.toggleDesc, { color: textLight }]}>
-                {darkMode ? "Dark theme enabled" : "Light theme enabled"}
+                {darkMode ? t("dark_theme_enabled") : t("light_theme_enabled")}
               </Text>
             </View>
             <Switch
@@ -212,7 +212,7 @@ export default function Settings() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleLabel, { color: textDark }]}>{t("emergency_alerts")}</Text>
               <Text style={[styles.toggleDesc, { color: textLight }]}>
-                {notifications ? "Receiving real-time alerts" : "Alerts disabled"}
+                {notifications ? t("receiving_alerts") : t("alerts_disabled")}
               </Text>
             </View>
             <Switch
@@ -240,7 +240,7 @@ export default function Settings() {
               >
                 <MaterialCommunityIcons name={s.icon} size={24} color={voiceSpeed === s.key ? "#fff" : COLORS.primary} />
                 <Text style={[styles.speedLabel, { color: voiceSpeed === s.key ? "#fff" : textDark }]}>
-                  {s.label}
+                  {t(s.labelKey)}
                 </Text>
                 {voiceSpeed === s.key && <Ionicons name="checkmark" size={12} color="#fff" />}
               </TouchableOpacity>
@@ -251,15 +251,15 @@ export default function Settings() {
         {/* ACCOUNT */}
         <SectionCard>
           <SectionTitle icon="account" label={t("account")} />
-          <MenuItem icon="pencil" label={t("edit_name")} desc="Update your name in the app" onPress={() => setProfileModal(true)} />
-          <MenuItem icon="key" label={t("change_password")} desc="Update your account password" onPress={() => setPasswordModal(true)} last />
+          <MenuItem icon="pencil" label={t("edit_name")} desc={t("update_name_desc")} onPress={() => setProfileModal(true)} />
+          <MenuItem icon="key" label={t("change_password")} desc={t("update_password_desc")} onPress={() => setPasswordModal(true)} last />
         </SectionCard>
 
         {/* INFORMATION */}
         <SectionCard>
           <SectionTitle icon="information" label={t("information")} />
-          <MenuItem icon="cellphone" label={t("about")} desc="Version info and credits" onPress={() => setAboutModal(true)} />
-          <MenuItem icon="lock" label={t("privacy")} desc="How we handle your data" onPress={() => setPrivacyModal(true)} last />
+          <MenuItem icon="cellphone" label={t("about")} desc={t("version_info")} onPress={() => setAboutModal(true)} />
+          <MenuItem icon="lock" label={t("privacy")} desc={t("data_handling")} onPress={() => setPrivacyModal(true)} last />
         </SectionCard>
 
         {/* LOGOUT */}
@@ -287,14 +287,14 @@ export default function Settings() {
               <MaterialCommunityIcons name="account" size={18} color={COLORS.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: textDark }]}
-                placeholder="Display name"
+                placeholder={t("display_name")}
                 placeholderTextColor={textLight}
                 value={displayName}
                 onChangeText={setDisplayName}
               />
             </View>
             <TouchableOpacity style={[styles.modalBtn, saving && { opacity: 0.7 }]} onPress={handleUpdateProfile} disabled={saving}>
-              <Text style={styles.modalBtnText}>{saving ? "Saving..." : t("save_changes")}</Text>
+              <Text style={styles.modalBtnText}>{saving ? t("saving") : t("save_changes")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modalCancel, { borderColor: border }]} onPress={() => setProfileModal(false)}>
               <Text style={[styles.modalCancelText, { color: textMid }]}>{t("cancel")}</Text>
@@ -313,9 +313,9 @@ export default function Settings() {
               <Text style={[styles.modalTitle, { color: textDark }]}>{t("change_password")}</Text>
             </View>
             {[
-              { placeholder: "Current password", value: currentPassword, setter: setCurrentPassword },
-              { placeholder: "New password", value: newPassword, setter: setNewPassword },
-              { placeholder: "Confirm new password", value: confirmPassword, setter: setConfirmPassword },
+              { placeholder: t("current_password"), value: currentPassword, setter: setCurrentPassword },
+              { placeholder: t("new_password"), value: newPassword, setter: setNewPassword },
+              { placeholder: t("confirm_new_password"), value: confirmPassword, setter: setConfirmPassword },
             ].map((field, i) => (
               <View key={i} style={[styles.inputWrap, { borderColor: border, backgroundColor: surface }]}>
                 <MaterialCommunityIcons name="lock" size={18} color={COLORS.primary} style={styles.inputIcon} />
@@ -330,7 +330,7 @@ export default function Settings() {
               </View>
             ))}
             <TouchableOpacity style={[styles.modalBtn, saving && { opacity: 0.7 }]} onPress={handleChangePassword} disabled={saving}>
-              <Text style={styles.modalBtnText}>{saving ? "Saving..." : t("change_password")}</Text>
+              <Text style={styles.modalBtnText}>{saving ? t("saving") : t("change_password")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modalCancel, { borderColor: border }]}
@@ -366,7 +366,7 @@ export default function Settings() {
               </View>
             ))}
             <TouchableOpacity style={[styles.modalCancel, { borderColor: border, marginTop: 16 }]} onPress={() => setAboutModal(false)}>
-              <Text style={[styles.modalCancelText, { color: textMid }]}>Close</Text>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>{t("close")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -396,7 +396,7 @@ export default function Settings() {
               ))}
             </ScrollView>
             <TouchableOpacity style={[styles.modalCancel, { borderColor: border, marginTop: 12 }]} onPress={() => setPrivacyModal(false)}>
-              <Text style={[styles.modalCancelText, { color: textMid }]}>Close</Text>
+              <Text style={[styles.modalCancelText, { color: textMid }]}>{t("close")}</Text>
             </TouchableOpacity>
           </View>
         </View>

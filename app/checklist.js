@@ -128,7 +128,7 @@ const CHECKLISTS = [
 export default function Checklist() {
   const [selectedList, setSelectedList] = useState(null);
   const [checked, setChecked] = useState({});
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
   useEffect(() => { loadProgress(); }, []);
@@ -164,8 +164,8 @@ export default function Checklist() {
   };
 
   const resetList = (listId, totalItems) => {
-    Alert.alert("Reset Checklist", "Clear all checks for this list?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("reset_checklist"), "Clear all checks for this list?", [
+      { text: t("cancel"), style: "cancel" },
       {
         text: "Reset", style: "destructive",
         onPress: () => {
@@ -194,7 +194,7 @@ export default function Checklist() {
           <Text style={styles.detailDesc}>{list.description}</Text>
           <View style={styles.progressContainer}>
             <View style={styles.progressRow}>
-              <Text style={styles.progressText}>{done}/{total} completed</Text>
+              <Text style={styles.progressText}>{done}/{total} {t("completed")}</Text>
               <Text style={styles.progressText}>{Math.round(percent)}%</Text>
             </View>
             <View style={styles.progressBar}>
@@ -209,7 +209,7 @@ export default function Checklist() {
           onPress={() => resetList(list.id, list.items.length)}
         >
           <MaterialCommunityIcons name="restart" size={16} color={textMid} />
-          <Text style={[styles.resetText, { color: textMid }]}>Reset Checklist</Text>
+          <Text style={[styles.resetText, { color: textMid }]}>{t("reset_checklist")}</Text>
         </TouchableOpacity>
 
         <ScrollView style={[styles.itemsContainer, { backgroundColor: bg }]}>
@@ -247,8 +247,8 @@ export default function Checklist() {
           {done === total && (
             <View style={[styles.completedCard, { borderColor: list.color, backgroundColor: surface }]}>
               <MaterialCommunityIcons name="party-popper" size={45} color={list.color} />
-              <Text style={[styles.completedTitle, { color: list.color }]}>Checklist Complete!</Text>
-              <Text style={[styles.completedSub, { color: textMid }]}>Great job! You are well prepared.</Text>
+              <Text style={[styles.completedTitle, { color: list.color }]}>{t("checklist_complete")}</Text>
+              <Text style={[styles.completedSub, { color: textMid }]}>{t("checklist_complete_sub")}</Text>
             </View>
           )}
 
@@ -262,7 +262,7 @@ export default function Checklist() {
     <ScrollView style={[styles.container, { backgroundColor: bg }]}>
       <View style={styles.headerRow}>
         <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
-        <Text style={styles.header}>Preparedness Checklists</Text>
+        <Text style={styles.header}>{t("preparedness_checklists")}</Text>
       </View>
       <Text style={[styles.subHeader, { color: textLight }]}>
         Track your disaster readiness — progress saves automatically
@@ -287,7 +287,7 @@ export default function Checklist() {
             <View style={[styles.miniProgressBar, { backgroundColor: border }]}>
               <View style={[styles.miniProgressFill, { width: `${percent}%`, backgroundColor: list.color }]} />
             </View>
-            <Text style={[styles.listCount, { color: textLight }]}>{done}/{total} items completed</Text>
+            <Text style={[styles.listCount, { color: textLight }]}>{done}/{total} {t("items_completed")}</Text>
           </TouchableOpacity>
         );
       })}
@@ -296,7 +296,7 @@ export default function Checklist() {
       <View style={[styles.overallCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.overallTitleRow}>
           <MaterialCommunityIcons name="chart-box" size={20} color={COLORS.primary} />
-          <Text style={[styles.overallTitle, { color: textDark }]}>Overall Preparedness</Text>
+          <Text style={[styles.overallTitle, { color: textDark }]}>{t("overall_preparedness")}</Text>
         </View>
         {(() => {
           const totalAll = CHECKLISTS.reduce((acc, l) => acc + l.items.length, 0);
@@ -306,11 +306,11 @@ export default function Checklist() {
           const pct = Math.round((doneAll / totalAll) * 100);
           return (
             <>
-              <Text style={styles.overallPercent}>{pct}% Ready</Text>
+              <Text style={styles.overallPercent}>{pct}% {t("ready")}</Text>
               <View style={[styles.overallBar, { backgroundColor: border }]}>
                 <View style={[styles.overallFill, { width: `${pct}%` }]} />
               </View>
-              <Text style={[styles.overallCount, { color: textLight }]}>{doneAll} of {totalAll} total items completed</Text>
+              <Text style={[styles.overallCount, { color: textLight }]}>{doneAll} of {totalAll} {t("total_items_completed")}</Text>
             </>
           );
         })()}

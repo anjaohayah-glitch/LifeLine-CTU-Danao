@@ -74,7 +74,7 @@ const DRRM_CONTENT = [
 export default function DRRM() {
   const [activeTab, setActiveTab] = useState("map");
   const [selectedContent, setSelectedContent] = useState(null);
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight } = theme;
 
   return (
@@ -84,16 +84,16 @@ export default function DRRM() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <MaterialCommunityIcons name="shield-home" size={24} color="#fff" />
-          <Text style={styles.headerTitle}>DRRM & Safe Zones</Text>
+          <Text style={styles.headerTitle}>{t("drrm_safe_zones")}</Text>
         </View>
-        <Text style={styles.headerSub}>CTU Danao Campus Safety Information</Text>
+        <Text style={styles.headerSub}>{t("drrm_sub")}</Text>
       </View>
 
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "map", label: "Safe Zones", icon: "map" },
-          { key: "awareness", label: "DRRM Awareness", icon: "book-open-variant" },
+          { key: "map", label: t("safe_zones"), icon: "map" },
+          { key: "awareness", label: t("drrm_awareness"), icon: "book-open-variant" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -120,15 +120,15 @@ export default function DRRM() {
           >
             <MaterialCommunityIcons name="map" size={35} color={COLORS.primary} style={styles.openMapIcon} />
             <View style={styles.openMapContent}>
-              <Text style={styles.openMapTitle}>View CTU Danao on Google Maps</Text>
-              <Text style={[styles.openMapDesc, { color: textLight }]}>See campus layout and safe zones</Text>
+              <Text style={styles.openMapTitle}>{t("view_ctu_maps")}</Text>
+              <Text style={[styles.openMapDesc, { color: textLight }]}>{t("see_campus_layout")}</Text>
             </View>
             <Text style={[styles.openMapArrow, { color: textLight }]}>›</Text>
           </TouchableOpacity>
 
           <View style={styles.sectionTitleRow}>
             <Ionicons name="location" size={18} color={textDark} />
-            <Text style={[styles.sectionTitle, { color: textDark }]}>CTU Danao Safe Zones</Text>
+            <Text style={[styles.sectionTitle, { color: textDark }]}>{t("ctu_safe_zones")}</Text>
           </View>
           {SAFE_ZONES.map((zone) => (
             <TouchableOpacity
@@ -160,7 +160,7 @@ export default function DRRM() {
 
           <View style={styles.sectionTitleRow}>
             <Ionicons name="warning" size={18} color={textDark} />
-            <Text style={[styles.sectionTitle, { color: textDark }]}>Hazard Zones</Text>
+            <Text style={[styles.sectionTitle, { color: textDark }]}>{t("hazard_zones")}</Text>
           </View>
           {HAZARD_ZONES.map((zone) => (
             <View key={zone.id} style={[styles.hazardCard, {
@@ -178,9 +178,9 @@ export default function DRRM() {
           <TouchableOpacity style={styles.hotlineCard} onPress={() => Linking.openURL("tel:09177236262")}>
             <Ionicons name="call" size={35} color="#fff" style={styles.hotlineIcon} />
             <View style={styles.hotlineInfo}>
-              <Text style={styles.hotlineTitle}>CTU Danao DRRMO Hotline</Text>
+              <Text style={styles.hotlineTitle}>{t("ctu_drrmo_hotline")}</Text>
               <Text style={styles.hotlineNumber}>0917-723-6262</Text>
-              <Text style={styles.hotlineTap}>Tap to call</Text>
+              <Text style={styles.hotlineTap}>{t("call_now")}</Text>
             </View>
           </TouchableOpacity>
 
@@ -233,9 +233,9 @@ export default function DRRM() {
               <TouchableOpacity style={styles.hotlineCard} onPress={() => Linking.openURL("tel:09177236262")}>
                 <Ionicons name="call" size={35} color="#fff" style={styles.hotlineIcon} />
                 <View style={styles.hotlineInfo}>
-                  <Text style={styles.hotlineTitle}>CTU Danao DRRMO Hotline</Text>
+                  <Text style={styles.hotlineTitle}>{t("ctu_drrmo_hotline")}</Text>
                   <Text style={styles.hotlineNumber}>0917-723-6262</Text>
-                  <Text style={styles.hotlineTap}>Tap to call</Text>
+                  <Text style={styles.hotlineTap}>{t("call_now")}</Text>
                 </View>
               </TouchableOpacity>
 

@@ -147,16 +147,16 @@ const DISASTERS = [
 
 const PHASE_COLORS = { before: "#1565C0", during: "#B00020", after: "#2e7d32" };
 const PHASE_LABELS = {
-  before: { label: "Before", icon: "clipboard-text" },
-  during: { label: "During", icon: "alert" },
-  after: { label: "After", icon: "check-circle" },
+  before: { labelKey: "before", icon: "clipboard-text" },
+  during: { labelKey: "during", icon: "alert" },
+  after: { labelKey: "after", icon: "check-circle" },
 };
 
 export default function Guides() {
   const [isOnline, setIsOnline] = useState(true);
   const [selectedDisaster, setSelectedDisaster] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState("before");
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight } = theme;
 
   useEffect(() => {
@@ -209,7 +209,7 @@ export default function Guides() {
                   { color: textMid },
                   selectedPhase === phase && { color: "#fff" },
                 ]}>
-                  {PHASE_LABELS[phase].label}
+                  {t(PHASE_LABELS[phase].labelKey)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -236,7 +236,7 @@ export default function Guides() {
                 <MaterialCommunityIcons name={tip.icon} size={24} color={PHASE_COLORS[selectedPhase]} />
               </View>
               <View style={styles.tipContent}>
-                <Text style={[styles.tipNumber, { color: textLight }]}>Step {index + 1}</Text>
+                <Text style={[styles.tipNumber, { color: textLight }]}>{t("step")} {index + 1}</Text>
                 <Text style={[styles.tipText, { color: textDark }]}>{tip.tip}</Text>
               </View>
             </View>
@@ -260,7 +260,7 @@ export default function Guides() {
       <ScrollView style={[styles.container, { backgroundColor: bg }]}>
         <View style={styles.headerRow}>
           <MaterialCommunityIcons name="book-open-variant" size={28} color={COLORS.primary} />
-          <Text style={styles.header}>Disaster Guides</Text>
+          <Text style={styles.header}>{t("disaster_guides")}</Text>
         </View>
         <View style={styles.subHeaderRow}>
           <View style={[styles.statusDot, { backgroundColor: isOnline ? "#2e7d32" : "#B00020" }]} />
