@@ -3,12 +3,12 @@ import * as Location from "expo-location";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";

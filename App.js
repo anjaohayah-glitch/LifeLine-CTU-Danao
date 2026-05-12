@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { Alert, Vibration } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
+import { useEffect } from 'react';
+import { Alert, Vibration } from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
