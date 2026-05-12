@@ -286,17 +286,6 @@ export default function Home() {
             <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
           </View>
 
-          {/* Simple online status only */}
-          <View style={styles.statusStrip}>
-            <Ionicons
-              name={isOnline ? "wifi" : "wifi-outline"}
-              size={12}
-              color={isOnline ? "#4CAF50" : "#FF5722"}
-            />
-            <Text style={styles.statusItemText}>
-              {isOnline ? "System Online" : "System Offline"}
-            </Text>
-          </View>
         </View>
 
         {/* ── STATUS CARD ────────────────────────────── */}
@@ -511,14 +500,6 @@ const styles = StyleSheet.create({
   clockRow: { marginBottom: 16 },
   clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
   clockDate: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 2 },
-  statusStrip: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 20, paddingVertical: 6,
-    paddingHorizontal: 12, alignSelf: "flex-start",
-    gap: 6,
-  },
-  statusItemText: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600" },
   statusCard: {
     marginHorizontal: 20, marginTop: -20,
     borderRadius: 20, padding: 18,

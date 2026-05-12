@@ -1,4 +1,5 @@
 // app/evacuation.js
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useState } from "react";
