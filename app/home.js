@@ -9,6 +9,7 @@ import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -87,6 +88,7 @@ export default function Home() {
   const [expandedDisaster, setExpandedDisaster] = useState(null);
   const [isSafe, setIsSafe] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const { theme } = useSettings();
@@ -119,13 +121,20 @@ export default function Home() {
 
   // Firebase listeners
   useEffect(() => {
+    setupListeners();
+  }, []);
+
+  const setupListeners = () => {
     const alertRef = ref(db, "emergencyAlert");
     const annRef = ref(db, "announcement");
     const sosRef = query(ref(db, "sosRequests"), limitToLast(1));
 
     const unsubAlert = onValue(alertRef, (snap) => {
       const data = snap.val();
-      if (data) { setAlertVisible(data.active === true); setAlertMessage(data.message); }
+      if (data) {
+        setAlertVisible(data.active === true);
+        setAlertMessage(data.message);
+      }
     });
     const unsubAnn = onValue(annRef, (snap) => setAnnouncement(snap.val()));
     const unsubSos = onValue(sosRef, (snapshot) => {
@@ -136,7 +145,18 @@ export default function Home() {
     });
 
     return () => { unsubAlert(); unsubAnn(); unsubSos(); };
-  }, []);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setupListeners();
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setTimeout(() => setRefreshing(false), 1000);
+    }
+  };
 
   const handleCheckIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -181,14 +201,19 @@ export default function Home() {
               const timestamp = Date.now();
 
               await set(ref(db, `sosRequests/${timestamp}`), {
-                uid: auth.currentUser?.uid, name: senderName,
-                email: auth.currentUser?.email, latitude, longitude,
-                address: locationText, locationUrl,
+                uid: auth.currentUser?.uid,
+                name: senderName,
+                email: auth.currentUser?.email,
+                latitude, longitude,
+                address: locationText,
+                locationUrl,
                 timestamp: new Date().toISOString(),
               });
               await set(ref(db, `safetyStatus/${auth.currentUser?.uid}`), {
-                status: "help", message: "I need help!",
-                timestamp, name: senderName, location: locationText,
+                status: "help",
+                message: "I need help!",
+                timestamp, name: senderName,
+                location: locationText,
               });
               onValue(ref(db, `contacts/${auth.currentUser?.uid}`), async (snapshot) => {
                 const data = snapshot.val();
@@ -199,9 +224,11 @@ export default function Home() {
                   const getChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
                   for (const contact of contacts) {
                     await push(ref(db, `messages/${getChatId(auth.currentUser?.uid, contact.uid)}`), {
-                      senderId: auth.currentUser?.uid, senderName,
+                      senderId: auth.currentUser?.uid,
+                      senderName,
                       text: `SOS ALERT!\n\n${senderName} NEEDS HELP!\n\n${locationText}\n\nTap to navigate:\n${locationUrl}`,
-                      timestamp, type: "sos",
+                      timestamp,
+                      type: "sos",
                     });
                   }
                 }
@@ -227,8 +254,18 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
         {/* ── HEADER ─────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -243,28 +280,22 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Floating clock */}
+          {/* Clock */}
           <View style={styles.clockRow}>
             <Text style={styles.clockTime}>{formatTime(currentTime)}</Text>
             <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
           </View>
 
-          {/* Status strip */}
+          {/* Simple online status only */}
           <View style={styles.statusStrip}>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: isOnline ? "#4CAF50" : "#FF5722" }]} />
-              <Text style={styles.statusItemText}>{isOnline ? "Online" : "Offline"}</Text>
-            </View>
-            <View style={styles.statusDivider} />
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: "#4CAF50" }]} />
-              <Text style={styles.statusItemText}>USGS Active</Text>
-            </View>
-            <View style={styles.statusDivider} />
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: "#4CAF50" }]} />
-              <Text style={styles.statusItemText}>PAGASA Sync</Text>
-            </View>
+            <Ionicons
+              name={isOnline ? "wifi" : "wifi-outline"}
+              size={12}
+              color={isOnline ? "#4CAF50" : "#FF5722"}
+            />
+            <Text style={styles.statusItemText}>
+              {isOnline ? "System Online" : "System Offline"}
+            </Text>
           </View>
         </View>
 
@@ -455,8 +486,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   container: { flex: 1 },
-
-  // ── HEADER ──────────────────────────────────────────
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 55, paddingBottom: 30,
@@ -485,20 +514,16 @@ const styles = StyleSheet.create({
   statusStrip: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14, gap: 8,
+    borderRadius: 20, paddingVertical: 6,
+    paddingHorizontal: 12, alignSelf: "flex-start",
+    gap: 6,
   },
-  statusItem: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1, justifyContent: "center" },
   statusItemText: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600" },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusDivider: { width: 1, height: 14, backgroundColor: "rgba(255,255,255,0.2)" },
-
-  // ── STATUS CARD ─────────────────────────────────────
   statusCard: {
     marginHorizontal: 20, marginTop: -20,
     borderRadius: 20, padding: 18,
     flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
+    justifyContent: "space-between", borderWidth: 1,
     elevation: 12, shadowColor: "#000",
     shadowOpacity: 0.12, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12,
   },
@@ -513,14 +538,11 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center", elevation: 4,
   },
   safeButtonLabel: { color: "#fff", fontSize: 9, fontWeight: "bold", textAlign: "center", marginTop: 2 },
-
-  // ── ALERT ───────────────────────────────────────────
   alertCard: {
     backgroundColor: "#B00020",
     marginHorizontal: 20, marginTop: 16,
     borderRadius: 20, padding: 18,
-    borderWidth: 1.5, borderColor: "#FF5252",
-    elevation: 6,
+    borderWidth: 1.5, borderColor: "#FF5252", elevation: 6,
   },
   alertTop: { marginBottom: 10 },
   alertBadge: {
@@ -541,8 +563,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
   },
   alertButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
-
-  // ── ANNOUNCEMENT ────────────────────────────────────
   announcementCard: {
     marginHorizontal: 20, marginTop: 12,
     borderRadius: 16, padding: 14,
@@ -552,8 +572,6 @@ const styles = StyleSheet.create({
   announcementAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4 },
   announcementLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 3 },
   announcementText: { fontSize: 13, lineHeight: 18 },
-
-  // ── SECTION HEADERS ─────────────────────────────────
   sectionHeader: {
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between",
@@ -561,8 +579,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 17, fontWeight: "bold" },
   sectionSub: { fontSize: 12 },
-
-  // ── QUICK ACCESS ────────────────────────────────────
   quickGrid: {
     flexDirection: "row", flexWrap: "wrap",
     paddingHorizontal: 20, gap: 10,
@@ -570,13 +586,11 @@ const styles = StyleSheet.create({
   quickCard: {
     width: "22%", borderRadius: 16,
     paddingVertical: 16, paddingHorizontal: 8,
-    alignItems: "center",
-    elevation: 3, shadowColor: "#000",
-    shadowOpacity: 0.12, shadowOffset: { width: 0, height: 3 }, shadowRadius: 5,
+    alignItems: "center", elevation: 3,
+    shadowColor: "#000", shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 3 }, shadowRadius: 5,
   },
   quickLabel: { fontSize: 10, fontWeight: "bold", color: "#fff", textAlign: "center" },
-
-  // ── DISASTER TIPS ────────────────────────────────────
   disasterGrid: { paddingHorizontal: 20, gap: 8 },
   disasterCard: {
     flexDirection: "row", alignItems: "center",
@@ -596,8 +610,6 @@ const styles = StyleSheet.create({
     gap: 10, alignItems: "flex-start", marginTop: -4,
   },
   expandedTipText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: "500" },
-
-  // ── PREPAREDNESS TIPS ────────────────────────────────
   prepGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 10 },
   prepCard: {
     width: "47%", borderRadius: 16, padding: 14,
@@ -609,8 +621,6 @@ const styles = StyleSheet.create({
   },
   prepLabel: { fontWeight: "bold", fontSize: 13, marginBottom: 4 },
   prepDesc: { fontSize: 11, lineHeight: 16 },
-
-  // ── BOTTOM NAV ───────────────────────────────────────
   bottomNav: {
     flexDirection: "row", borderTopWidth: 1,
     paddingBottom: 28, paddingTop: 12,
