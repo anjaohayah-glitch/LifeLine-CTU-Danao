@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Linking,
   RefreshControl,
   ScrollView,
@@ -28,6 +30,108 @@ const WEATHER_ICONS = {
 
 const HOURS = ["12AM","1AM","2AM","3AM","4AM","5AM","6AM","7AM","8AM","9AM","10AM","11AM",
   "12PM","1PM","2PM","3PM","4PM","5PM","6PM","7PM","8PM","9PM","10PM","11PM"];
+
+function SkeletonBlock({ style, color }) {
+  const opacity = useRef(new Animated.Value(0.45)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.45,
+          duration: 850,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+
+  return <Animated.View style={[styles.skeletonBlock, { backgroundColor: color, opacity }, style]} />;
+}
+
+function WeatherSkeletonScreen({ bg, card, border }) {
+  const skeletonColor = bg === "#121212" ? "rgba(255,255,255,0.16)" : "rgba(176,0,32,0.12)";
+
+  return (
+    <View style={[styles.wrapper, { backgroundColor: bg }]}>
+      <View style={styles.header}>
+        <View style={styles.headerTitleRow}>
+          <SkeletonBlock color="rgba(255,255,255,0.28)" style={styles.skeletonHeaderIcon} />
+          <SkeletonBlock color="rgba(255,255,255,0.28)" style={styles.skeletonHeaderTitle} />
+        </View>
+        <View style={styles.headerSubRow}>
+          <SkeletonBlock color="rgba(255,255,255,0.22)" style={styles.skeletonHeaderPin} />
+          <SkeletonBlock color="rgba(255,255,255,0.22)" style={styles.skeletonHeaderSub} />
+        </View>
+      </View>
+
+      <View style={[styles.tabs, { borderColor: border }]}>
+        {[0, 1].map((item) => (
+          <View key={item} style={styles.tab}>
+            <SkeletonBlock color={skeletonColor} style={styles.skeletonTab} />
+          </View>
+        ))}
+      </View>
+
+      <ScrollView style={[styles.container, { backgroundColor: bg }]} showsVerticalScrollIndicator={false}>
+        <View style={[styles.currentCard, { backgroundColor: card, borderColor: border }]}>
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonWeatherIcon} />
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonTemperature} />
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonCondition} />
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonFeelsLike} />
+          <View style={styles.statsRow}>
+            {[0, 1, 2, 3].map((item) => (
+              <View key={item} style={styles.statItem}>
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonStatIcon} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonStatValue} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonStatLabel} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonSectionTitle} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {[0, 1, 2, 3].map((item) => (
+              <View key={item} style={[styles.hourCard, { backgroundColor: card, borderColor: border }]}>
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonHourTime} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonHourIcon} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonHourTemp} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonHourRain} />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <SkeletonBlock color={skeletonColor} style={styles.skeletonSectionTitle} />
+          <View style={styles.sunRow}>
+            {[0, 1].map((item) => (
+              <View key={item} style={[styles.sunCard, { backgroundColor: card, borderColor: border }]}>
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonSunIcon} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonSunLabel} />
+                <SkeletonBlock color={skeletonColor} style={styles.skeletonSunTime} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
+  );
+}
 
 export default function Weather() {
   const [weather, setWeather] = useState(null);
@@ -157,10 +261,7 @@ export default function Weather() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
-        <ActivityIndicator size="large" color="#B00020" />
-        <Text style={[styles.loadingText, { color: "#B00020" }]}>Fetching weather...</Text>
-      </View>
+      <WeatherSkeletonScreen bg={bg} card={card} border={border} />
     );
   }
 
@@ -476,4 +577,25 @@ const styles = StyleSheet.create({
   refreshText: { color: "#fff", fontWeight: "bold" },
   windyInfo: { padding: 12, marginHorizontal: 20, marginVertical: 10, borderRadius: 10, borderWidth: 1 },
   windyInfoText: { textAlign: "center", fontSize: 13 },
+  skeletonBlock: { overflow: "hidden" },
+  skeletonHeaderIcon: { width: 24, height: 24, borderRadius: 12 },
+  skeletonHeaderTitle: { width: 120, height: 22, borderRadius: 6 },
+  skeletonHeaderPin: { width: 13, height: 13, borderRadius: 7, marginTop: 4 },
+  skeletonHeaderSub: { width: 150, height: 13, borderRadius: 5, marginTop: 4 },
+  skeletonTab: { width: 92, height: 16, borderRadius: 8 },
+  skeletonWeatherIcon: { width: 76, height: 76, borderRadius: 38, marginBottom: 12 },
+  skeletonTemperature: { width: 128, height: 58, borderRadius: 12 },
+  skeletonCondition: { width: 150, height: 18, borderRadius: 8, marginTop: 12 },
+  skeletonFeelsLike: { width: 108, height: 14, borderRadius: 7, marginTop: 10 },
+  skeletonStatIcon: { width: 22, height: 22, borderRadius: 11 },
+  skeletonStatValue: { width: 46, height: 12, borderRadius: 6, marginTop: 8 },
+  skeletonStatLabel: { width: 52, height: 10, borderRadius: 5, marginTop: 6 },
+  skeletonSectionTitle: { width: 150, height: 18, borderRadius: 8, marginBottom: 12 },
+  skeletonHourTime: { width: 38, height: 11, borderRadius: 5 },
+  skeletonHourIcon: { width: 28, height: 28, borderRadius: 14, marginVertical: 8 },
+  skeletonHourTemp: { width: 40, height: 15, borderRadius: 7 },
+  skeletonHourRain: { width: 32, height: 11, borderRadius: 5, marginTop: 8 },
+  skeletonSunIcon: { width: 34, height: 34, borderRadius: 17 },
+  skeletonSunLabel: { width: 64, height: 12, borderRadius: 6, marginTop: 10 },
+  skeletonSunTime: { width: 78, height: 16, borderRadius: 8, marginTop: 8 },
 });
