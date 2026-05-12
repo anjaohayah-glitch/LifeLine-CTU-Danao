@@ -346,7 +346,7 @@ export default function Home() {
                     {expandedDisaster === index ? "Tap to collapse" : "Tap for quick tip"}
                   </Text>
                 </View>
-                <Text style={[styles.disasterChevron, { color: textLight, fontSize: 0 }]}>
+                <Text style={{ display: "none" }}>
                   {expandedDisaster === index ? "▲" : "▼"}
                 </Text>
                 <Ionicons
@@ -562,25 +562,6 @@ const styles = StyleSheet.create({
   },
   expandedTipIcon: { fontSize: 20 },
   expandedTipText: { flex: 1, fontSize: 13, lineHeight: 20, fontWeight: "500" },
-
-  // ── SYSTEM FEED ──────────────────────────────────────
-  liveBadge: {
-    flexDirection: "row", alignItems: "center",
-    gap: 5, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4CAF50" },
-  liveText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
-  systemFeed: { marginHorizontal: 20, borderRadius: 18, borderWidth: 1, overflow: "hidden" },
-  feedItem: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  feedIcon: { fontSize: 18, width: 28, textAlign: "center" },
-  feedLabel: { flex: 1, fontSize: 13, fontWeight: "500" },
-  feedStatus: {
-    flexDirection: "row", alignItems: "center",
-    gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  feedDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#4CAF50" },
-  feedStatusText: { fontSize: 10, fontWeight: "bold", color: "#4CAF50" },
 
   // ── BOTTOM NAV ───────────────────────────────────────
   bottomNav: {
