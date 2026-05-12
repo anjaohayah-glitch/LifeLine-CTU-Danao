@@ -2,6 +2,7 @@
 import * as BackgroundFetch from "expo-background-fetch";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as TaskManager from "expo-task-manager";
 import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
@@ -45,29 +46,29 @@ TaskManager.defineTask(WEATHER_TASK_NAME, async () => {
 });
 
 const NAV_ITEMS = [
-  { icon: "🏠", label: "Home", route: "/home" },
-  { icon: "🗺", label: "Evacuate", route: "/evacuation" },
-  { icon: "📞", label: "Hotlines", route: "/hotlines" },
-  { icon: "🌤", label: "Weather", route: "/weather" },
-  { icon: "👤", label: "Profile", route: "/profile" },
+  { icon: "home", label: "Home", route: "/home" },
+  { icon: "map", label: "Evacuate", route: "/evacuation" },
+  { icon: "call", label: "Hotlines", route: "/hotlines" },
+  { icon: "partly-sunny", label: "Weather", route: "/weather" },
+  { icon: "person", label: "Profile", route: "/profile" },
 ];
 
 const QUICK_ACCESS = [
-  { icon: "🛡", label: "Admin", route: "/admin", color: "#7F0000", adminOnly: true },
-  { icon: "🩺", label: "First Aid", route: "/firstaid", color: "#C62828" },
-  { icon: "📚", label: "Guides", route: "/guides", color: "#00695C" },
-  { icon: "✅", label: "Checklist", route: "/checklist", color: "#00838F" },
-  { icon: "👨‍👩‍👧", label: "Family", route: "/family", color: "#6A1B9A" },
-  { icon: "🛡", label: "DRRM", route: "/drrm", color: "#B00020" },
-  { icon: "🗣", label: "Voice", route: "/voiceguide", color: "#1565C0" },
-  { icon: "⚙️", label: "Settings", route: "/settings", color: "#37474F" },
+  { icon: "shield-account", label: "Admin", route: "/admin", color: "#7F0000", adminOnly: true },
+  { icon: "medical-bag", label: "First Aid", route: "/firstaid", color: "#C62828" },
+  { icon: "book-open-page-variant", label: "Guides", route: "/guides", color: "#00695C" },
+  { icon: "clipboard-check", label: "Checklist", route: "/checklist", color: "#00838F" },
+  { icon: "account-group", label: "Family", route: "/family", color: "#6A1B9A" },
+  { icon: "shield-alert", label: "DRRM", route: "/drrm", color: "#B00020" },
+  { icon: "account-voice", label: "Voice", route: "/voiceguide", color: "#1565C0" },
+  { icon: "cog", label: "Settings", route: "/settings", color: "#37474F" },
 ];
 
 const DISASTER_TIPS = [
-  { icon: "🌊", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
-  { icon: "🌍", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
-  { icon: "🌪", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
-  { icon: "🔥", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
+  { icon: "waves", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
+  { icon: "earth", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
+  { icon: "weather-hurricane", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
+  { icon: "fire", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },
 ];
 
 export default function Home() {
@@ -75,14 +76,14 @@ export default function Home() {
   const [alertMessage, setAlertMessage] = useState("");
   const [announcement, setAnnouncement] = useState(null);
   const [activeNav, setActiveNav] = useState("/home");
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline] = useState(true);
   const [expandedDisaster, setExpandedDisaster] = useState(null);
   const [isSafe, setIsSafe] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const { theme } = useSettings();
-  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
+  const { bg, card, border, textDark, textLight } = theme;
   const isDark = theme.bg === "#121212";
 
   const FEATURE_CARDS = QUICK_ACCESS.filter((item) => !item.adminOnly || isAdmin);
@@ -141,12 +142,12 @@ export default function Home() {
   };
 
   const handleSOS = async () => {
-    if (!isOnline) { Alert.alert("Offline 📵", "Internet required for SOS."); return; }
+    if (!isOnline) { Alert.alert("Offline", "Internet required for SOS."); return; }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert("🚨 Send SOS Alert", "This will broadcast your live location to ALL contacts and admin.", [
+    Alert.alert("Send SOS Alert", "This will broadcast your live location to ALL contacts and admin.", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "🚨 YES, SEND SOS",
+        text: "YES, SEND SOS",
         style: "destructive",
         onPress: async () => {
           try {
@@ -161,7 +162,7 @@ export default function Home() {
                 const g = geocode[0];
                 locationText = [g.street, g.district, g.city, g.region].filter(Boolean).join(", ");
               }
-            } catch (e) {}
+            } catch (_e) {}
             const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
             const senderName = auth.currentUser?.displayName || auth.currentUser?.email;
             const timestamp = Date.now();
@@ -173,7 +174,7 @@ export default function Home() {
               timestamp: new Date().toISOString(),
             });
             await set(ref(db, `safetyStatus/${auth.currentUser?.uid}`), {
-              status: "help", message: "I need help! 🔴",
+              status: "help", message: "I need help!",
               timestamp, name: senderName, location: locationText,
             });
             onValue(ref(db, `contacts/${auth.currentUser?.uid}`), async (snapshot) => {
@@ -184,7 +185,7 @@ export default function Home() {
                 for (const contact of contacts) {
                   await push(ref(db, `messages/${getChatId(auth.currentUser?.uid, contact.uid)}`), {
                     senderId: auth.currentUser?.uid, senderName,
-                    text: `🚨 SOS ALERT!\n\n${senderName} NEEDS HELP!\n\n📍 ${locationText}\n\n🗺 Tap to navigate:\n${locationUrl}`,
+                    text: `SOS ALERT!\n\n${senderName} NEEDS HELP!\n\n${locationText}\n\nTap to navigate:\n${locationUrl}`,
                     timestamp, type: "sos",
                   });
                 }
@@ -192,7 +193,7 @@ export default function Home() {
             }, { onlyOnce: true });
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert("🚨 SOS Sent!", "✅ All contacts notified\n✅ Admin notified\n\nStay calm. Help is on the way!");
+            Alert.alert("SOS Sent!", "All contacts notified\nAdmin notified\n\nStay calm. Help is on the way!");
           } catch (e) { Alert.alert("Error", e.message); }
         },
       },
@@ -203,9 +204,9 @@ export default function Home() {
   const formatDate = (date) => date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
   const getGreeting = () => {
     const h = currentTime.getHours();
-    if (h < 12) return "Good Morning ☀️";
-    if (h < 17) return "Good Afternoon 🌤";
-    return "Good Evening 🌙";
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
+    return "Good Evening";
   };
 
   return (
@@ -221,7 +222,8 @@ export default function Home() {
               <Text style={styles.headerSub}>CTU Danao Campus · DRRMO System</Text>
             </View>
             <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
-              <Text style={styles.sosButtonEmoji}>🚨</Text>
+              <Text style={styles.sosButtonEmoji} />
+              <Ionicons name="warning" size={18} color={COLORS.primary} />
               <Text style={styles.sosButtonText}>SOS</Text>
             </TouchableOpacity>
           </View>
@@ -232,20 +234,6 @@ export default function Home() {
             <Text style={styles.clockDate}>{formatDate(currentTime)}</Text>
           </View>
 
-          {/* Status strip */}
-          <View style={styles.statusStrip}>
-            {[
-              { dot: isOnline ? "#4CAF50" : "#FF5722", label: isOnline ? "Online" : "Offline" },
-              { dot: "#4CAF50", label: "USGS Active" },
-              { dot: "#4CAF50", label: "PAGASA Sync" },
-            ].map((s, i) => (
-              <View key={i} style={styles.statusItem}>
-                {i > 0 && <View style={styles.statusDivider} />}
-                <View style={[styles.statusDot, { backgroundColor: s.dot }]} />
-                <Text style={styles.statusItemText}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         {/* ── STATUS CARD ────────────────────────────── */}
@@ -266,7 +254,8 @@ export default function Home() {
             style={[styles.safeButton, { backgroundColor: isSafe ? "#4CAF50" : COLORS.primary }]}
             onPress={handleCheckIn}
           >
-            <Text style={styles.safeButtonIcon}>{isSafe ? "✓" : "?"}</Text>
+            <Text style={styles.safeButtonIcon} />
+            <Ionicons name={isSafe ? "checkmark" : "help"} size={22} color="#fff" />
             <Text style={styles.safeButtonLabel}>{isSafe ? "SAFE" : "MARK\nSAFE"}</Text>
           </TouchableOpacity>
         </View>
@@ -276,10 +265,14 @@ export default function Home() {
           <View style={styles.alertCard}>
             <View style={styles.alertTop}>
               <View style={styles.alertBadge}>
-                <Text style={styles.alertBadgeText}>⚠️ EMERGENCY ACTIVE</Text>
+                <Ionicons name="warning" size={12} color="#fff" />
+                <Text style={styles.alertBadgeText}>EMERGENCY ACTIVE</Text>
               </View>
             </View>
-            <Text style={styles.alertTitle}>🚨 Emergency Alert</Text>
+            <View style={styles.alertTitleRow}>
+              <MaterialCommunityIcons name="alarm-light" size={18} color="#fff" />
+              <Text style={styles.alertTitle}>Emergency Alert</Text>
+            </View>
             <Text style={styles.alertMessage}>{alertMessage}</Text>
             <TouchableOpacity
               style={styles.alertButton}
@@ -294,7 +287,8 @@ export default function Home() {
         {announcement?.message && (
           <View style={[styles.announcementCard, { backgroundColor: card, borderColor: border }]}>
             <View style={[styles.announcementAccent, { backgroundColor: COLORS.primary }]} />
-            <Text style={styles.announcementIcon}>📢</Text>
+            <Text style={styles.announcementIcon} />
+            <Ionicons name="megaphone" size={26} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.announcementLabel, { color: textLight }]}>DRRMO ANNOUNCEMENT</Text>
               <Text style={[styles.announcementText, { color: textDark }]}>{announcement.message}</Text>
@@ -316,7 +310,7 @@ export default function Home() {
               onPress={() => { Haptics.selectionAsync(); router.push(item.route); }}
               activeOpacity={0.85}
             >
-              <Text style={styles.quickIcon}>{item.icon}</Text>
+              <MaterialCommunityIcons name={item.icon} size={26} color="#fff" style={styles.quickIcon} />
               <Text style={styles.quickLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -344,7 +338,7 @@ export default function Home() {
                 activeOpacity={0.85}
               >
                 <View style={[styles.disasterIconBg, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
-                  <Text style={styles.disasterIcon}>{item.icon}</Text>
+                  <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
                 </View>
                 <View style={styles.disasterContent}>
                   <Text style={[styles.disasterLabel, { color: item.color }]}>{item.label}</Text>
@@ -352,49 +346,23 @@ export default function Home() {
                     {expandedDisaster === index ? "Tap to collapse" : "Tap for quick tip"}
                   </Text>
                 </View>
-                <Text style={[styles.disasterChevron, { color: textLight }]}>
+                <Text style={[styles.disasterChevron, { color: textLight, fontSize: 0 }]}>
                   {expandedDisaster === index ? "▲" : "▼"}
                 </Text>
+                <Ionicons
+                  name={expandedDisaster === index ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={textLight}
+                />
               </TouchableOpacity>
 
               {/* Inline expanded tip */}
               {expandedDisaster === index && (
                 <View style={[styles.expandedTip, { backgroundColor: isDark ? item.darkBg : item.bg }]}>
-                  <Text style={styles.expandedTipIcon}>{item.icon}</Text>
+                  <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
                   <Text style={[styles.expandedTipText, { color: item.color }]}>{item.tip}</Text>
                 </View>
               )}
-            </View>
-          ))}
-        </View>
-
-        {/* ── SYSTEM FEED ────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: textDark }]}>System Feed</Text>
-          <View style={[styles.liveBadge, { backgroundColor: isDark ? "#1a3a1a" : "#E8F5E9" }]}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
-          </View>
-        </View>
-
-        <View style={[styles.systemFeed, { backgroundColor: card, borderColor: border }]}>
-          {[
-            { icon: "🌍", label: "USGS Seismic Watch", status: "Active" },
-            { icon: "☁️", label: "PAGASA Weather Sync", status: "Online" },
-            { icon: "🌋", label: "PHIVOLCS Monitor", status: "Active" },
-            { icon: "📡", label: "Firebase Real-Time DB", status: "Connected" },
-            { icon: "🔔", label: "Push Notifications", status: "Enabled" },
-          ].map((feed, i, arr) => (
-            <View
-              key={i}
-              style={[styles.feedItem, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: border }]}
-            >
-              <Text style={styles.feedIcon}>{feed.icon}</Text>
-              <Text style={[styles.feedLabel, { color: textDark }]}>{feed.label}</Text>
-              <View style={[styles.feedStatus, { backgroundColor: isDark ? "#1a3a1a" : "#E8F5E9" }]}>
-                <View style={styles.feedDot} />
-                <Text style={styles.feedStatusText}>{feed.status}</Text>
-              </View>
             </View>
           ))}
         </View>
@@ -418,7 +386,11 @@ export default function Home() {
               styles.navIconWrap,
               activeNav === item.route && { backgroundColor: COLORS.primary + "18" },
             ]}>
-              <Text style={styles.navIcon}>{item.icon}</Text>
+              <Ionicons
+                name={item.icon}
+                size={22}
+                color={activeNav === item.route ? COLORS.primary : textLight}
+              />
             </View>
             <Text style={[
               styles.navLabel,
@@ -461,7 +433,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 3 },
   },
-  sosButtonEmoji: { fontSize: 18 },
+  sosButtonEmoji: { display: "none" },
   sosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12, marginTop: 2 },
   clockRow: { marginBottom: 16 },
   clockTime: { color: "#fff", fontSize: 42, fontWeight: "200", letterSpacing: 2 },
@@ -496,7 +468,7 @@ const styles = StyleSheet.create({
     borderRadius: 16, width: 64, height: 64,
     justifyContent: "center", alignItems: "center", elevation: 4,
   },
-  safeButtonIcon: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  safeButtonIcon: { display: "none" },
   safeButtonLabel: { color: "#fff", fontSize: 9, fontWeight: "bold", textAlign: "center", marginTop: 2 },
 
   // ── ALERT ───────────────────────────────────────────
@@ -509,11 +481,15 @@ const styles = StyleSheet.create({
   },
   alertTop: { marginBottom: 10 },
   alertBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 20, paddingHorizontal: 10,
     paddingVertical: 4, alignSelf: "flex-start",
   },
   alertBadgeText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  alertTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
   alertTitle: { color: "#fff", fontWeight: "bold", fontSize: 16, marginBottom: 6 },
   alertMessage: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20, marginBottom: 14 },
   alertButton: {
@@ -532,7 +508,7 @@ const styles = StyleSheet.create({
     gap: 12, borderWidth: 1, overflow: "hidden",
   },
   announcementAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4 },
-  announcementIcon: { fontSize: 26, marginLeft: 8 },
+  announcementIcon: { display: "none" },
   announcementLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 3 },
   announcementText: { fontSize: 13, lineHeight: 18 },
 

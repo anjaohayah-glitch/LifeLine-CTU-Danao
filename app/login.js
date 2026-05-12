@@ -1,5 +1,6 @@
 // app/login.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { useEffect, useState } from "react";
@@ -67,7 +68,7 @@ export default function Login() {
       await sendPasswordResetEmail(auth, resetEmail.trim());
       setForgotModal(false);
       setResetEmail("");
-      Alert.alert("Email Sent! 📧", `A password reset link has been sent to:\n\n${resetEmail}\n\nPlease check your inbox or spam folder.`, [{ text: "OK" }]);
+      Alert.alert("Email Sent!", `A password reset link has been sent to:\n\n${resetEmail}\n\nPlease check your inbox or spam folder.`, [{ text: "OK" }]);
     } catch (error) {
       let message = "Something went wrong. Please try again.";
       if (error.code === "auth/user-not-found") message = "No account found with this email address.";
@@ -88,15 +89,19 @@ export default function Login() {
         <View style={styles.circle3} />
 
         <View style={styles.logoBox}>
-          <Text style={styles.logoEmoji}>🚑</Text>
+          <MaterialCommunityIcons name="ambulance" size={44} color="#fff" />
+          <Text style={styles.logoEmoji} />
         </View>
         <Text style={styles.logoText}>LIFELINE</Text>
         <Text style={styles.logoSub}>CTU Danao Disaster Preparedness</Text>
 
         <View style={styles.pillsRow}>
-          {["🆘 SOS", "🗺 Evacuate", "📚 Guides"].map((pill, i) => (
+          {["SOS", "Evacuate", "Guides"].map((pill, i) => (
             <View key={i} style={styles.pill}>
-              <Text style={styles.pillText}>{pill}</Text>
+              {i === 0 && <MaterialCommunityIcons name="alarm-light" size={12} color="#fff" />}
+              {i === 1 && <Ionicons name="map" size={12} color="#fff" />}
+              {i === 2 && <Ionicons name="book" size={12} color="#fff" />}
+              <Text style={styles.pillText}>{["SOS", "Evacuate", "Guides"][i]}</Text>
             </View>
           ))}
         </View>
@@ -109,14 +114,15 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.welcomeText}>Welcome Back 👋</Text>
+        <Text style={styles.welcomeText}>Welcome Back</Text>
         <Text style={styles.welcomeSub}>Sign in to stay connected and stay safe</Text>
 
         {/* EMAIL */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email Address</Text>
           <View style={[styles.inputWrapper, email.length > 0 && styles.inputWrapperActive]}>
-            <Text style={styles.inputIcon}>✉️</Text>
+            <Ionicons name="mail" size={17} color={COLORS.primary} style={styles.vectorInputIcon} />
+            <Text style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
@@ -128,7 +134,7 @@ export default function Login() {
             />
             {email.length > 0 && (
               <TouchableOpacity onPress={() => setEmail("")}>
-                <Text style={styles.clearText}>✕</Text>
+                <Ionicons name="close" size={15} color="#90A4AE" />
               </TouchableOpacity>
             )}
           </View>
@@ -138,7 +144,8 @@ export default function Login() {
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Password</Text>
           <View style={[styles.inputWrapper, password.length > 0 && styles.inputWrapperActive]}>
-            <Text style={styles.inputIcon}>🔒</Text>
+            <Ionicons name="lock-closed" size={17} color={COLORS.primary} style={styles.vectorInputIcon} />
+            <Text style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your password"
@@ -173,6 +180,7 @@ export default function Login() {
           ) : (
             <View style={styles.loginButtonInner}>
               <Text style={styles.loginButtonText}>SIGN IN</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
               <Text style={styles.loginButtonArrow}>→</Text>
             </View>
           )}
@@ -195,7 +203,11 @@ export default function Login() {
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>🔒 Your data is secure and encrypted</Text>
+          <View style={styles.footerRow}>
+            <Ionicons name="lock-closed" size={12} color="#B0BEC5" />
+            <Text style={styles.footerCleanText}>Your data is secure and encrypted</Text>
+          </View>
+          <Text style={styles.footerText} />
         </View>
       </ScrollView>
 
@@ -206,7 +218,8 @@ export default function Login() {
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <View style={styles.modalIconBox}>
-                <Text style={styles.modalIcon}>🔑</Text>
+                <Ionicons name="key" size={34} color={COLORS.primary} />
+                <Text style={styles.modalIcon} />
               </View>
               <Text style={styles.modalTitle}>Reset Password</Text>
               <Text style={styles.modalSub}>
@@ -217,7 +230,8 @@ export default function Login() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email Address</Text>
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputIcon}>✉️</Text>
+                <Ionicons name="mail" size={17} color={COLORS.primary} style={styles.vectorInputIcon} />
+                <Text style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
@@ -240,7 +254,8 @@ export default function Login() {
               ) : (
                 <View style={styles.loginButtonInner}>
                   <Text style={styles.loginButtonText}>SEND RESET LINK</Text>
-                  <Text style={styles.loginButtonArrow}>📧</Text>
+                  <Ionicons name="mail" size={18} color="#fff" />
+                  <Text style={styles.loginButtonArrow} />
                 </View>
               )}
             </TouchableOpacity>
@@ -267,11 +282,11 @@ const styles = StyleSheet.create({
   circle2: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.06)", bottom: -60, left: -60 },
   circle3: { position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)", top: 20, left: 20 },
   logoBox: { width: 88, height: 88, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.25)", elevation: 8 },
-  logoEmoji: { fontSize: 44 },
+  logoEmoji: { display: "none" },
   logoText: { fontSize: 34, fontWeight: "bold", color: "#fff", letterSpacing: 6, marginBottom: 4 },
   logoSub: { color: "rgba(255,255,255,0.65)", fontSize: 12, marginBottom: 20 },
   pillsRow: { flexDirection: "row", gap: 8 },
-  pill: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  pill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
   pillText: { color: "#fff", fontSize: 11, fontWeight: "600" },
 
   // BOTTOM
@@ -285,7 +300,8 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 12, fontWeight: "700", color: "#546E7A", marginBottom: 6, letterSpacing: 0.5 },
   inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#ECEFF1", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: "#F8FAFB" },
   inputWrapperActive: { borderColor: COLORS.primary, backgroundColor: "#FFF5F5" },
-  inputIcon: { fontSize: 17, marginRight: 10 },
+  inputIcon: { display: "none" },
+  vectorInputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: "#1A1A2E" },
   showText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
   clearText: { color: "#90A4AE", fontSize: 15, fontWeight: "bold" },
@@ -298,7 +314,7 @@ const styles = StyleSheet.create({
   loginButton: { backgroundColor: COLORS.primary, borderRadius: 16, padding: 16, alignItems: "center", marginBottom: 16, elevation: 6, shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12 },
   loginButtonInner: { flexDirection: "row", alignItems: "center", gap: 8 },
   loginButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1.5 },
-  loginButtonArrow: { color: "#fff", fontSize: 18 },
+  loginButtonArrow: { display: "none" },
 
   // DIVIDER
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
@@ -311,7 +327,9 @@ const styles = StyleSheet.create({
 
   // FOOTER
   footer: { alignItems: "center" },
-  footerText: { color: "#B0BEC5", fontSize: 11 },
+  footerRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  footerText: { display: "none" },
+  footerCleanText: { color: "#B0BEC5", fontSize: 11 },
 
   // MODAL
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
@@ -319,7 +337,7 @@ const styles = StyleSheet.create({
   modalHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
   modalHeader: { alignItems: "center", marginBottom: 24 },
   modalIconBox: { width: 70, height: 70, borderRadius: 20, backgroundColor: "#FFF5F5", justifyContent: "center", alignItems: "center", marginBottom: 12, borderWidth: 1.5, borderColor: "#FFCDD2" },
-  modalIcon: { fontSize: 34 },
+  modalIcon: { display: "none" },
   modalTitle: { fontSize: 22, fontWeight: "bold", color: "#1A1A2E", marginBottom: 8 },
   modalSub: { color: "#90A4AE", textAlign: "center", fontSize: 13, lineHeight: 20 },
   cancelButton: { padding: 14, borderRadius: 14, alignItems: "center", marginTop: 10, borderWidth: 1.5, borderColor: "#ECEFF1" },
