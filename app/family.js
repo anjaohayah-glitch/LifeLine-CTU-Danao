@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
@@ -36,7 +37,7 @@ export default function Family() {
 
   const user = auth.currentUser;
   const { theme } = useSettings();
-  const { bg, card, border, textDark, textMid, textLight, surface } = theme;
+  const { bg, card, border, textDark, textLight, surface } = theme;
   const isDark = theme.bg === "#121212";
 
   useEffect(() => {
@@ -106,7 +107,7 @@ export default function Family() {
       await set(ref(db, `sentRequests/${user.uid}/${userToAdd.id}`), {
         uid: userToAdd.id, status: "pending", sentAt: new Date().toISOString(),
       });
-      Alert.alert("Request Sent! 📨", `Request sent to ${userToAdd.fullName || "this person"}.`);
+      Alert.alert("Request Sent!", `Request sent to ${userToAdd.fullName || "this person"}.`);
     } catch (e) { Alert.alert("Error", e.message); }
   };
 
@@ -116,7 +117,7 @@ export default function Family() {
       await set(ref(db, `contacts/${request.uid}/${user.uid}`), { uid: user.uid, name: auth.currentUser.displayName || user.email, email: user.email, status: "accepted", addedAt: new Date().toISOString() });
       await remove(ref(db, `contactRequests/${user.uid}/${request.uid}`));
       await remove(ref(db, `sentRequests/${request.uid}/${user.uid}`));
-      Alert.alert("Contact Added! ✅", `${request.name} is now your contact.`);
+      Alert.alert("Contact Added!", `${request.name} is now your contact.`);
     } catch (e) { Alert.alert("Error", e.message); }
   };
 
@@ -139,17 +140,17 @@ export default function Family() {
     if (!user) return;
     try {
       setLoading(true);
-      await set(ref(db, `safetyStatus/${user.uid}`), { status: "safe", message: "I am safe! 🟢", timestamp: Date.now(), name: auth.currentUser.displayName || user.email });
+      await set(ref(db, `safetyStatus/${user.uid}`), { status: "safe", message: "I am safe!", timestamp: Date.now(), name: auth.currentUser.displayName || user.email });
       for (const contact of contacts) {
-        await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), { senderId: user.uid, senderName: auth.currentUser.displayName || user.email, text: "🟢 I am safe! No need to worry.", timestamp: Date.now(), type: "safe" });
+        await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), { senderId: user.uid, senderName: auth.currentUser.displayName || user.email, text: "I am safe! No need to worry.", timestamp: Date.now(), type: "safe" });
       }
-      Alert.alert("✅ Sent!", "Your contacts have been notified that you are safe.");
+      Alert.alert("Sent!", "Your contacts have been notified that you are safe.");
     } catch (e) { Alert.alert("Error", e.message); }
     finally { setLoading(false); }
   };
 
   const sendHelp = async () => {
-    Alert.alert("🆘 Send Help Alert", "This will alert ALL your contacts that you need help and share your live location. Continue?", [
+    Alert.alert("Send Help Alert", "This will alert ALL your contacts that you need help and share your live location. Continue?", [
       { text: "Cancel", style: "cancel" },
       { text: "Send Alert", style: "destructive", onPress: async () => {
         try {
@@ -168,12 +169,12 @@ export default function Family() {
               }
               locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
             }
-          } catch (e) {}
-          await set(ref(db, `safetyStatus/${user.uid}`), { status: "help", message: "I need help! 🔴", timestamp: Date.now(), name: auth.currentUser.displayName || user.email, location: locationText });
+          } catch (_e) {}
+          await set(ref(db, `safetyStatus/${user.uid}`), { status: "help", message: "I need help!", timestamp: Date.now(), name: auth.currentUser.displayName || user.email, location: locationText });
           for (const contact of contacts) {
-            await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), { senderId: user.uid, senderName: auth.currentUser.displayName || user.email, text: `🔴 I NEED HELP! Please check on me immediately.\n\n📍 My Location:\n${locationText}\n\n🗺 Tap here to navigate:\n${locationUrl}`, timestamp: Date.now(), type: "help" });
+            await push(ref(db, `messages/${getChatId(user.uid, contact.uid)}`), { senderId: user.uid, senderName: auth.currentUser.displayName || user.email, text: `I NEED HELP! Please check on me immediately.\n\nMy Location:\n${locationText}\n\nTap here to navigate:\n${locationUrl}`, timestamp: Date.now(), type: "help" });
           }
-          Alert.alert("🆘 Alert Sent!", "All your contacts have been notified with your live location.");
+          Alert.alert("Alert Sent!", "All your contacts have been notified with your live location.");
         } catch (e) { Alert.alert("Error", e.message); }
         finally { setLoading(false); }
       }},
@@ -244,7 +245,10 @@ export default function Family() {
                     </Text>
                     {isHelp && hasUrl && (
                       <View style={styles.tapHint}>
-                        <Text style={styles.tapHintText}>🗺 Tap to open in Google Maps</Text>
+                        <View style={styles.tapHintRow}>
+                          <MaterialCommunityIcons name="map" size={12} color="#fff" />
+                          <Text style={styles.tapHintText}>Tap to open in Google Maps</Text>
+                        </View>
                       </View>
                     )}
                     <Text style={[styles.messageTime, { color: textLight }, (isMe || isSafe || isHelp) && { color: "rgba(255,255,255,0.65)" }]}>
@@ -266,7 +270,7 @@ export default function Family() {
               multiline
             />
             <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-              <Text style={styles.sendText}>➤</Text>
+              <Ionicons name="send" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -279,7 +283,10 @@ export default function Family() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>👨‍👩‍👧 Family & Peers</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="people" size={24} color="#fff" />
+          <Text style={styles.headerTitle}>Family & Peers</Text>
+        </View>
         <Text style={styles.headerSub}>Stay connected during emergencies</Text>
         <View style={styles.headerStats}>
           <View style={styles.headerStat}>
@@ -293,7 +300,11 @@ export default function Family() {
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
-            <Text style={styles.headerStatNum}>{myStatus ? (myStatus.status === "safe" ? "🟢" : "🔴") : "—"}</Text>
+            {myStatus ? (
+              <View style={[styles.statusDotLarge, { backgroundColor: myStatus.status === "safe" ? "#4CAF50" : "#FF5252" }]} />
+            ) : (
+              <Text style={styles.headerStatNum}>—</Text>
+            )}
             <Text style={styles.headerStatLabel}>My Status</Text>
           </View>
         </View>
@@ -307,14 +318,20 @@ export default function Family() {
         >
           {loading
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.statusText}>🟢 I Am Safe</Text>
+            : <View style={styles.statusTextRow}>
+                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                <Text style={styles.statusText}>I Am Safe</Text>
+              </View>
           }
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.statusButton, { backgroundColor: "#B00020" }, loading && { opacity: 0.6 }]}
           onPress={sendHelp} disabled={loading}
         >
-          <Text style={styles.statusText}>🔴 Need Help</Text>
+          <View style={styles.statusTextRow}>
+            <MaterialCommunityIcons name="lifebuoy" size={16} color="#fff" />
+            <Text style={styles.statusText}>Need Help</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -328,7 +345,7 @@ export default function Family() {
             ? (isDark ? "#2e5a2e" : "#A5D6A7")
             : (isDark ? "#5a2020" : "#FFCDD2"),
         }]}>
-          <Text style={styles.myStatusIcon}>{myStatus.status === "safe" ? "🟢" : "🔴"}</Text>
+          <Ionicons name={myStatus.status === "safe" ? "checkmark-circle" : "alert-circle"} size={22} color={myStatus.status === "safe" ? "#2e7d32" : "#B00020"} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.myStatusText, { color: textDark }]}>
               {myStatus.status === "safe" ? "You marked yourself as safe" : "You sent a help alert"}
@@ -343,18 +360,21 @@ export default function Family() {
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "contacts", label: `👥 Contacts (${contacts.length})` },
-          { key: "requests", label: `📨 Requests (${pendingRequests.length})` },
-          { key: "search", label: "🔍 Find" },
+          { key: "contacts", label: `Contacts (${contacts.length})`, icon: "people" },
+          { key: "requests", label: `Requests (${pendingRequests.length})`, icon: "mail-unread" },
+          { key: "search", label: "Find", icon: "search" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key)}
           >
-            <Text style={[styles.tabText, { color: textLight }, activeTab === tab.key && styles.activeTabText]}>
-              {tab.label}
-            </Text>
+            <View style={styles.tabInner}>
+              <Ionicons name={tab.icon} size={14} color={activeTab === tab.key ? COLORS.primary : textLight} />
+              <Text style={[styles.tabText, { color: textLight }, activeTab === tab.key && styles.activeTabText]}>
+                {tab.label}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -364,11 +384,12 @@ export default function Family() {
         <ScrollView style={[styles.content, { backgroundColor: bg }]} showsVerticalScrollIndicator={false}>
           {contacts.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>👥</Text>
+              <Ionicons name="people" size={48} color={COLORS.primary} />
               <Text style={[styles.emptyTitle, { color: textDark }]}>No contacts yet</Text>
               <Text style={[styles.emptyDesc, { color: textLight }]}>Search for family or peers to add them.</Text>
               <TouchableOpacity style={styles.emptyButton} onPress={() => setActiveTab("search")}>
-                <Text style={styles.emptyButtonText}>🔍 Find People</Text>
+                <Ionicons name="search" size={15} color="#fff" />
+                <Text style={styles.emptyButtonText}>Find People</Text>
               </TouchableOpacity>
             </View>
           ) : contacts.map((contact) => (
@@ -380,7 +401,10 @@ export default function Family() {
                 <Text style={[styles.contactName, { color: textDark }]}>{contact.name}</Text>
                 <Text style={[styles.contactEmail, { color: textLight }]}>{contact.email}</Text>
                 {contact.barangay && (
-                  <Text style={styles.contactAddress}>📍 {contact.barangay}</Text>
+                  <View style={styles.contactAddressRow}>
+                    <Ionicons name="location" size={12} color="#2e7d32" />
+                    <Text style={styles.contactAddress}>{contact.barangay}</Text>
+                  </View>
                 )}
               </View>
               <View style={styles.contactActions}>
@@ -388,13 +412,13 @@ export default function Family() {
                   style={[styles.actionBtn, { backgroundColor: isDark ? "#1a2a3a" : "#E3F2FD" }]}
                   onPress={() => { setSelectedContact(contact); setModalVisible(true); }}
                 >
-                  <Text style={styles.actionBtnText}>💬</Text>
+                  <Ionicons name="chatbubble" size={16} color="#1565C0" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, { backgroundColor: isDark ? "#2a1a1a" : "#FFEBEE" }]}
                   onPress={() => removeContact(contact.id, contact.name)}
                 >
-                  <Text style={styles.actionBtnText}>🗑</Text>
+                  <Ionicons name="trash" size={16} color="#B00020" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -408,7 +432,7 @@ export default function Family() {
         <ScrollView style={[styles.content, { backgroundColor: bg }]} showsVerticalScrollIndicator={false}>
           {pendingRequests.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📨</Text>
+              <Ionicons name="mail-unread" size={48} color={COLORS.primary} />
               <Text style={[styles.emptyTitle, { color: textDark }]}>No pending requests</Text>
               <Text style={[styles.emptyDesc, { color: textLight }]}>Contact requests will appear here.</Text>
             </View>
@@ -426,10 +450,10 @@ export default function Family() {
               </View>
               <View style={styles.contactActions}>
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#2e7d32" }]} onPress={() => acceptRequest(request)}>
-                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>✓</Text>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#B00020" }]} onPress={() => declineRequest(request)}>
-                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>✕</Text>
+                  <Ionicons name="close" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -442,7 +466,7 @@ export default function Family() {
       {activeTab === "search" && (
         <View style={[styles.content, { backgroundColor: bg, flex: 1 }]}>
           <View style={[styles.searchBar, { backgroundColor: surface, borderColor: border }]}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Ionicons name="search" size={16} color={textLight} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: textDark }]}
               placeholder="Search by name..."
@@ -454,7 +478,7 @@ export default function Family() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {filteredUsers.length === 0 ? (
               <View style={styles.empty}>
-                <Text style={styles.emptyIcon}>🔍</Text>
+                <Ionicons name="search" size={48} color={COLORS.primary} />
                 <Text style={[styles.emptyTitle, { color: textDark }]}>No users found</Text>
                 <Text style={[styles.emptyDesc, { color: textLight }]}>Try a different name or email.</Text>
               </View>
@@ -473,7 +497,7 @@ export default function Family() {
                     style={[styles.addButton, isAccepted && { backgroundColor: "#2e7d32" }]}
                     onPress={() => !isAccepted && sendContactRequest(u)}
                   >
-                    <Text style={styles.addButtonText}>{isAccepted ? "✓ Added" : "+ Add"}</Text>
+                    <Text style={styles.addButtonText}>{isAccepted ? "Added" : "+ Add"}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -497,7 +521,8 @@ const styles = StyleSheet.create({
     paddingTop: 55, paddingBottom: 24, paddingHorizontal: 24,
     borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
   },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 4 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13 },
   headerStats: {
     flexDirection: "row", alignItems: "center",
@@ -506,12 +531,14 @@ const styles = StyleSheet.create({
   },
   headerStat: { flex: 1, alignItems: "center" },
   headerStatNum: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  statusDotLarge: { width: 18, height: 18, borderRadius: 9 },
   headerStatLabel: { color: "rgba(255,255,255,0.7)", fontSize: 10, marginTop: 2 },
   headerStatDivider: { width: 1, height: 30, backgroundColor: "rgba(255,255,255,0.2)" },
 
   // STATUS BUTTONS
   statusRow: { flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
   statusButton: { flex: 1, padding: 14, borderRadius: 14, alignItems: "center", elevation: 2, shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  statusTextRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   statusText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
 
   // MY STATUS
@@ -520,13 +547,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, borderRadius: 14,
     padding: 12, marginBottom: 10, borderWidth: 1, gap: 10,
   },
-  myStatusIcon: { fontSize: 22 },
   myStatusText: { fontWeight: "600", fontSize: 13 },
   myStatusTime: { fontSize: 11, marginTop: 2 },
 
   // TABS
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginHorizontal: 20, marginBottom: 12 },
   tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
+  tabInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
   activeTab: { borderBottomWidth: 3, borderBottomColor: COLORS.primary },
   tabText: { fontSize: 11, fontWeight: "600" },
   activeTabText: { color: COLORS.primary, fontWeight: "bold" },
@@ -536,10 +563,9 @@ const styles = StyleSheet.create({
 
   // EMPTY
   empty: { alignItems: "center", marginTop: 50 },
-  emptyIcon: { fontSize: 48 },
   emptyTitle: { fontWeight: "bold", fontSize: 17, marginTop: 12 },
   emptyDesc: { marginTop: 6, textAlign: "center", fontSize: 13 },
-  emptyButton: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 20 },
+  emptyButton: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 20, flexDirection: "row", alignItems: "center", gap: 6 },
   emptyButtonText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
 
   // CONTACT CARD
@@ -562,7 +588,8 @@ const styles = StyleSheet.create({
   contactInfo: { flex: 1 },
   contactName: { fontWeight: "bold", fontSize: 14 },
   contactEmail: { fontSize: 12, marginTop: 2 },
-  contactAddress: { color: "#2e7d32", fontSize: 11, marginTop: 2 },
+  contactAddressRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 },
+  contactAddress: { color: "#2e7d32", fontSize: 11 },
   contactActions: { flexDirection: "row", gap: 8 },
   actionBtn: {
     width: 36, height: 36, borderRadius: 10,
@@ -580,7 +607,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14,
   },
-  searchIcon: { fontSize: 16, marginRight: 8 },
+  searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14 },
 
   // CHAT MODAL
@@ -608,10 +635,10 @@ const styles = StyleSheet.create({
   helpBubble: { backgroundColor: "#B00020", alignSelf: "flex-start" },
   messageText: { fontSize: 14, lineHeight: 20 },
   tapHint: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, padding: 6, marginTop: 8, alignItems: "center" },
+  tapHintRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tapHintText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
   messageTime: { fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
   chatInputRow: { flexDirection: "row", padding: 12, borderTopWidth: 1, alignItems: "flex-end" },
   chatInput: { flex: 1, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, maxHeight: 100 },
   sendButton: { backgroundColor: COLORS.primary, width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center", marginLeft: 10 },
-  sendText: { color: "#fff", fontSize: 18 },
 });

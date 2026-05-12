@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const initialItems = [
   { id: "1", name: "Drinking Water (3 days supply)", checked: false },
@@ -35,8 +36,13 @@ export default function GoBag() {
       style={[styles.item, item.checked && styles.checkedItem]}
       onPress={() => toggleItem(item.id)}
     >
+      <Ionicons
+        name={item.checked ? "checkmark-circle" : "square-outline"}
+        size={20}
+        color={item.checked ? "#2e7d32" : "#888"}
+      />
       <Text style={[styles.itemText, item.checked && styles.checkedText]}>
-        {item.checked ? "✅ " : "⬜ "} {item.name}
+        {item.name}
       </Text>
     </TouchableOpacity>
   );
@@ -72,6 +78,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 10,
     backgroundColor: "#ffe5e5",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   checkedItem: {
     backgroundColor: "#ffcccc",
@@ -79,6 +88,7 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 16,
     color: "#333",
+    flex: 1,
   },
   checkedText: {
     textDecorationLine: "line-through",

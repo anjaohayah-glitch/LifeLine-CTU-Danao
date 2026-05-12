@@ -12,12 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
-import { sendPushToAllUsers } from "../utils/sendPushNotification"; // 👈 ADD THIS
+import { sendPushToAllUsers } from "../utils/sendPushNotification"; //  ADD THIS
 
 export default function Admin() {
   const { isAdmin, loading } = useAdmin();
@@ -53,7 +54,7 @@ export default function Admin() {
     return () => unsubscribe();
   }, []);
 
-  // 🚨 UPDATED - now also sends push to closed apps
+  //  UPDATED - now also sends push to closed apps
   const sendAlert = async () => {
     try {
       await set(ref(db, "emergencyAlert"), {
@@ -62,15 +63,15 @@ export default function Admin() {
         timestamp: Date.now(),
       });
 
-      // 👇 Send push to ALL users even if app is closed
+      //  Send push to ALL users even if app is closed
       await sendPushToAllUsers(
-        "🚨 EMERGENCY ALERT — LIFELINE",
+        " EMERGENCY ALERT — LIFELINE",
         "A disaster alert has been issued for CTU Danao Campus. Stay safe!",
         { screen: "/home" }
       );
 
-      Alert.alert("Alert Sent", "🚨 Emergency alert is now live!");
-    } catch (e) {
+      Alert.alert("Alert Sent", " Emergency alert is now live!");
+    } catch (_e) {
       Alert.alert("Error", "Failed to send alert. Check internet connection.");
     }
   };
@@ -80,7 +81,7 @@ export default function Admin() {
     Alert.alert("Alert Cleared", "Emergency alert has been turned off.");
   };
 
-  // 📢 UPDATED - now also sends push to closed apps
+  //  UPDATED - now also sends push to closed apps
   const sendAnnouncement = async () => {
     if (!announcement.trim()) {
       Alert.alert("Empty", "Please type an announcement first.");
@@ -92,16 +93,16 @@ export default function Admin() {
         timestamp: new Date().toISOString(),
       });
 
-      // 👇 Send push to ALL users even if app is closed
+      //  Send push to ALL users even if app is closed
       await sendPushToAllUsers(
-        "📢 New Announcement — LIFELINE",
+        " New Announcement — LIFELINE",
         announcement,
         { screen: "/home" }
       );
 
       setAnnouncement("");
-      Alert.alert("Sent!", "📢 Announcement broadcast to all users.");
-    } catch (e) {
+      Alert.alert("Sent!", " Announcement broadcast to all users.");
+    } catch (_e) {
       Alert.alert("Error", "Failed to send announcement.");
     }
   };
@@ -115,23 +116,23 @@ export default function Admin() {
     try {
       const found = await checkEarthquakes();
       if (found) {
-        // 👇 Also push notify when earthquake detected
+        //  Also push notify when earthquake detected
         await sendPushToAllUsers(
-          "🌍 EARTHQUAKE DETECTED — LIFELINE",
+          " EARTHQUAKE DETECTED — LIFELINE",
           "A significant earthquake has been detected near Danao City. Take cover!",
           { screen: "/home" }
         );
         Alert.alert(
-          "🌍 Earthquake Detected!",
+          " Earthquake Detected!",
           "A significant earthquake has been detected near Danao City.\n\nEmergency alert has been automatically activated for ALL users."
         );
       } else {
         Alert.alert(
-          "✅ All Clear",
+          " All Clear",
           "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours."
         );
       }
-    } catch (e) {
+    } catch (_e) {
       Alert.alert("Error", "Could not check earthquake data. Check internet connection.");
     } finally {
       setCheckingQuake(false);
@@ -150,7 +151,7 @@ export default function Admin() {
   if (!isAdmin) {
     return (
       <View style={[styles.accessDenied, { backgroundColor: bg }]}>
-        <Text style={styles.accessIcon}>🚫</Text>
+        <Ionicons name="ban" size={55} color={COLORS.primary} style={styles.accessIcon} />
         <Text style={styles.accessTitle}>Access Denied</Text>
         <Text style={[styles.accessDesc, { color: textMid }]}>
           You do not have admin privileges to access this page.
@@ -165,7 +166,10 @@ export default function Admin() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛡 Admin Dashboard</Text>
+        <View style={styles.headerTitleRow}>
+          <MaterialCommunityIcons name="shield-account" size={24} color="#fff" />
+          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+        </View>
         <Text style={styles.headerSub}>CTU Danao DRRMO Control Panel</Text>
       </View>
 
@@ -177,12 +181,16 @@ export default function Admin() {
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, { color: textLight }, activeTab === tab && styles.activeTabText]}>
-              {tab === "alerts" ? "🚨" :
-               tab === "sos" ? "📍 SOS" :
-               tab === "announce" ? "📢" :
-               tab === "quake" ? "🌍" : "👥"}
-            </Text>
+            <View style={styles.tabInner}>
+              <MaterialCommunityIcons
+                name={tab === "alerts" ? "alarm-light" : tab === "sos" ? "map-marker-alert" : tab === "announce" ? "bullhorn" : tab === "quake" ? "earth" : "account-group"}
+                size={15}
+                color={activeTab === tab ? COLORS.primary : textLight}
+              />
+              <Text style={[styles.tabText, { color: textLight }, activeTab === tab && styles.activeTabText]}>
+                {tab === "alerts" ? "Alerts" : tab === "sos" ? "SOS" : tab === "announce" ? "Announce" : tab === "quake" ? "Quake" : "Users"}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -197,10 +205,12 @@ export default function Admin() {
               Sending an alert will notify ALL users instantly — even if their app is closed.
             </Text>
             <TouchableOpacity style={styles.sosButton} onPress={sendAlert}>
-              <Text style={styles.buttonText}>🚨 SEND EMERGENCY ALERT</Text>
+              <MaterialCommunityIcons name="alarm-light" size={16} color="#fff" />
+              <Text style={styles.buttonText}>SEND EMERGENCY ALERT</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.clearButton} onPress={clearAlert}>
-              <Text style={styles.buttonText}>✅ CLEAR ALERT</Text>
+              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Text style={styles.buttonText}>CLEAR ALERT</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -214,24 +224,26 @@ export default function Admin() {
             {sosRequests.length > 0 ? (
               sosRequests.map((req) => (
                 <View key={req.id} style={[styles.sosCard, { backgroundColor: card, borderColor: border }]}>
-                  <Text style={[styles.sosName, { color: textDark }]}>👤 {req.name || req.email}</Text>
-                  <Text style={[styles.sosText, { color: textMid }]}>📍 {req.address || `${req.latitude?.toFixed(4)}, ${req.longitude?.toFixed(4)}`}</Text>
-                  <Text style={[styles.sosTime, { color: textLight }]}>🕐 {new Date(req.timestamp).toLocaleString()}</Text>
+                  <View style={styles.inlineRow}><Ionicons name="person" size={14} color={textDark} /><Text style={[styles.sosName, { color: textDark }]}>{req.name || req.email}</Text></View>
+                  <View style={styles.inlineRow}><Ionicons name="location" size={14} color={textMid} /><Text style={[styles.sosText, { color: textMid }]}>{req.address || `${req.latitude?.toFixed(4)}, ${req.longitude?.toFixed(4)}`}</Text></View>
+                  <View style={styles.inlineRow}><Ionicons name="time" size={14} color={textLight} /><Text style={[styles.sosTime, { color: textLight }]}>{new Date(req.timestamp).toLocaleString()}</Text></View>
                   <View style={styles.sosActions}>
                     {req.locationUrl && (
                       <TouchableOpacity style={styles.mapButton} onPress={() => Linking.openURL(req.locationUrl)}>
-                        <Text style={styles.mapButtonText}>🗺 View Map</Text>
+                        <MaterialCommunityIcons name="map" size={14} color="#fff" />
+                        <Text style={styles.mapButtonText}>View Map</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity style={styles.deleteButton} onPress={() => deleteSOS(req.id)}>
-                      <Text style={styles.deleteText}>🗑 Dismiss</Text>
+                      <Ionicons name="trash" size={14} color={COLORS.primary} />
+                      <Text style={styles.deleteText}>Dismiss</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ))
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>✅</Text>
+                <Ionicons name="checkmark-circle" size={48} color={COLORS.primary} />
                 <Text style={[styles.emptyText, { color: textLight }]}>No SOS requests right now</Text>
               </View>
             )}
@@ -255,7 +267,7 @@ export default function Admin() {
               numberOfLines={4}
             />
             <TouchableOpacity style={styles.announceButton} onPress={sendAnnouncement}>
-              <Text style={styles.buttonText}>📢 BROADCAST NOW</Text>
+              <Text style={styles.buttonText}> BROADCAST NOW</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -263,12 +275,15 @@ export default function Admin() {
         {/* EARTHQUAKE TAB */}
         {activeTab === "quake" && (
           <View>
-            <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>🌍 Earthquake Monitor</Text>
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="earth" size={18} color={COLORS.primary} />
+              <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>Earthquake Monitor</Text>
+            </View>
             <Text style={[styles.description, { color: textMid }]}>
               Monitor real-time earthquake activity near Danao City using USGS data. If detected, all users are automatically alerted.
             </Text>
             <View style={[styles.quakeStatusCard, { backgroundColor: card, borderColor: border }]}>
-              <Text style={styles.quakeStatusIcon}>🌍</Text>
+              <MaterialCommunityIcons name="earth" size={40} color={COLORS.primary} style={styles.quakeStatusIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.quakeStatusTitle, { color: textDark }]}>USGS Real-Time Monitoring</Text>
                 <Text style={[styles.quakeStatusDesc, { color: textMid }]}>
@@ -283,20 +298,28 @@ export default function Admin() {
             >
               {checkingQuake
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.buttonText}>🔍 CHECK EARTHQUAKES NOW</Text>
+                : <View style={styles.buttonTextRow}>
+                    <Ionicons name="search" size={16} color="#fff" />
+                    <Text style={styles.buttonText}>CHECK EARTHQUAKES NOW</Text>
+                  </View>
               }
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quakeViewButton}
               onPress={() => Linking.openURL("https://earthquake.usgs.gov/earthquakes/map/")}
             >
-              <Text style={styles.buttonText}>🌍 VIEW USGS EARTHQUAKE MAP</Text>
+              <MaterialCommunityIcons name="map" size={16} color="#fff" />
+              <Text style={styles.buttonText}>VIEW USGS EARTHQUAKE MAP</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.clearButton} onPress={clearAlert}>
-              <Text style={styles.buttonText}>✅ CLEAR EMERGENCY ALERT</Text>
+              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Text style={styles.buttonText}>CLEAR EMERGENCY ALERT</Text>
             </TouchableOpacity>
             <View style={[styles.quakeInfoBox, { backgroundColor: card, borderColor: "#4527A0" }]}>
-              <Text style={[styles.quakeInfoTitle, { color: "#4527A0" }]}>⚙️ How Automatic Detection Works</Text>
+              <View style={styles.inlineRow}>
+                <Ionicons name="settings" size={16} color="#4527A0" />
+                <Text style={[styles.quakeInfoTitle, { color: "#4527A0" }]}>How Automatic Detection Works</Text>
+              </View>
               <Text style={[styles.quakeInfoText, { color: textMid }]}>
                 • Checks USGS data every 15 minutes in the background{"\n"}
                 • Triggers if Magnitude 4.0+ within 200km of Danao City{"\n"}
@@ -325,15 +348,15 @@ export default function Admin() {
                   </View>
                   <View style={styles.userInfo}>
                     <Text style={[styles.userName, { color: textDark }]}>{user.fullName || "Unknown"}</Text>
-                    <Text style={[styles.userEmail, { color: textLight }]}>✉️ {user.email || user.id}</Text>
-                    {user.phone && <Text style={[styles.userDetail, { color: textLight }]}>📱 {user.phone}</Text>}
-                    {user.barangay && <Text style={[styles.userDetail, { color: textLight }]}>📍 {user.barangay}</Text>}
+                    <View style={styles.inlineRow}><Ionicons name="mail" size={13} color={textLight} /><Text style={[styles.userEmail, { color: textLight }]}>{user.email || user.id}</Text></View>
+                    {user.phone && <View style={styles.inlineRow}><Ionicons name="phone-portrait" size={13} color={textLight} /><Text style={[styles.userDetail, { color: textLight }]}>{user.phone}</Text></View>}
+                    {user.barangay && <View style={styles.inlineRow}><Ionicons name="location" size={13} color={textLight} /><Text style={[styles.userDetail, { color: textLight }]}>{user.barangay}</Text></View>}
                   </View>
                 </View>
               ))
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>👥</Text>
+                <Ionicons name="people" size={48} color={COLORS.primary} />
                 <Text style={[styles.emptyText, { color: textLight }]}>No registered users yet.</Text>
               </View>
             )}
@@ -350,40 +373,45 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 15, fontSize: 15 },
   accessDenied: { flex: 1, justifyContent: "center", alignItems: "center", padding: 30 },
-  accessIcon: { fontSize: 70, marginBottom: 20 },
+  accessIcon: { marginBottom: 20 },
   accessTitle: { fontSize: 24, fontWeight: "bold", color: COLORS.primary, marginBottom: 12 },
   accessDesc: { textAlign: "center", fontSize: 14, lineHeight: 22 },
   header: { backgroundColor: COLORS.primary, paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, marginBottom: 10 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginHorizontal: 20 },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  tabInner: { alignItems: "center", gap: 3 },
   activeTab: { borderBottomWidth: 3, borderBottomColor: COLORS.primary },
   tabText: { fontSize: 11 },
   activeTabText: { color: COLORS.primary, fontWeight: "bold" },
   content: { padding: 20 },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 8 },
   description: { marginBottom: 20, fontSize: 13 },
-  sosButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
-  clearButton: { backgroundColor: "#2e7d32", padding: 15, borderRadius: 12, alignItems: "center", elevation: 3, marginTop: 12 },
-  announceButton: { backgroundColor: "#1565C0", padding: 15, borderRadius: 12, alignItems: "center", marginTop: 10, elevation: 3 },
+  sosButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 12, elevation: 3, flexDirection: "row", gap: 6 },
+  clearButton: { backgroundColor: "#2e7d32", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", elevation: 3, marginTop: 12, flexDirection: "row", gap: 6 },
+  announceButton: { backgroundColor: "#1565C0", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", marginTop: 10, elevation: 3, flexDirection: "row", gap: 6 },
+  buttonTextRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
+  inlineRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   sosCard: { borderRadius: 12, padding: 15, marginBottom: 10, borderWidth: 1 },
   sosName: { fontWeight: "bold", fontSize: 14, marginBottom: 4 },
   sosText: { fontSize: 13, marginTop: 2 },
   sosTime: { fontSize: 12, marginTop: 4 },
   sosActions: { flexDirection: "row", gap: 10, marginTop: 10, justifyContent: "flex-end" },
-  mapButton: { backgroundColor: "#1565C0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  mapButton: { backgroundColor: "#1565C0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, flexDirection: "row", alignItems: "center", gap: 4 },
   mapButtonText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  deleteButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#ffebee" },
+  deleteButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#ffebee", flexDirection: "row", alignItems: "center", gap: 4 },
   deleteText: { color: COLORS.primary, fontWeight: "bold", fontSize: 12 },
   input: { borderWidth: 1.5, borderRadius: 12, padding: 14, textAlignVertical: "top", minHeight: 120, marginBottom: 10, fontSize: 14 },
   quakeStatusCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 15, borderWidth: 1, gap: 12 },
-  quakeStatusIcon: { fontSize: 35 },
+  quakeStatusIcon: {},
   quakeStatusTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 4 },
   quakeStatusDesc: { fontSize: 12, lineHeight: 18 },
-  quakeCheckButton: { backgroundColor: "#4527A0", padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
-  quakeViewButton: { backgroundColor: "#2E7D32", padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 12, elevation: 3 },
+  quakeCheckButton: { backgroundColor: "#4527A0", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 12, elevation: 3 },
+  quakeViewButton: { backgroundColor: "#2E7D32", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 12, elevation: 3, flexDirection: "row", gap: 6 },
   quakeInfoBox: { borderRadius: 12, padding: 15, borderWidth: 1.5, marginTop: 5 },
   quakeInfoTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 8 },
   quakeInfoText: { fontSize: 13, lineHeight: 22 },
@@ -395,6 +423,5 @@ const styles = StyleSheet.create({
   userEmail: { fontSize: 12, marginTop: 3 },
   userDetail: { fontSize: 12, marginTop: 2 },
   emptyState: { alignItems: "center", marginTop: 50 },
-  emptyIcon: { fontSize: 50 },
   emptyText: { marginTop: 10, fontSize: 15 },
 });

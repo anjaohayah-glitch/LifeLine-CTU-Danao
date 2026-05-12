@@ -66,7 +66,7 @@ const QUICK_ACCESS = [
 ];
 
 const DISASTER_TIPS = [
-  { icon: "waves", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
+  { icon: "home-flood", label: "Flood", color: "#1565C0", bg: "#E3F2FD", darkBg: "#0d1f35", tip: "Move to higher ground immediately. Avoid walking in moving water. Never drive through flooded roads." },
   { icon: "earth", label: "Earthquake", color: "#4527A0", bg: "#EDE7F6", darkBg: "#1a1035", tip: "Drop, Cover, and Hold On. Stay away from windows and heavy furniture." },
   { icon: "weather-hurricane", label: "Typhoon", color: "#00695C", bg: "#E0F2F1", darkBg: "#0d2520", tip: "Stay indoors. Keep away from windows and doors. Unplug electrical appliances." },
   { icon: "fire", label: "Fire", color: "#E65100", bg: "#FBE9E7", darkBg: "#2d1200", tip: "Use evacuation routes. Stay low to avoid smoke. Never use elevators." },

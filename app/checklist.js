@@ -9,12 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 
 const CHECKLISTS = [
   {
-    id: "gobag", title: "🎒 Go Bag Checklist", color: "#B00020",
+    id: "gobag", title: "Go Bag Checklist", icon: "bag-personal", color: "#B00020",
     description: "Essential items to prepare before any disaster",
     items: [
       "Bottled water (at least 3 liters per person)",
@@ -39,7 +40,7 @@ const CHECKLISTS = [
     ],
   },
   {
-    id: "home", title: "🏠 Home Safety Checklist", color: "#1565C0",
+    id: "home", title: "Home Safety Checklist", icon: "home", color: "#1565C0",
     description: "Make your home safer before disaster strikes",
     items: [
       "Smoke detectors installed in every room",
@@ -60,7 +61,7 @@ const CHECKLISTS = [
     ],
   },
   {
-    id: "evacuation", title: "🚗 Evacuation Checklist", color: "#2e7d32",
+    id: "evacuation", title: "Evacuation Checklist", icon: "car-emergency", color: "#2e7d32",
     description: "Be ready to evacuate within minutes",
     items: [
       "Know your evacuation routes (at least 2)",
@@ -81,7 +82,7 @@ const CHECKLISTS = [
     ],
   },
   {
-    id: "school", title: "🏫 CTU Danao Campus Checklist", color: "#4527A0",
+    id: "school", title: "CTU Danao Campus Checklist", icon: "school", color: "#4527A0",
     description: "Campus-specific preparedness for students & staff",
     items: [
       "Know all campus emergency exits",
@@ -102,7 +103,7 @@ const CHECKLISTS = [
     ],
   },
   {
-    id: "medical", title: "💊 Medical Emergency Checklist", color: "#00695C",
+    id: "medical", title: "Medical Emergency Checklist", icon: "medical-bag", color: "#00695C",
     description: "Medical supplies and preparations",
     items: [
       "First aid kit stocked and accessible",
@@ -127,7 +128,6 @@ const CHECKLISTS = [
 export default function Checklist() {
   const [selectedList, setSelectedList] = useState(null);
   const [checked, setChecked] = useState({});
-  const [savedProgress, setSavedProgress] = useState({});
   const { theme } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
@@ -138,7 +138,6 @@ export default function Checklist() {
       const saved = await AsyncStorage.getItem("checklistProgress");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setSavedProgress(parsed);
         setChecked(parsed);
       }
     } catch (error) { console.log(error); }
@@ -147,7 +146,6 @@ export default function Checklist() {
   const saveProgress = async (newChecked) => {
     try {
       await AsyncStorage.setItem("checklistProgress", JSON.stringify(newChecked));
-      setSavedProgress(newChecked);
     } catch (error) { console.log(error); }
   };
 
@@ -210,7 +208,8 @@ export default function Checklist() {
           style={[styles.resetButton, { borderColor: border }]}
           onPress={() => resetList(list.id, list.items.length)}
         >
-          <Text style={[styles.resetText, { color: textMid }]}>🔄 Reset Checklist</Text>
+          <MaterialCommunityIcons name="restart" size={16} color={textMid} />
+          <Text style={[styles.resetText, { color: textMid }]}>Reset Checklist</Text>
         </TouchableOpacity>
 
         <ScrollView style={[styles.itemsContainer, { backgroundColor: bg }]}>
@@ -232,7 +231,7 @@ export default function Checklist() {
                   { borderColor: list.color },
                   isChecked && { backgroundColor: list.color },
                 ]}>
-                  {isChecked && <Text style={styles.checkmark}>✓</Text>}
+                  {isChecked && <Ionicons name="checkmark" size={15} color="#fff" />}
                 </View>
                 <Text style={[
                   styles.itemText,
@@ -247,7 +246,7 @@ export default function Checklist() {
 
           {done === total && (
             <View style={[styles.completedCard, { borderColor: list.color, backgroundColor: surface }]}>
-              <Text style={styles.completedIcon}>🎉</Text>
+              <MaterialCommunityIcons name="party-popper" size={45} color={list.color} />
               <Text style={[styles.completedTitle, { color: list.color }]}>Checklist Complete!</Text>
               <Text style={[styles.completedSub, { color: textMid }]}>Great job! You are well prepared.</Text>
             </View>
@@ -261,7 +260,10 @@ export default function Checklist() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: bg }]}>
-      <Text style={styles.header}>✅ Preparedness Checklists</Text>
+      <View style={styles.headerRow}>
+        <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
+        <Text style={styles.header}>Preparedness Checklists</Text>
+      </View>
       <Text style={[styles.subHeader, { color: textLight }]}>
         Track your disaster readiness — progress saves automatically
       </Text>
@@ -275,7 +277,10 @@ export default function Checklist() {
             onPress={() => setSelectedList(list.id)}
           >
             <View style={styles.listCardTop}>
-              <Text style={[styles.listTitle, { color: textDark }]}>{list.title}</Text>
+              <View style={styles.listTitleRow}>
+                <MaterialCommunityIcons name={list.icon} size={22} color={list.color} />
+                <Text style={[styles.listTitle, { color: textDark }]}>{list.title}</Text>
+              </View>
               <Text style={[styles.listPercent, { color: list.color }]}>{Math.round(percent)}%</Text>
             </View>
             <Text style={[styles.listDesc, { color: textMid }]}>{list.description}</Text>
@@ -289,7 +294,10 @@ export default function Checklist() {
 
       {/* OVERALL PROGRESS */}
       <View style={[styles.overallCard, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.overallTitle, { color: textDark }]}>📊 Overall Preparedness</Text>
+        <View style={styles.overallTitleRow}>
+          <MaterialCommunityIcons name="chart-box" size={20} color={COLORS.primary} />
+          <Text style={[styles.overallTitle, { color: textDark }]}>Overall Preparedness</Text>
+        </View>
         {(() => {
           const totalAll = CHECKLISTS.reduce((acc, l) => acc + l.items.length, 0);
           const doneAll = CHECKLISTS.reduce((acc, l) => {
@@ -316,10 +324,12 @@ export default function Checklist() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   wrapper: { flex: 1 },
-  header: { fontSize: 26, fontWeight: "bold", color: COLORS.primary, textAlign: "center", marginTop: 50, marginBottom: 5 },
+  headerRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 50, marginBottom: 5 },
+  header: { fontSize: 26, fontWeight: "bold", color: COLORS.primary, textAlign: "center" },
   subHeader: { textAlign: "center", fontSize: 13, marginBottom: 25 },
   listCard: { borderRadius: 15, padding: 18, marginBottom: 14, borderLeftWidth: 5, elevation: 3, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
   listCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  listTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
   listTitle: { fontWeight: "bold", fontSize: 16, flex: 1 },
   listPercent: { fontWeight: "bold", fontSize: 18 },
   listDesc: { fontSize: 12, marginTop: 4, marginBottom: 10 },
@@ -327,7 +337,8 @@ const styles = StyleSheet.create({
   miniProgressFill: { height: 6, borderRadius: 3 },
   listCount: { fontSize: 11 },
   overallCard: { borderRadius: 15, padding: 20, marginTop: 5, borderWidth: 1, alignItems: "center" },
-  overallTitle: { fontWeight: "bold", fontSize: 16, marginBottom: 8 },
+  overallTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  overallTitle: { fontWeight: "bold", fontSize: 16 },
   overallPercent: { fontSize: 32, fontWeight: "bold", color: COLORS.primary },
   overallBar: { width: "100%", height: 10, borderRadius: 5, marginVertical: 10 },
   overallFill: { height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
@@ -342,15 +353,13 @@ const styles = StyleSheet.create({
   progressText: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
   progressBar: { height: 8, backgroundColor: "rgba(255,255,255,0.3)", borderRadius: 4 },
   progressFill: { height: 8, borderRadius: 4, backgroundColor: "#fff" },
-  resetButton: { alignSelf: "flex-end", margin: 15, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  resetButton: { alignSelf: "flex-end", margin: 15, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6 },
   resetText: { fontSize: 13 },
   itemsContainer: { flex: 1, paddingHorizontal: 15 },
   itemCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2 },
   checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, justifyContent: "center", alignItems: "center", marginRight: 12 },
-  checkmark: { color: "#fff", fontWeight: "bold", fontSize: 14 },
   itemText: { flex: 1, fontSize: 14, lineHeight: 20 },
   completedCard: { alignItems: "center", padding: 25, borderRadius: 15, borderWidth: 2, marginTop: 10 },
-  completedIcon: { fontSize: 45 },
   completedTitle: { fontSize: 20, fontWeight: "bold", marginTop: 10 },
   completedSub: { fontSize: 13, marginTop: 5 },
 });

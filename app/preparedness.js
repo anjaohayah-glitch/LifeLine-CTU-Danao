@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 
 export default function Preparedness() {
@@ -10,19 +11,23 @@ export default function Preparedness() {
       <Text style={styles.title}>Disaster Preparedness</Text>
 
       <TouchableOpacity style={styles.card} onPress={() => router.push("/earthquake")}>
-        <Text style={styles.cardText}>🌎 Earthquake Safety</Text>
+        <MaterialCommunityIcons name="earth" size={22} color="#fff" />
+        <Text style={styles.cardText}>Earthquake Safety</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.card} onPress={() => router.push("/typhoon")}>
-        <Text style={styles.cardText}>🌪 Typhoon Preparedness</Text>
+        <MaterialCommunityIcons name="weather-tornado" size={22} color="#fff" />
+        <Text style={styles.cardText}>Typhoon Preparedness</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.card} onPress={() => router.push("/fire")}>
-        <Text style={styles.cardText}>🔥 Fire Evacuation</Text>
+        <MaterialCommunityIcons name="fire" size={22} color="#fff" />
+        <Text style={styles.cardText}>Fire Evacuation</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.card} onPress={() => router.push("/contacts")}>
-        <Text style={styles.cardText}>📞 CTU Emergency Contacts</Text>
+        <Ionicons name="call" size={22} color="#fff" />
+        <Text style={styles.cardText}>CTU Emergency Contacts</Text>
       </TouchableOpacity>
     </View>
   );
@@ -46,6 +51,9 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     marginBottom: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   cardText: {
     color: "#fff",

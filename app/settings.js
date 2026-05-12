@@ -7,6 +7,7 @@ import {
   Alert, Modal, ScrollView, StyleSheet,
   Switch, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { auth } from "../firebase";
@@ -40,7 +41,7 @@ export default function Settings() {
       setSaving(true);
       await updateProfile(auth.currentUser, { displayName: displayName.trim() });
       setProfileModal(false);
-      Alert.alert("Success ✅", "Profile updated successfully!");
+      Alert.alert("Success", "Profile updated successfully!");
     } catch (e) { Alert.alert("Error", e.message); }
     finally { setSaving(false); }
   };
@@ -56,7 +57,7 @@ export default function Settings() {
       await updatePassword(auth.currentUser, newPassword);
       setPasswordModal(false);
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-      Alert.alert("Success ✅", "Password changed successfully!");
+      Alert.alert("Success", "Password changed successfully!");
     } catch (e) {
       Alert.alert("Error", e.code === "auth/wrong-password" ? "Current password is incorrect." : e.message);
     } finally { setSaving(false); }
@@ -74,15 +75,15 @@ export default function Settings() {
   };
 
   const LANGUAGES = [
-    { key: "en", label: "English", flag: "🇺🇸" },
-    { key: "ceb", label: "Cebuano", flag: "🇵🇭" },
-    { key: "fil", label: "Tagalog", flag: "🇵🇭" },
+    { key: "en", label: "English", code: "EN" },
+    { key: "ceb", label: "Cebuano", code: "CEB" },
+    { key: "fil", label: "Tagalog", code: "FIL" },
   ];
 
   const VOICE_SPEEDS = [
-    { key: "slow", label: "Slow", icon: "🐢" },
-    { key: "normal", label: "Normal", icon: "🚶" },
-    { key: "fast", label: "Fast", icon: "🏃" },
+    { key: "slow", label: "Slow", icon: "speedometer-slow" },
+    { key: "normal", label: "Normal", icon: "walk" },
+    { key: "fast", label: "Fast", icon: "run-fast" },
   ];
 
   const SectionCard = ({ children }) => (
@@ -93,7 +94,7 @@ export default function Settings() {
 
   const SectionTitle = ({ icon, label }) => (
     <View style={styles.sectionTitleRow}>
-      <Text style={styles.sectionTitleIcon}>{icon}</Text>
+      <MaterialCommunityIcons name={icon} size={18} color={COLORS.primary} />
       <Text style={[styles.sectionTitle, { color: textDark }]}>{label}</Text>
     </View>
   );
@@ -104,7 +105,7 @@ export default function Settings() {
       onPress={onPress}
     >
       <View style={[styles.menuIconWrap, { backgroundColor: isDark ? "#1a1a1a" : surface }]}>
-        <Text style={styles.menuIcon}>{icon}</Text>
+        <MaterialCommunityIcons name={icon} size={18} color={COLORS.primary} />
       </View>
       <View style={styles.menuContent}>
         <Text style={[styles.menuLabel, { color: textDark }]}>{label}</Text>
@@ -122,7 +123,10 @@ export default function Settings() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>⚙️ {t("settings_title")}</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="settings" size={21} color="#fff" />
+          <Text style={styles.headerTitle}>{t("settings_title")}</Text>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
@@ -151,7 +155,7 @@ export default function Settings() {
 
         {/* LANGUAGE */}
         <SectionCard>
-          <SectionTitle icon="🌐" label={t("language_label")} />
+          <SectionTitle icon="web" label={t("language_label")} />
           <View style={styles.langGrid}>
             {LANGUAGES.map((lang) => (
               <TouchableOpacity
@@ -163,28 +167,28 @@ export default function Settings() {
                 ]}
                 onPress={() => updateLanguage(lang.key)}
               >
-                <Text style={styles.langFlag}>{lang.flag}</Text>
+                <Text style={[styles.langFlag, { color: language === lang.key ? "#fff" : COLORS.primary }]}>{lang.code}</Text>
                 <Text style={[styles.langLabel, { color: language === lang.key ? "#fff" : textDark }]}>
                   {lang.label}
                 </Text>
                 {language === lang.key && (
                   <View style={styles.langCheck}>
-                    <Text style={styles.langCheckText}>✓</Text>
+                    <Ionicons name="checkmark" size={11} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
             ))}
           </View>
           <Text style={[styles.langNote, { color: textLight }]}>
-            {language === "en" ? "🇺🇸 App is in English" : language === "ceb" ? "🇵🇭 Ang app kay Cebuano" : "🇵🇭 Ang app ay Tagalog"}
+            {language === "en" ? "App is in English" : language === "ceb" ? "Ang app kay Cebuano" : "Ang app ay Tagalog"}
           </Text>
         </SectionCard>
 
         {/* APPEARANCE */}
         <SectionCard>
-          <SectionTitle icon="🎨" label={t("appearance")} />
+          <SectionTitle icon="palette" label={t("appearance")} />
           <View style={[styles.toggleRow, { backgroundColor: isDark ? "#1a1a1a" : surface, borderColor: border }]}>
-            <Text style={styles.toggleIcon}>{darkMode ? "🌙" : "☀️"}</Text>
+            <MaterialCommunityIcons name={darkMode ? "weather-night" : "weather-sunny"} size={26} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleLabel, { color: textDark }]}>{t("dark_mode")}</Text>
               <Text style={[styles.toggleDesc, { color: textLight }]}>
@@ -202,9 +206,9 @@ export default function Settings() {
 
         {/* NOTIFICATIONS */}
         <SectionCard>
-          <SectionTitle icon="🔔" label={t("notifications_label")} />
+          <SectionTitle icon="bell" label={t("notifications_label")} />
           <View style={[styles.toggleRow, { backgroundColor: isDark ? "#1a1a1a" : surface, borderColor: border }]}>
-            <Text style={styles.toggleIcon}>🚨</Text>
+            <MaterialCommunityIcons name="alarm-light" size={26} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleLabel, { color: textDark }]}>{t("emergency_alerts")}</Text>
               <Text style={[styles.toggleDesc, { color: textLight }]}>
@@ -222,7 +226,7 @@ export default function Settings() {
 
         {/* VOICE SPEED */}
         <SectionCard>
-          <SectionTitle icon="🔊" label={t("voice_speed")} />
+          <SectionTitle icon="volume-high" label={t("voice_speed")} />
           <View style={styles.speedGrid}>
             {VOICE_SPEEDS.map((s) => (
               <TouchableOpacity
@@ -234,11 +238,11 @@ export default function Settings() {
                 ]}
                 onPress={() => updateVoiceSpeed(s.key)}
               >
-                <Text style={styles.speedIcon}>{s.icon}</Text>
+                <MaterialCommunityIcons name={s.icon} size={24} color={voiceSpeed === s.key ? "#fff" : COLORS.primary} />
                 <Text style={[styles.speedLabel, { color: voiceSpeed === s.key ? "#fff" : textDark }]}>
                   {s.label}
                 </Text>
-                {voiceSpeed === s.key && <Text style={styles.speedCheck}>✓</Text>}
+                {voiceSpeed === s.key && <Ionicons name="checkmark" size={12} color="#fff" />}
               </TouchableOpacity>
             ))}
           </View>
@@ -246,16 +250,16 @@ export default function Settings() {
 
         {/* ACCOUNT */}
         <SectionCard>
-          <SectionTitle icon="👤" label={t("account")} />
-          <MenuItem icon="✏️" label={t("edit_name")} desc="Update your name in the app" onPress={() => setProfileModal(true)} />
-          <MenuItem icon="🔑" label={t("change_password")} desc="Update your account password" onPress={() => setPasswordModal(true)} last />
+          <SectionTitle icon="account" label={t("account")} />
+          <MenuItem icon="pencil" label={t("edit_name")} desc="Update your name in the app" onPress={() => setProfileModal(true)} />
+          <MenuItem icon="key" label={t("change_password")} desc="Update your account password" onPress={() => setPasswordModal(true)} last />
         </SectionCard>
 
         {/* INFORMATION */}
         <SectionCard>
-          <SectionTitle icon="ℹ️" label={t("information")} />
-          <MenuItem icon="📱" label={t("about")} desc="Version info and credits" onPress={() => setAboutModal(true)} />
-          <MenuItem icon="🔒" label={t("privacy")} desc="How we handle your data" onPress={() => setPrivacyModal(true)} last />
+          <SectionTitle icon="information" label={t("information")} />
+          <MenuItem icon="cellphone" label={t("about")} desc="Version info and credits" onPress={() => setAboutModal(true)} />
+          <MenuItem icon="lock" label={t("privacy")} desc="How we handle your data" onPress={() => setPrivacyModal(true)} last />
         </SectionCard>
 
         {/* LOGOUT */}
@@ -263,7 +267,7 @@ export default function Settings() {
           style={[styles.logoutBtn, { backgroundColor: isDark ? "#2a1010" : "#FFEBEE", borderColor: isDark ? "#5a2020" : "#FFCDD2" }]}
           onPress={handleLogout}
         >
-          <Text style={styles.logoutIcon}>🚪</Text>
+          <MaterialCommunityIcons name="logout" size={20} color="#e53935" />
           <Text style={styles.logoutText}>{t("logout")}</Text>
         </TouchableOpacity>
 
@@ -275,9 +279,12 @@ export default function Settings() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: card }]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: textDark }]}>✏️ {t("edit_name")}</Text>
+            <View style={styles.modalTitleRow}>
+              <MaterialCommunityIcons name="pencil" size={20} color={COLORS.primary} />
+              <Text style={[styles.modalTitle, { color: textDark }]}>{t("edit_name")}</Text>
+            </View>
             <View style={[styles.inputWrap, { borderColor: border, backgroundColor: surface }]}>
-              <Text style={styles.inputIcon}>👤</Text>
+              <MaterialCommunityIcons name="account" size={18} color={COLORS.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: textDark }]}
                 placeholder="Display name"
@@ -301,14 +308,17 @@ export default function Settings() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: card }]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: textDark }]}>🔑 {t("change_password")}</Text>
+            <View style={styles.modalTitleRow}>
+              <MaterialCommunityIcons name="key" size={20} color={COLORS.primary} />
+              <Text style={[styles.modalTitle, { color: textDark }]}>{t("change_password")}</Text>
+            </View>
             {[
               { placeholder: "Current password", value: currentPassword, setter: setCurrentPassword },
               { placeholder: "New password", value: newPassword, setter: setNewPassword },
               { placeholder: "Confirm new password", value: confirmPassword, setter: setConfirmPassword },
             ].map((field, i) => (
               <View key={i} style={[styles.inputWrap, { borderColor: border, backgroundColor: surface }]}>
-                <Text style={styles.inputIcon}>🔒</Text>
+                <MaterialCommunityIcons name="lock" size={18} color={COLORS.primary} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: textDark }]}
                   placeholder={field.placeholder}
@@ -338,7 +348,7 @@ export default function Settings() {
           <View style={[styles.modalBox, { backgroundColor: card }]}>
             <View style={styles.modalHandle} />
             <View style={styles.aboutHeader}>
-              <Text style={styles.aboutEmoji}>🚑</Text>
+              <MaterialCommunityIcons name="ambulance" size={48} color={COLORS.primary} style={styles.aboutEmoji} />
               <Text style={styles.aboutName}>LIFELINE</Text>
               <Text style={[styles.aboutVersion, { color: textLight }]}>Version 1.0.4</Text>
             </View>
@@ -367,7 +377,10 @@ export default function Settings() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: card }]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: textDark }]}>🔒 {t("privacy")}</Text>
+            <View style={styles.modalTitleRow}>
+              <MaterialCommunityIcons name="lock" size={20} color={COLORS.primary} />
+              <Text style={[styles.modalTitle, { color: textDark }]}>{t("privacy")}</Text>
+            </View>
             <ScrollView style={{ maxHeight: 350 }} showsVerticalScrollIndicator={false}>
               {[
                 { title: "Data Collection", text: "LIFELINE collects your email, display name, and location (only when SOS is triggered) to provide disaster preparedness services." },
@@ -404,6 +417,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40 },
   backText: { color: "#fff", fontSize: 22 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   headerTitle: { fontSize: 20, fontWeight: "bold", color: "#fff" },
 
   scroll: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
@@ -436,7 +450,6 @@ const styles = StyleSheet.create({
   // SECTION
   section: { borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
-  sectionTitleIcon: { fontSize: 18 },
   sectionTitle: { fontWeight: "bold", fontSize: 15 },
 
   // LANGUAGE
@@ -446,7 +459,7 @@ const styles = StyleSheet.create({
     padding: 12, alignItems: "center", gap: 4,
     position: "relative",
   },
-  langFlag: { fontSize: 22 },
+  langFlag: { fontSize: 13, fontWeight: "bold" },
   langLabel: { fontSize: 11, fontWeight: "bold" },
   langCheck: {
     position: "absolute", top: 5, right: 5,
@@ -454,7 +467,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.3)",
     justifyContent: "center", alignItems: "center",
   },
-  langCheckText: { color: "#fff", fontSize: 9, fontWeight: "bold" },
   langNote: { fontSize: 11, fontStyle: "italic", textAlign: "center" },
 
   // TOGGLE ROW
@@ -463,7 +475,6 @@ const styles = StyleSheet.create({
     borderRadius: 12, padding: 12,
     borderWidth: 1, gap: 12,
   },
-  toggleIcon: { fontSize: 26 },
   toggleLabel: { fontWeight: "bold", fontSize: 14 },
   toggleDesc: { fontSize: 11, marginTop: 2 },
 
@@ -473,14 +484,11 @@ const styles = StyleSheet.create({
     flex: 1, borderRadius: 12, borderWidth: 1.5,
     padding: 12, alignItems: "center", gap: 4,
   },
-  speedIcon: { fontSize: 24 },
   speedLabel: { fontSize: 12, fontWeight: "bold" },
-  speedCheck: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 
   // MENU ITEM
   menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12 },
   menuIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  menuIcon: { fontSize: 18 },
   menuContent: { flex: 1 },
   menuLabel: { fontWeight: "bold", fontSize: 14 },
   menuDesc: { fontSize: 11, marginTop: 2 },
@@ -493,16 +501,16 @@ const styles = StyleSheet.create({
     borderRadius: 16, padding: 16,
     marginBottom: 14, borderWidth: 1.5,
   },
-  logoutIcon: { fontSize: 20 },
   logoutText: { color: "#e53935", fontWeight: "bold", fontSize: 15 },
 
   // MODAL
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 18, textAlign: "center" },
+  modalTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 18 },
+  modalTitle: { fontSize: 18, fontWeight: "bold", textAlign: "center" },
   inputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12 },
-  inputIcon: { fontSize: 17, marginRight: 10 },
+  inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15 },
   modalBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: "center", marginTop: 4 },
   modalBtnText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
@@ -511,7 +519,7 @@ const styles = StyleSheet.create({
 
   // ABOUT
   aboutHeader: { alignItems: "center", marginBottom: 18 },
-  aboutEmoji: { fontSize: 48, marginBottom: 8 },
+  aboutEmoji: { marginBottom: 8 },
   aboutName: { fontSize: 22, fontWeight: "bold", color: COLORS.primary },
   aboutVersion: { fontSize: 12, marginTop: 4 },
   aboutRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1 },

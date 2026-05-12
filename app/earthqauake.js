@@ -1,10 +1,14 @@
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 
 export default function Earthquake() {
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>🌎 Earthquake Safety Guide</Text>
+      <View style={styles.titleRow}>
+        <MaterialCommunityIcons name="earth" size={24} color={COLORS.primary} />
+        <Text style={styles.title}>Earthquake Safety Guide</Text>
+      </View>
 
       <Text style={styles.content}>
         BEFORE:
@@ -36,6 +40,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     color: COLORS.primary,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     marginBottom: 20,
   },
   content: {

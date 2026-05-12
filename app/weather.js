@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Linking,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import { useSettings } from "../context/SettingsContext";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
@@ -20,9 +21,9 @@ import { getNotifications, scheduleNotification } from "../utils/notifications";
 const API_KEY = "f1174f62efabb76017f70f21096688b2";
 
 const WEATHER_ICONS = {
-  Thunderstorm: "⛈", Drizzle: "🌦", Rain: "🌧", Snow: "❄️",
-  Clear: "☀️", Clouds: "☁️", Mist: "🌫", Fog: "🌫",
-  Haze: "🌫", Tornado: "🌪", Squall: "💨",
+  Thunderstorm: "weather-lightning-rainy", Drizzle: "weather-partly-rainy", Rain: "weather-rainy", Snow: "weather-snowy",
+  Clear: "weather-sunny", Clouds: "weather-cloudy", Mist: "weather-fog", Fog: "weather-fog",
+  Haze: "weather-hazy", Tornado: "weather-tornado", Squall: "weather-windy",
 };
 
 const HOURS = ["12AM","1AM","2AM","3AM","4AM","5AM","6AM","7AM","8AM","9AM","10AM","11AM",
@@ -61,7 +62,7 @@ export default function Weather() {
     notificationSentRef.current = true;
     await scheduleNotification({
       content: {
-        title: "⚠️ LIFELINE Weather Alert",
+        title: "LIFELINE Weather Alert",
         body: warning.text,
         sound: true,
         color: warning.color,
@@ -129,10 +130,10 @@ export default function Weather() {
     if (!data?.wind || !data?.weather?.[0]) return null;
     const condition = data.weather[0].main;
     const windSpeed = data.wind.speed || 0;
-    if (windSpeed >= 17.2) return { text: "🌪 Typhoon Warning — Winds above 62km/h! Take shelter immediately!", color: "#B00020" };
-    if (windSpeed >= 10.8) return { text: "⚠️ Strong Wind Warning — Stay cautious and avoid open areas!", color: "#E65100" };
-    if (condition === "Thunderstorm") return { text: "⛈ Thunderstorm Warning — Stay indoors and away from windows!", color: "#B00020" };
-    if (condition === "Rain") return { text: "🌧 Heavy Rain Advisory — Avoid flood-prone areas!", color: "#1565C0" };
+    if (windSpeed >= 17.2) return { text: "Typhoon Warning — Winds above 62km/h! Take shelter immediately!", color: "#B00020" };
+    if (windSpeed >= 10.8) return { text: "Strong Wind Warning — Stay cautious and avoid open areas!", color: "#E65100" };
+    if (condition === "Thunderstorm") return { text: "Thunderstorm Warning — Stay indoors and away from windows!", color: "#B00020" };
+    if (condition === "Rain") return { text: "Heavy Rain Advisory — Avoid flood-prone areas!", color: "#1565C0" };
     return null;
   };
 
@@ -143,9 +144,9 @@ export default function Weather() {
     try {
       const found = await checkEarthquakes();
       if (found) {
-        Alert.alert("🌍 Earthquake Detected!", "A significant earthquake has been detected near Danao City. Emergency alert has been activated for ALL users automatically.");
+        Alert.alert("Earthquake Detected!", "A significant earthquake has been detected near Danao City. Emergency alert has been activated for ALL users automatically.");
       } else {
-        Alert.alert("✅ No Earthquake Detected", "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours.");
+        Alert.alert("No Earthquake Detected", "No significant earthquakes (Magnitude 4.0+) detected near Danao City in the last 24 hours.");
       }
     } catch (_e) {
       Alert.alert("Error", "Could not check earthquake data. Check your internet connection.");
@@ -166,10 +167,11 @@ export default function Weather() {
   if (error) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
-        <Text style={styles.errorIcon}>⚠️</Text>
+        <Ionicons name="warning" size={50} color="#B00020" style={styles.errorIcon} />
         <Text style={[styles.errorText, { color: textMid }]}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchWeather}>
-          <Text style={styles.retryText}>🔄 Try Again</Text>
+          <MaterialCommunityIcons name="restart" size={16} color="#fff" />
+          <Text style={styles.retryText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -180,14 +182,15 @@ export default function Weather() {
       <View style={[styles.loadingContainer, { backgroundColor: bg }]}>
         <Text style={[styles.errorText, { color: textMid }]}>No weather data available.</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchWeather}>
-          <Text style={styles.retryText}>🔄 Try Again</Text>
+          <MaterialCommunityIcons name="restart" size={16} color="#fff" />
+          <Text style={styles.retryText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const warning = getWarning();
-  const icon = WEATHER_ICONS[weather?.weather?.[0]?.main] || "🌡";
+  const icon = WEATHER_ICONS[weather?.weather?.[0]?.main] || "thermometer";
 
   const windyUrl = userCoords
     ? `https://embed.windy.com/embed2.html?lat=${userCoords.latitude}&lon=${userCoords.longitude}&detailLat=${userCoords.latitude}&detailLon=${userCoords.longitude}&width=650&height=450&pane=wind&overlay=wind&product=ecmwf&level=surface&pressure=true&type=map&location=coordinates&detail=true&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`
@@ -198,14 +201,23 @@ export default function Weather() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌤 Weather</Text>
-        <Text style={styles.headerSub}>📍 {weather?.name || "Unknown"}, {weather?.sys?.country || ""}</Text>
+        <View style={styles.headerTitleRow}>
+          <MaterialCommunityIcons name="weather-partly-cloudy" size={24} color="#fff" />
+          <Text style={styles.headerTitle}>Weather</Text>
+        </View>
+        <View style={styles.headerSubRow}>
+          <Ionicons name="location" size={13} color="rgba(255,255,255,0.75)" />
+          <Text style={styles.headerSub}>{weather?.name || "Unknown"}, {weather?.sys?.country || ""}</Text>
+        </View>
       </View>
 
       {/* WARNING BANNER */}
       {warning && (
         <View style={[styles.warningBanner, { backgroundColor: warning.color }]}>
-          <Text style={styles.warningText}>🔔 {warning.text}</Text>
+          <View style={styles.warningTextRow}>
+            <Ionicons name="notifications" size={16} color="#fff" />
+            <Text style={styles.warningText}>{warning.text}</Text>
+          </View>
           <Text style={styles.warningSubText}>Notification sent to your device</Text>
         </View>
       )}
@@ -213,17 +225,20 @@ export default function Weather() {
       {/* TABS */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "weather", label: "🌡 Weather" },
-          { key: "windy", label: "🗺 Windy Map" },
+          { key: "weather", label: "Weather", icon: "thermometer" },
+          { key: "windy", label: "Windy Map", icon: "map" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key)}
           >
-            <Text style={[styles.tabText, { color: textLight }, activeTab === tab.key && styles.activeTabText]}>
-              {tab.label}
-            </Text>
+            <View style={styles.tabInner}>
+              <MaterialCommunityIcons name={tab.icon} size={16} color={activeTab === tab.key ? "#B00020" : textLight} />
+              <Text style={[styles.tabText, { color: textLight }, activeTab === tab.key && styles.activeTabText]}>
+                {tab.label}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -236,19 +251,19 @@ export default function Weather() {
         >
           {/* CURRENT WEATHER */}
           <View style={[styles.currentCard, { backgroundColor: card, borderColor: border }]}>
-            <Text style={styles.weatherIcon}>{icon}</Text>
+            <MaterialCommunityIcons name={icon} size={70} color="#B00020" style={styles.weatherIcon} />
             <Text style={styles.temperature}>{Math.round(weather?.main?.temp ?? 0)}°C</Text>
             <Text style={[styles.condition, { color: textMid }]}>{weather?.weather?.[0]?.description || ""}</Text>
             <Text style={[styles.feelsLike, { color: textLight }]}>Feels like {Math.round(weather?.main?.feels_like ?? 0)}°C</Text>
             <View style={styles.statsRow}>
               {[
-                { icon: "💧", value: `${weather?.main?.humidity ?? 0}%`, label: "Humidity" },
-                { icon: "💨", value: `${((weather?.wind?.speed ?? 0) * 3.6).toFixed(1)} km/h`, label: "Wind" },
-                { icon: "👁", value: `${((weather?.visibility ?? 0) / 1000).toFixed(1)} km`, label: "Visibility" },
-                { icon: "🌡", value: `${weather?.main?.pressure ?? 0} hPa`, label: "Pressure" },
+                { icon: "water-percent", value: `${weather?.main?.humidity ?? 0}%`, label: "Humidity" },
+                { icon: "weather-windy", value: `${((weather?.wind?.speed ?? 0) * 3.6).toFixed(1)} km/h`, label: "Wind" },
+                { icon: "eye", value: `${((weather?.visibility ?? 0) / 1000).toFixed(1)} km`, label: "Visibility" },
+                { icon: "gauge", value: `${weather?.main?.pressure ?? 0} hPa`, label: "Pressure" },
               ].map((stat, i) => (
                 <View key={i} style={styles.statItem}>
-                  <Text style={styles.statIcon}>{stat.icon}</Text>
+                  <MaterialCommunityIcons name={stat.icon} size={22} color="#B00020" />
                   <Text style={[styles.statValue, { color: textDark }]}>{stat.value}</Text>
                   <Text style={[styles.statLabel, { color: textLight }]}>{stat.label}</Text>
                 </View>
@@ -259,18 +274,24 @@ export default function Weather() {
           {/* HOURLY FORECAST */}
           {forecast.length > 0 && (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>⏱ Next 24 Hours</Text>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="time" size={18} color="#B00020" />
+                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Next 24 Hours</Text>
+              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {forecast.map((item, index) => {
                   const time = new Date((item?.dt ?? 0) * 1000);
                   const hour = HOURS[time.getHours()];
-                  const itemIcon = WEATHER_ICONS[item?.weather?.[0]?.main] || "🌡";
+                  const itemIcon = WEATHER_ICONS[item?.weather?.[0]?.main] || "thermometer";
                   return (
                     <View key={index} style={[styles.hourCard, { backgroundColor: card, borderColor: border }]}>
                       <Text style={[styles.hourTime, { color: textLight }]}>{hour}</Text>
-                      <Text style={styles.hourIcon}>{itemIcon}</Text>
+                      <MaterialCommunityIcons name={itemIcon} size={24} color="#B00020" style={styles.hourIcon} />
                       <Text style={[styles.hourTemp, { color: "#B00020" }]}>{Math.round(item?.main?.temp ?? 0)}°C</Text>
-                      <Text style={styles.hourRain}>💧{Math.round((item?.pop ?? 0) * 100)}%</Text>
+                      <View style={styles.hourRainRow}>
+                        <MaterialCommunityIcons name="water-percent" size={12} color="#1565C0" />
+                        <Text style={styles.hourRain}>{Math.round((item?.pop ?? 0) * 100)}%</Text>
+                      </View>
                     </View>
                   );
                 })}
@@ -281,14 +302,17 @@ export default function Weather() {
           {/* SUNRISE & SUNSET */}
           {weather?.sys && (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>🌅 Sun Schedule</Text>
+              <View style={styles.sectionTitleRow}>
+                <MaterialCommunityIcons name="weather-sunset-up" size={18} color="#B00020" />
+                <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Sun Schedule</Text>
+              </View>
               <View style={styles.sunRow}>
                 {[
-                  { icon: "🌅", label: "Sunrise", time: weather.sys.sunrise },
-                  { icon: "🌇", label: "Sunset", time: weather.sys.sunset },
+                  { icon: "weather-sunset-up", label: "Sunrise", time: weather.sys.sunrise },
+                  { icon: "weather-sunset-down", label: "Sunset", time: weather.sys.sunset },
                 ].map((sun, i) => (
                   <View key={i} style={[styles.sunCard, { backgroundColor: card, borderColor: border }]}>
-                    <Text style={styles.sunIcon}>{sun.icon}</Text>
+                    <MaterialCommunityIcons name={sun.icon} size={30} color="#B00020" style={styles.sunIcon} />
                     <Text style={[styles.sunLabel, { color: textLight }]}>{sun.label}</Text>
                     <Text style={[styles.sunTime, { color: "#B00020" }]}>
                       {new Date((sun.time ?? 0) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -299,11 +323,17 @@ export default function Weather() {
             </View>
           )}
 
-          {/* 🌍 EARTHQUAKE MONITOR */}
+          {/* EARTHQUAKE MONITOR */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: "#B00020" }]}>🌍 Earthquake Monitor</Text>
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="earth" size={18} color="#B00020" />
+              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Earthquake Monitor</Text>
+            </View>
             <View style={[styles.quakeCard, { backgroundColor: card, borderColor: border }]}>
-              <Text style={[styles.quakeTitle, { color: textDark }]}>🔍 USGS Real-Time Detection</Text>
+              <View style={styles.quakeTitleRow}>
+                <Ionicons name="search" size={16} color={textDark} />
+                <Text style={[styles.quakeTitle, { color: textDark }]}>USGS Real-Time Detection</Text>
+              </View>
               <Text style={[styles.quakeDesc, { color: textMid }]}>
                 LIFELINE automatically monitors USGS earthquake data every 15 minutes. If a Magnitude 4.0+ earthquake is detected near Danao City, all users will be alerted automatically with a buzzer notification.
               </Text>
@@ -314,27 +344,33 @@ export default function Weather() {
               >
                 {checkingQuake
                   ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.quakeButtonText}>🔍 Check Now</Text>
+                  : <View style={styles.buttonTextRow}>
+                      <Ionicons name="search" size={15} color="#fff" />
+                      <Text style={styles.quakeButtonText}>Check Now</Text>
+                    </View>
                 }
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* 📡 OFFICIAL UPDATES */}
+          {/* OFFICIAL UPDATES */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: "#B00020" }]}>📡 Official Updates</Text>
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="broadcast" size={18} color="#B00020" />
+              <Text style={[styles.sectionTitle, { color: "#B00020" }]}>Official Updates</Text>
+            </View>
             {[
-              { icon: "🌧", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#1565C0" },
-              { icon: "🌋", label: "PHIVOLCS Earthquake Bulletin", url: "https://earthquake.phivolcs.dost.gov.ph/", color: "#4527A0" },
-              { icon: "🌪", label: "PAGASA Typhoon Updates", url: "https://www.pagasa.dost.gov.ph/tropical-cyclone/active-tropical-cyclone", color: "#B00020" },
-              { icon: "🌍", label: "USGS Earthquake Feed", url: "https://earthquake.usgs.gov/earthquakes/map/", color: "#2E7D32" },
+              { icon: "weather-rainy", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#1565C0" },
+              { icon: "volcano", label: "PHIVOLCS Earthquake Bulletin", url: "https://earthquake.phivolcs.dost.gov.ph/", color: "#4527A0" },
+              { icon: "weather-tornado", label: "PAGASA Typhoon Updates", url: "https://www.pagasa.dost.gov.ph/tropical-cyclone/active-tropical-cyclone", color: "#B00020" },
+              { icon: "earth", label: "USGS Earthquake Feed", url: "https://earthquake.usgs.gov/earthquakes/map/", color: "#2E7D32" },
             ].map((link, i) => (
               <TouchableOpacity
                 key={i}
                 style={[styles.linkCard, { backgroundColor: card, borderColor: border }]}
                 onPress={() => Linking.openURL(link.url)}
               >
-                <Text style={styles.linkIcon}>{link.icon}</Text>
+                <MaterialCommunityIcons name={link.icon} size={24} color={link.color} style={styles.linkIcon} />
                 <Text style={[styles.linkLabel, { color: textDark }]}>{link.label}</Text>
                 <Text style={[styles.linkArrow, { color: link.color }]}>→</Text>
               </TouchableOpacity>
@@ -343,7 +379,8 @@ export default function Weather() {
 
           {/* REFRESH */}
           <TouchableOpacity style={styles.refreshButton} onPress={fetchWeather}>
-            <Text style={styles.refreshText}>🔄 Refresh Weather</Text>
+            <MaterialCommunityIcons name="refresh" size={16} color="#fff" />
+            <Text style={styles.refreshText}>Refresh Weather</Text>
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
@@ -355,7 +392,7 @@ export default function Weather() {
         <View style={{ flex: 1 }}>
           <View style={[styles.windyInfo, { backgroundColor: card, borderColor: border }]}>
             <Text style={[styles.windyInfoText, { color: textDark }]}>
-              🗺 Live wind, rain, and typhoon map powered by Windy
+              Live wind, rain, and typhoon map powered by Windy
             </Text>
           </View>
           <WebView
@@ -382,53 +419,60 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 30 },
   loadingText: { marginTop: 15, fontSize: 16 },
-  errorIcon: { fontSize: 50, marginBottom: 10 },
+  errorIcon: { marginBottom: 10 },
   errorText: { fontSize: 15, textAlign: "center", marginBottom: 20 },
-  retryButton: { backgroundColor: "#B00020", padding: 15, borderRadius: 10, alignItems: "center", width: "60%" },
+  retryButton: { backgroundColor: "#B00020", padding: 15, borderRadius: 10, alignItems: "center", justifyContent: "center", width: "60%", flexDirection: "row", gap: 6 },
   retryText: { color: "#fff", fontWeight: "bold" },
   header: { backgroundColor: "#B00020", paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, marginBottom: 5 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
+  headerSubRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
   warningBanner: { padding: 15 },
+  warningTextRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   warningText: { color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 14 },
   warningSubText: { color: "rgba(255,255,255,0.8)", textAlign: "center", fontSize: 11, marginTop: 4 },
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginHorizontal: 20, marginTop: 10, marginBottom: 5 },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  tabInner: { flexDirection: "row", alignItems: "center", gap: 6 },
   activeTab: { borderBottomWidth: 3, borderBottomColor: "#B00020" },
   tabText: { fontSize: 13, fontWeight: "bold" },
   activeTabText: { color: "#B00020", fontWeight: "bold" },
   currentCard: { borderRadius: 20, padding: 25, alignItems: "center", marginBottom: 20, borderWidth: 1 },
-  weatherIcon: { fontSize: 70 },
+  weatherIcon: { marginBottom: 2 },
   temperature: { fontSize: 60, fontWeight: "bold", color: "#B00020" },
   condition: { fontSize: 18, textTransform: "capitalize", marginTop: 5 },
   feelsLike: { marginTop: 5 },
   statsRow: { flexDirection: "row", marginTop: 20, gap: 10 },
   statItem: { alignItems: "center", flex: 1 },
-  statIcon: { fontSize: 20 },
   statValue: { fontWeight: "bold", fontSize: 12, marginTop: 4 },
   statLabel: { fontSize: 10, marginTop: 2 },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 12 },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold" },
   hourCard: { borderRadius: 12, padding: 12, alignItems: "center", marginRight: 10, minWidth: 70, borderWidth: 1 },
   hourTime: { fontSize: 11 },
-  hourIcon: { fontSize: 24, marginVertical: 6 },
+  hourIcon: { marginVertical: 6 },
   hourTemp: { fontWeight: "bold" },
-  hourRain: { fontSize: 11, color: "#1565C0", marginTop: 3 },
+  hourRainRow: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 3 },
+  hourRain: { fontSize: 11, color: "#1565C0" },
   sunRow: { flexDirection: "row", gap: 10 },
   sunCard: { flex: 1, borderRadius: 12, padding: 15, alignItems: "center", borderWidth: 1 },
-  sunIcon: { fontSize: 30 },
+  sunIcon: {},
   sunLabel: { fontSize: 12, marginTop: 5 },
   sunTime: { fontWeight: "bold", fontSize: 16, marginTop: 3 },
   quakeCard: { borderRadius: 15, padding: 16, marginBottom: 10, borderWidth: 1 },
-  quakeTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 8 },
+  quakeTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  quakeTitle: { fontWeight: "bold", fontSize: 14 },
   quakeDesc: { fontSize: 13, lineHeight: 20, marginBottom: 12 },
   quakeButton: { backgroundColor: "#4527A0", padding: 12, borderRadius: 10, alignItems: "center" },
   quakeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  buttonTextRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   linkCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1 },
-  linkIcon: { fontSize: 24, marginRight: 12 },
+  linkIcon: { marginRight: 12 },
   linkLabel: { flex: 1, fontWeight: "bold", fontSize: 14 },
   linkArrow: { fontSize: 18, fontWeight: "bold" },
-  refreshButton: { backgroundColor: "#B00020", padding: 15, borderRadius: 12, alignItems: "center", marginBottom: 10 },
+  refreshButton: { backgroundColor: "#B00020", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10, flexDirection: "row", gap: 6 },
   refreshText: { color: "#fff", fontWeight: "bold" },
   windyInfo: { padding: 12, marginHorizontal: 20, marginVertical: 10, borderRadius: 10, borderWidth: 1 },
   windyInfoText: { textAlign: "center", fontSize: 13 },

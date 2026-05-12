@@ -50,7 +50,6 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Evacuation() {
-  const [userLocation, setUserLocation] = useState(null);
   const [nearestCenter, setNearestCenter] = useState(null);
   const [isEmergency, setIsEmergency] = useState(false);
   const [emergencyMessage, setEmergencyMessage] = useState("");
@@ -79,7 +78,6 @@ export default function Evacuation() {
         if (status !== "granted") { setLocationLoading(false); return; }
         const location = await Location.getCurrentPositionAsync({});
         const coords = { latitude: location.coords.latitude, longitude: location.coords.longitude };
-        setUserLocation(coords);
         const centersWithDistance = EVACUATION_CENTERS.map((center) => {
           const distKm = getDistance(coords.latitude, coords.longitude, center.latitude, center.longitude);
           return { ...center, distanceKm: distKm, distanceM: (distKm * 1000).toFixed(0) };
@@ -200,7 +198,7 @@ export default function Evacuation() {
         </View>
       ) : (
         <View style={[styles.locatingCard, { backgroundColor: card, borderColor: border }]}>
-          <Text style={styles.locatingIcon}>📡</Text>
+          <MaterialCommunityIcons name="radar" size={35} color={COLORS.primary} style={styles.locatingIcon} />
           <Text style={[styles.locatingTitle, { color: textDark }]}>
             {locationLoading ? "Calculating nearest safe zone..." : "Location Unavailable"}
           </Text>
@@ -251,9 +249,11 @@ export default function Evacuation() {
             {sortedCenters.map((center, index) => (
               <View key={center.id} style={[styles.centerCard, { backgroundColor: card, borderColor: border }]}>
                 <View style={[styles.centerRank, { backgroundColor: index === 0 ? COLORS.primary : (center.type === "primary" ? "#2e7d32" : "#1565C0") }]}>
-                  <Text style={styles.centerRankText}>
-                    {index === 0 ? "★" : `#${index + 1}`}
-                  </Text>
+                  {index === 0 ? (
+                    <Ionicons name="star" size={15} color="#fff" />
+                  ) : (
+                    <Text style={styles.centerRankText}>#{index + 1}</Text>
+                  )}
                 </View>
                 <View style={styles.centerInfo}>
                   <View style={styles.centerNameRow}>
@@ -353,7 +353,7 @@ export default function Evacuation() {
               style={styles.hotlineCard}
               onPress={() => Linking.openURL("tel:09177236262")}
             >
-              <Text style={styles.hotlineIcon}>📞</Text>
+              <Ionicons name="call" size={32} color="#fff" style={styles.hotlineIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.hotlineLabel}>CTU Danao DRRMO Hotline</Text>
                 <Text style={styles.hotlineNumber}>0917-723-6262</Text>

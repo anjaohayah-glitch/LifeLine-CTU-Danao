@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { auth } from "../firebase";
 
 export default function Splash() {
@@ -28,10 +29,10 @@ export default function Splash() {
       setTimeout(() => router.replace(destination), 2500);
     };
 
-    // ✅ OFFLINE FIX: Check AsyncStorage FIRST before Firebase
+    // OFFLINE FIX: Check AsyncStorage FIRST before Firebase
     AsyncStorage.getItem("userUID").then((savedUID) => {
       if (savedUID) {
-        // ✅ User was logged in before — go home even without internet
+        // User was logged in before — go home even without internet
         navigate("/home");
         return;
       }
@@ -86,7 +87,7 @@ export default function Splash() {
         { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
       ]}>
         <View style={styles.logoBox}>
-          <Text style={styles.logoIcon}>🚑</Text>
+          <MaterialCommunityIcons name="ambulance" size={60} color="#fff" style={styles.logoIcon} />
         </View>
         <Text style={styles.logoText}>LIFELINE</Text>
       </Animated.View>
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     marginBottom: 15, borderWidth: 2,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  logoIcon: { fontSize: 60 },
+  logoIcon: {},
   logoText: { fontSize: 42, fontWeight: "bold", color: "#fff", letterSpacing: 6 },
   subtitle: { color: "rgba(255,255,255,0.85)", fontSize: 14, textAlign: "center", marginBottom: 6 },
   tagline: { color: "rgba(255,255,255,0.6)", fontSize: 13, textAlign: "center", fontStyle: "italic" },

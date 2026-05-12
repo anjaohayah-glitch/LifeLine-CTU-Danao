@@ -16,13 +16,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
 import { auth, db } from "../firebase";
 
 const ROLES = {
-  student: { label: "Student", icon: "🎓" },
-  faculty: { label: "Faculty Staff", icon: "👨‍🏫" },
+  student: { label: "Student", icon: "school" },
+  faculty: { label: "Faculty Staff", icon: "account-tie" },
 };
 
 export default function Profile() {
@@ -81,7 +82,7 @@ export default function Profile() {
           const g = geocode[0];
           setLiveAddress([g.street, g.district, g.city, g.region].filter(Boolean).join(", "));
         }
-      } catch (e) {}
+      } catch (_e) {}
     })();
   }, []);
 
@@ -96,7 +97,7 @@ export default function Profile() {
         photoURL, role, college, program, yearLevel,
       });
       setEditing(false);
-      Alert.alert("Saved! ✅", "Your profile has been updated.");
+      Alert.alert("Saved!", "Your profile has been updated.");
     } catch (error) {
       Alert.alert("Error", error.message);
     }
@@ -142,13 +143,15 @@ export default function Profile() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>👤 My Profile</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="person" size={24} color="#fff" />
+          <Text style={styles.headerTitle}>My Profile</Text>
+        </View>
         <Text style={styles.headerSub}>Manage your personal information</Text>
         {role ? (
           <View style={styles.rolePill}>
-            <Text style={styles.rolePillText}>
-              {ROLES[role]?.icon} {ROLES[role]?.label}
-            </Text>
+            <MaterialCommunityIcons name={ROLES[role]?.icon || "account"} size={13} color="#fff" />
+            <Text style={styles.rolePillText}>{ROLES[role]?.label}</Text>
           </View>
         ) : null}
       </View>
@@ -165,7 +168,7 @@ export default function Profile() {
           )}
           {editing && (
             <View style={styles.photoBadge}>
-              <Text style={styles.photoBadgeText}>✏️</Text>
+              <MaterialCommunityIcons name="pencil" size={12} color={COLORS.primary} />
             </View>
           )}
         </TouchableOpacity>
@@ -173,10 +176,16 @@ export default function Profile() {
           <Text style={[styles.photoName, { color: textDark }]}>{name || "Your Name"}</Text>
           <Text style={[styles.photoEmail, { color: textLight }]}>{user?.email}</Text>
           {college ? (
-            <Text style={[styles.photoCollege, { color: textMid }]}>🏫 {college}</Text>
+            <View style={styles.photoMetaRow}>
+              <MaterialCommunityIcons name="school" size={12} color={textMid} />
+              <Text style={[styles.photoCollege, { color: textMid }]}>{college}</Text>
+            </View>
           ) : null}
           {program ? (
-            <Text style={[styles.photoProgram, { color: textMid }]}>📚 {program} {yearLevel ? `· ${yearLevel}` : ""}</Text>
+            <View style={styles.photoMetaRow}>
+              <MaterialCommunityIcons name="book-open-variant" size={12} color={textMid} />
+              <Text style={[styles.photoProgram, { color: textMid }]}>{program} {yearLevel ? `· ${yearLevel}` : ""}</Text>
+            </View>
           ) : null}
         </View>
       </View>
@@ -185,7 +194,7 @@ export default function Profile() {
       {liveAddress && (
         <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
           <View style={styles.sectionCardTop}>
-            <Text style={styles.sectionCardIcon}>📍</Text>
+            <Ionicons name="location" size={20} color="#2e7d32" />
             <View style={{ flex: 1 }}>
               <Text style={[styles.sectionCardTitle, { color: "#2e7d32" }]}>Current Location</Text>
               <Text style={[styles.sectionCardDesc, { color: textMid }]}>{liveAddress}</Text>
@@ -197,13 +206,13 @@ export default function Profile() {
       {/* ADDRESS PRIVACY */}
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
-          <Text style={styles.sectionCardIcon}>🔒</Text>
+          <MaterialCommunityIcons name="lock" size={20} color={textDark} />
           <Text style={[styles.sectionCardTitle, { color: textDark }]}>Address Privacy</Text>
         </View>
         <View style={[styles.privacyRow, { backgroundColor: isDark ? "#1a1a1a" : surface, borderColor: border }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.privacyLabel, { color: textDark }]}>
-              {addressPublic ? "🌐 Address is Public" : "🔒 Address is Private"}
+              {addressPublic ? "Address is Public" : "Address is Private"}
             </Text>
             <Text style={[styles.privacyDesc, { color: textLight }]}>
               {addressPublic ? "Your contacts can see your address" : "Only you can see your address"}
@@ -224,7 +233,7 @@ export default function Profile() {
       {/* PERSONAL INFO */}
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
-          <Text style={styles.sectionCardIcon}>👤</Text>
+          <Ionicons name="person" size={20} color={textDark} />
           <Text style={[styles.sectionCardTitle, { color: textDark }]}>Personal Information</Text>
         </View>
         <Field label="Full Name" value={name} setter={setName} placeholder="Enter your name" />
@@ -236,7 +245,7 @@ export default function Profile() {
       {/* EMERGENCY CONTACT */}
       <View style={[styles.sectionCard, { backgroundColor: card, borderColor: border }]}>
         <View style={styles.sectionCardTop}>
-          <Text style={styles.sectionCardIcon}>🆘</Text>
+          <MaterialCommunityIcons name="lifebuoy" size={20} color={textDark} />
           <Text style={[styles.sectionCardTitle, { color: textDark }]}>Emergency Contact</Text>
         </View>
         <Field label="Contact Name" value={emergencyName} setter={setEmergencyName} placeholder="e.g. Juan Dela Cruz" />
@@ -256,7 +265,8 @@ export default function Profile() {
             style={[styles.btn, { backgroundColor: "#2e7d32", flex: 1 }]}
             onPress={handleSave}
           >
-            <Text style={styles.btnText}>💾 Save Changes</Text>
+            <MaterialCommunityIcons name="content-save" size={17} color="#fff" />
+            <Text style={styles.btnText}>Save Changes</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -264,7 +274,8 @@ export default function Profile() {
           style={[styles.btn, styles.btnFull, { backgroundColor: "#1565C0" }]}
           onPress={() => setEditing(true)}
         >
-          <Text style={styles.btnText}>✏️ Edit Profile</Text>
+          <MaterialCommunityIcons name="pencil" size={17} color="#fff" />
+          <Text style={styles.btnText}>Edit Profile</Text>
         </TouchableOpacity>
       )}
 
@@ -273,7 +284,8 @@ export default function Profile() {
         style={[styles.btn, styles.btnFull, { backgroundColor: COLORS.primary }]}
         onPress={handleLogout}
       >
-        <Text style={styles.btnText}>🚪 Logout</Text>
+        <MaterialCommunityIcons name="logout" size={17} color="#fff" />
+        <Text style={styles.btnText}>Logout</Text>
       </TouchableOpacity>
 
       <View style={{ height: 60 }} />
@@ -291,12 +303,13 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
     marginBottom: 16,
   },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 4 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13 },
   rolePill: {
     backgroundColor: "rgba(255,255,255,0.18)",
     borderRadius: 20, paddingHorizontal: 12,
-    paddingVertical: 5, alignSelf: "flex-start", marginTop: 10,
+    paddingVertical: 5, alignSelf: "flex-start", marginTop: 10, flexDirection: "row", alignItems: "center", gap: 5,
   },
   rolePillText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
 
@@ -313,11 +326,11 @@ const styles = StyleSheet.create({
   photoPlaceholder: { width: 80, height: 80, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   photoInitial: { color: "#fff", fontSize: 34, fontWeight: "bold" },
   photoBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: "#fff", borderRadius: 10, padding: 3, borderWidth: 1.5, borderColor: COLORS.primary },
-  photoBadgeText: { fontSize: 12 },
   photoInfo: { flex: 1 },
   photoName: { fontWeight: "bold", fontSize: 17, marginBottom: 2 },
   photoEmail: { fontSize: 12, marginBottom: 4 },
-  photoCollege: { fontSize: 11, marginBottom: 2 },
+  photoMetaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
+  photoCollege: { fontSize: 11 },
   photoProgram: { fontSize: 11 },
 
   // SECTION CARD
@@ -326,7 +339,6 @@ const styles = StyleSheet.create({
     borderRadius: 18, padding: 16, borderWidth: 1,
   },
   sectionCardTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
-  sectionCardIcon: { fontSize: 20 },
   sectionCardTitle: { fontWeight: "bold", fontSize: 15 },
   sectionCardDesc: { fontSize: 12, marginTop: 2 },
 
@@ -345,7 +357,7 @@ const styles = StyleSheet.create({
 
   // BUTTONS
   buttonRow: { flexDirection: "row", gap: 10, marginHorizontal: 20, marginBottom: 10 },
-  btn: { padding: 15, borderRadius: 14, alignItems: "center", elevation: 2, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  btn: { padding: 15, borderRadius: 14, alignItems: "center", justifyContent: "center", elevation: 2, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, flexDirection: "row", gap: 7 },
   btnFull: { marginHorizontal: 20, marginBottom: 10 },
   btnText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });

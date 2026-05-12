@@ -15,7 +15,7 @@ const TRANSLATIONS = {
     good_evening: "Good Evening",
     quick_access: "Quick Access", all_features: "All features",
     disaster_tips: "Disaster Tips", tap_to_expand: "Tap to expand",
-    system_feed: "System Feed", marked_safe: "Marked Safe",
+    marked_safe: "Marked Safe",
     status_unknown: "Status Unknown", mark_safe: "MARK\nSAFE",
     online: "Online", offline: "Offline",
     // EVACUATION
@@ -65,7 +65,7 @@ const TRANSLATIONS = {
     good_evening: "Maayong Gabii",
     quick_access: "Dali nga Access", all_features: "Tanan nga features",
     disaster_tips: "Mga Tip sa Kalamidad", tap_to_expand: "I-tap para mabukas",
-    system_feed: "Sistema Feed", marked_safe: "Luwas na",
+    marked_safe: "Luwas na",
     status_unknown: "Wala'y Kahimtang", mark_safe: "MARKAHI\nLUWAS",
     online: "Online", offline: "Offline",
     // EVACUATION
@@ -115,7 +115,7 @@ const TRANSLATIONS = {
     good_evening: "Magandang Gabi",
     quick_access: "Mabilis na Access", all_features: "Lahat ng features",
     disaster_tips: "Mga Tip sa Sakuna", tap_to_expand: "I-tap para palawakin",
-    system_feed: "Sistema Feed", marked_safe: "Ligtas na",
+    marked_safe: "Ligtas na",
     status_unknown: "Hindi Alam ang Katayuan", mark_safe: "MARKAHAN\nLIGTAS",
     online: "Online", offline: "Offline",
     // EVACUATION
