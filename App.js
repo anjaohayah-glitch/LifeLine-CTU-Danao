@@ -12,7 +12,7 @@ import TermsScreen from './screens/TermsScreen';
 
 const Stack = createNativeStackNavigator();
 
-// 🔥 HANDLE BACKGROUND MESSAGES
+// HANDLE BACKGROUND MESSAGES
 messaging().setBackgroundMessageHandler(async remoteMessage => {
   console.log('Message handled in background!', remoteMessage);
 });
@@ -25,36 +25,36 @@ export default function App() {
     listenForMessages();
   }, []);
 
-  // 🔔 Request Notification Permission
+  // Request Notification Permission
   async function requestPermission() {
     const authStatus = await messaging().requestPermission();
 
     if (authStatus) {
-      console.log('✅ Permission granted');
+      console.log('Permission granted');
     } else {
-      console.log('❌ Permission denied');
+      console.log('Permission denied');
     }
   }
 
-  // 🔑 Get FCM Token
+  // Get FCM Token
   async function getFCMToken() {
     const token = await messaging().getToken();
-    console.log('🔥 FCM Token:', token);
+    console.log('FCM Token:', token);
 
-    // 👉 OPTIONAL: send this token to your backend
+    // OPTIONAL: send this token to your backend
   }
 
-  // 📩 Listen for FOREGROUND messages
+  // Listen for FOREGROUND messages
   function listenForMessages() {
     messaging().onMessage(async remoteMessage => {
-      console.log('📩 Message received:', remoteMessage);
+      console.log('Message received:', remoteMessage);
 
       Alert.alert(
-        remoteMessage.notification?.title || "⚠️ Alert",
+        remoteMessage.notification?.title || "Alert",
         remoteMessage.notification?.body || "New emergency update"
       );
 
-      // 📳 BUZZ NOTIFICATION
+      // BUZZ NOTIFICATION
       Vibration.vibrate([500, 200, 500]);
     });
   }

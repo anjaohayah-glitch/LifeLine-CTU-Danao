@@ -109,11 +109,11 @@ export default function Evacuation() {
       <View style={[styles.header, isEmergency && styles.headerEmergency]}>
         {isEmergency && (
           <View style={styles.emergencyPulse}>
-            <Text style={styles.emergencyPulseText}>⚠️ EMERGENCY MODE ACTIVE</Text>
+            <Text style={styles.emergencyPulseText}>EMERGENCY MODE ACTIVE</Text>
           </View>
         )}
         <Text style={styles.headerTitle}>
-          {isEmergency ? "🚨 EVACUATION ALERT" : "🗺 Evacuation Centers"}
+          {isEmergency ? "EVACUATION ALERT" : "Evacuation Centers"}
         </Text>
         <Text style={styles.headerSub}>
           {isEmergency ? "State of Emergency — Evacuate Now!" : "Danao City Safe Zones & Evacuation Guide"}
@@ -142,7 +142,7 @@ export default function Evacuation() {
       {isEmergency && (
         <View style={styles.emergencyBanner}>
           <View style={styles.emergencyBannerTop}>
-            <Text style={styles.emergencyBannerIcon}>🚨</Text>
+            <Ionicons name="warning" size={24} color="#fff" style={styles.emergencyBannerIcon} />
             <View style={{ flex: 1 }}>
               <Text style={styles.emergencyBannerTitle}>STATE OF EMERGENCY</Text>
               <Text style={styles.emergencyBannerMsg}>{emergencyMessage}</Text>
@@ -163,7 +163,7 @@ export default function Evacuation() {
           <View style={styles.nearestTop}>
             <View style={styles.nearestBadge}>
               <Text style={[styles.nearestBadgeText, { color: isEmergency ? "#fff" : COLORS.primary }]}>
-                {isEmergency ? "🚨 GO HERE NOW" : "📍 NEAREST"}
+                {isEmergency ? "GO HERE NOW" : "NEAREST"}
               </Text>
             </View>
             <Text style={[styles.nearestDist, { color: isEmergency ? "rgba(255,255,255,0.8)" : textLight }]}>
@@ -179,12 +179,12 @@ export default function Evacuation() {
           <View style={styles.nearestMeta}>
             <View style={[styles.nearestMetaItem, { backgroundColor: isEmergency ? "rgba(255,255,255,0.15)" : surface }]}>
               <Text style={[styles.nearestMetaText, { color: isEmergency ? "#fff" : textMid }]}>
-                👥 {nearestCenter.capacity} persons
+                {nearestCenter.capacity} persons
               </Text>
             </View>
             <View style={[styles.nearestMetaItem, { backgroundColor: isEmergency ? "rgba(255,255,255,0.15)" : surface }]}>
               <Text style={[styles.nearestMetaText, { color: isEmergency ? "#fff" : textMid }]}>
-                🏠 {nearestCenter.type === "primary" ? "Primary" : "Secondary"}
+                {nearestCenter.type === "primary" ? "Primary" : "Secondary"}
               </Text>
             </View>
           </View>
@@ -193,7 +193,7 @@ export default function Evacuation() {
             onPress={() => handleDirections(nearestCenter)}
           >
             <Text style={[styles.directionsText, { color: isEmergency ? "#B71C1C" : "#fff" }]}>
-              🗺 START NAVIGATION
+              START NAVIGATION
             </Text>
           </TouchableOpacity>
         </View>
@@ -212,9 +212,9 @@ export default function Evacuation() {
       {/* ── TABS ───────────────────────────────────── */}
       <View style={[styles.tabs, { borderColor: border }]}>
         {[
-          { key: "centers", label: "🏠 Centers" },
-          { key: "danger", label: "⚠️ Danger Zones" },
-          { key: "tips", label: "💡 Tips" },
+          { key: "centers", label: "Centers" },
+          { key: "danger", label: "Danger Zones" },
+          { key: "tips", label: "Tips" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -238,7 +238,7 @@ export default function Evacuation() {
               style={[styles.mapCard, { backgroundColor: card, borderColor: border }]}
               onPress={openAllCentersMap}
             >
-              <Text style={styles.mapCardIcon}>🗺</Text>
+              <MaterialCommunityIcons name="map" size={24} color={COLORS.primary} style={styles.mapCardIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.mapCardTitle, { color: textDark }]}>View All on Google Maps</Text>
                 <Text style={[styles.mapCardDesc, { color: textLight }]}>See all safe zones near Danao City</Text>
@@ -251,7 +251,7 @@ export default function Evacuation() {
               <View key={center.id} style={[styles.centerCard, { backgroundColor: card, borderColor: border }]}>
                 <View style={[styles.centerRank, { backgroundColor: index === 0 ? COLORS.primary : (center.type === "primary" ? "#2e7d32" : "#1565C0") }]}>
                   <Text style={styles.centerRankText}>
-                    {index === 0 ? "⭐" : `#${index + 1}`}
+                    {index === 0 ? "★" : `#${index + 1}`}
                   </Text>
                 </View>
                 <View style={styles.centerInfo}>
@@ -266,10 +266,10 @@ export default function Evacuation() {
                   <Text style={[styles.centerDesc, { color: textLight }]}>{center.description}</Text>
                   <View style={styles.centerMeta}>
                     <Text style={styles.centerDistance}>
-                      📏 {center.distanceM ? `${center.distanceM}m` : "--"} away
+                      {center.distanceM ? `${center.distanceM}m` : "--"} away
                     </Text>
                     <Text style={[styles.centerCapacity, { color: textLight }]}>
-                      👥 {center.capacity} persons
+                      {center.capacity} persons
                     </Text>
                   </View>
                 </View>
@@ -289,7 +289,7 @@ export default function Evacuation() {
         {activeTab === "danger" && (
           <>
             <View style={styles.dangerHeader}>
-              <Text style={styles.dangerHeaderIcon}>⚠️</Text>
+              <MaterialCommunityIcons name="alert" size={24} color="#FF6B6B" style={styles.dangerHeaderIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.dangerHeaderTitle, { color: textDark }]}>Avoid These Areas</Text>
                 <Text style={[styles.dangerHeaderDesc, { color: textLight }]}>
@@ -304,7 +304,7 @@ export default function Evacuation() {
                 borderColor: theme.bg === "#121212" ? "#5a2020" : "#FFCDD2",
               }]}>
                 <View style={styles.dangerCardTop}>
-                  <Text style={styles.dangerIcon}>🚫</Text>
+                  <MaterialCommunityIcons name="close-circle" size={24} color="#FF6B6B" style={styles.dangerIcon} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.dangerName, { color: COLORS.primary }]}>{zone.name}</Text>
                     <Text style={[styles.dangerDesc, { color: textMid }]}>{zone.description}</Text>
@@ -319,7 +319,7 @@ export default function Evacuation() {
             ))}
 
             <View style={[styles.dangerNote, { backgroundColor: card, borderColor: border }]}>
-              <Text style={styles.dangerNoteIcon}>ℹ️</Text>
+              <Ionicons name="information" size={20} color={COLORS.primary} style={styles.dangerNoteIcon} />
               <Text style={[styles.dangerNoteText, { color: textMid }]}>
                 Danger zones are identified by local DRRMO. Always follow official evacuation orders and avoid these areas during disasters.
               </Text>
@@ -331,7 +331,7 @@ export default function Evacuation() {
         {activeTab === "tips" && (
           <>
             <View style={[styles.tipsHeader, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.tipsHeaderIcon}>💡</Text>
+              <MaterialCommunityIcons name="lightbulb" size={24} color="#fff" style={styles.tipsHeaderIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.tipsHeaderTitle}>Evacuation Tips</Text>
                 <Text style={styles.tipsHeaderSub}>Follow these during emergencies</Text>
