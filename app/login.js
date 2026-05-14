@@ -31,20 +31,6 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
-    // ✅ TEMPORARY TEST — remove after testing
-    const testReset = async () => {
-      try {
-        await sendPasswordResetEmail(auth, "PUT_YOUR_EMAIL_HERE@gmail.com");
-        console.log("✅ Reset email sent successfully!");
-        Alert.alert("Test", "Reset email sent! Check your inbox and spam.");
-      } catch (error) {
-        console.log("❌ Error code:", error.code);
-        console.log("❌ Error message:", error.message);
-        Alert.alert("Test Error", `Code: ${error.code}\n\nMessage: ${error.message}`);
-      }
-    };
-    testReset();
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       await AsyncStorage.setItem("userUID", user.uid);
@@ -295,6 +281,8 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: COLORS.primary },
+
+  // TOP
   topSection: { flex: 0.45, alignItems: "center", justifyContent: "center", overflow: "hidden", paddingHorizontal: 20 },
   circle1: { position: "absolute", width: 350, height: 350, borderRadius: 175, backgroundColor: "rgba(255,255,255,0.06)", top: -120, right: -100 },
   circle2: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.06)", bottom: -60, left: -60 },
@@ -305,10 +293,14 @@ const styles = StyleSheet.create({
   pillsRow: { flexDirection: "row", gap: 8 },
   pill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
   pillText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+
+  // BOTTOM
   bottomSection: { flex: 0.55, backgroundColor: "#fff", borderTopLeftRadius: 36, borderTopRightRadius: 36 },
   bottomContent: { paddingHorizontal: 28, paddingTop: 30, paddingBottom: 40 },
   welcomeText: { fontSize: 24, fontWeight: "bold", color: "#1A1A2E", marginBottom: 4 },
   welcomeSub: { color: "#90A4AE", fontSize: 13, marginBottom: 24 },
+
+  // INPUTS
   inputGroup: { marginBottom: 14 },
   inputLabel: { fontSize: 12, fontWeight: "700", color: "#546E7A", marginBottom: 6, letterSpacing: 0.5 },
   inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#ECEFF1", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: "#F8FAFB" },
@@ -316,19 +308,31 @@ const styles = StyleSheet.create({
   vectorInputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: "#1A1A2E" },
   showText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
+
+  // FORGOT
   forgotRow: { alignItems: "flex-end", marginBottom: 20, marginTop: -6 },
   forgotText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
+
+  // LOGIN BUTTON
   loginButton: { backgroundColor: COLORS.primary, borderRadius: 16, padding: 16, alignItems: "center", marginBottom: 16, elevation: 6, shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12 },
   loginButtonInner: { flexDirection: "row", alignItems: "center", gap: 8 },
   loginButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1.5 },
+
+  // DIVIDER
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#ECEFF1" },
   dividerText: { color: "#90A4AE", fontSize: 13 },
+
+  // REGISTER
   registerButton: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 16, padding: 15, alignItems: "center", marginBottom: 20 },
   registerButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 15 },
+
+  // FOOTER
   footer: { alignItems: "center" },
   footerRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   footerCleanText: { color: "#B0BEC5", fontSize: 11 },
+
+  // MODAL
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 28, paddingBottom: 44 },
   modalHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
