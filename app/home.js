@@ -9,6 +9,7 @@ import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
   TouchableOpacity,
   Vibration,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { COLORS } from "../constants/colors";
 import { useSettings } from "../context/SettingsContext";
@@ -94,6 +96,11 @@ export default function Home() {
   const { theme, t } = useSettings();
   const { bg, card, border, textDark, textLight } = theme;
   const isDark = theme.bg === "#121212";
+  const { width } = useWindowDimensions();
+  const horizontalPadding = width < 360 ? 16 : 20;
+  const quickColumns = width < 360 ? 3 : 4;
+  const quickGap = 10;
+  const quickCardWidth = Math.floor((width - (horizontalPadding * 2) - (quickGap * (quickColumns - 1))) / quickColumns);
 
   const FEATURE_CARDS = QUICK_ACCESS.filter((item) => !item.adminOnly || isAdmin);
 
@@ -121,7 +128,7 @@ export default function Home() {
 
   // Firebase listeners
   useEffect(() => {
-    setupListeners();
+    return setupListeners();
   }, []);
 
   const setupListeners = () => {
@@ -149,13 +156,12 @@ export default function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    try {
-      setupListeners();
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setTimeout(() => setRefreshing(false), 1000);
-    }
+    setTimeout(() => setRefreshing(false), 600);
+  };
+
+  const handleEmergencyCall = () => {
+    Haptics.selectionAsync();
+    Linking.openURL("tel:911");
   };
 
   const handleCheckIn = async () => {
@@ -311,6 +317,45 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
+        <View style={[styles.emergencyQuickCard, { backgroundColor: card, borderColor: border }]}>
+          <View style={styles.emergencyQuickHeader}>
+            <View>
+              <Text style={[styles.emergencyQuickTitle, { color: textDark }]}>{t("emergency_quick_access")}</Text>
+              <Text style={[styles.emergencyQuickSub, { color: textLight }]}>{t("immediate_help")}</Text>
+            </View>
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveBadgeText}>{t("active")}</Text>
+            </View>
+          </View>
+          <View style={styles.emergencyActions}>
+            <TouchableOpacity
+              style={[styles.emergencyActionButton, styles.sosActionButton]}
+              onPress={handleSOS}
+              activeOpacity={0.86}
+            >
+              <Ionicons name="warning" size={20} color="#fff" />
+              <Text style={styles.emergencyActionText}>SOS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.emergencyActionButton, styles.callActionButton]}
+              onPress={handleEmergencyCall}
+              activeOpacity={0.86}
+            >
+              <Ionicons name="call" size={20} color="#fff" />
+              <Text style={styles.emergencyActionText}>{t("call_911")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.emergencyActionButton, styles.hotlineActionButton]}
+              onPress={() => router.push("/hotlines")}
+              activeOpacity={0.86}
+            >
+              <Ionicons name="list" size={20} color="#fff" />
+              <Text style={styles.emergencyActionText}>{t("hotlines")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* ── EMERGENCY ALERT ────────────────────────── */}
         {alertVisible && (
           <View style={styles.alertCard}>
@@ -353,11 +398,11 @@ export default function Home() {
           <Text style={[styles.sectionSub, { color: textLight }]}>{t("all_features")}</Text>
         </View>
 
-        <View style={styles.quickGrid}>
+        <View style={[styles.quickGrid, { paddingHorizontal: horizontalPadding, gap: quickGap }]}>
           {FEATURE_CARDS.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={[styles.quickCard, { backgroundColor: item.color }]}
+              style={[styles.quickCard, { backgroundColor: item.color, width: quickCardWidth }]}
               onPress={() => { Haptics.selectionAsync(); router.push(item.route); }}
               activeOpacity={0.85}
             >
@@ -484,7 +529,7 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: "row", justifyContent: "space-between",
-    alignItems: "flex-start", marginBottom: 16,
+    alignItems: "flex-start", marginBottom: 16, gap: 12,
   },
   headerGreeting: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginBottom: 2 },
   headerTitle: { color: "#fff", fontSize: 32, fontWeight: "bold", letterSpacing: 2 },
@@ -519,6 +564,57 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center", elevation: 4,
   },
   safeButtonLabel: { color: "#fff", fontSize: 9, fontWeight: "bold", textAlign: "center", marginTop: 2 },
+  emergencyQuickCard: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+  },
+  emergencyQuickHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 12,
+  },
+  emergencyQuickTitle: { fontSize: 15, fontWeight: "bold" },
+  emergencyQuickSub: { fontSize: 11, marginTop: 2 },
+  liveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(46,125,50,0.12)",
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#2E7D32" },
+  liveBadgeText: { color: "#2E7D32", fontSize: 10, fontWeight: "bold" },
+  emergencyActions: { flexDirection: "row", gap: 8 },
+  emergencyActionButton: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  sosActionButton: { backgroundColor: "#B00020" },
+  callActionButton: { backgroundColor: "#C62828" },
+  hotlineActionButton: { backgroundColor: "#1565C0" },
+  emergencyActionText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 4,
+  },
   alertCard: {
     backgroundColor: "#B00020",
     marginHorizontal: 20, marginTop: 16,
@@ -562,10 +658,9 @@ const styles = StyleSheet.create({
   sectionSub: { fontSize: 12 },
   quickGrid: {
     flexDirection: "row", flexWrap: "wrap",
-    paddingHorizontal: 20, gap: 10,
   },
   quickCard: {
-    width: "22%", borderRadius: 16,
+    borderRadius: 16,
     paddingVertical: 16, paddingHorizontal: 8,
     alignItems: "center", elevation: 3,
     shadowColor: "#000", shadowOpacity: 0.12,

@@ -21,6 +21,8 @@ import { checkEarthquakes } from "../hooks/useWeatherNotifications";
 import { getNotifications, scheduleNotification } from "../utils/notifications";
 
 const API_KEY = "f1174f62efabb76017f70f21096688b2";
+const DANAO_COORDS = { latitude: 10.52, longitude: 124.03 };
+const REQUEST_TIMEOUT_MS = 12000;
 
 const WEATHER_ICONS = {
   Thunderstorm: "weather-lightning-rainy", Drizzle: "weather-partly-rainy", Rain: "weather-rainy", Snow: "weather-snowy",
@@ -140,6 +142,7 @@ export default function Weather() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
+  const [locationNotice, setLocationNotice] = useState(null);
   const [activeTab, setActiveTab] = useState("weather");
   const [checkingQuake, setCheckingQuake] = useState(false);
   const { theme, t } = useSettings();
@@ -149,7 +152,54 @@ export default function Weather() {
   useEffect(() => {
     registerForNotifications();
     fetchWeather();
+
+    const refreshTimer = setInterval(() => fetchWeather({ silent: true }), 10 * 60 * 1000);
+    return () => clearInterval(refreshTimer);
   }, []);
+
+  const fetchWithTimeout = async (url) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  const getWeatherCoords = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      setLocationNotice("Using Danao City forecast because location permission is off.");
+      return DANAO_COORDS;
+    }
+
+    try {
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        maximumAge: 5 * 60 * 1000,
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+      const { latitude, longitude } = loc.coords;
+      setLocationNotice(null);
+      return { latitude, longitude };
+    } catch (_e) {
+      const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: 30 * 60 * 1000 });
+      if (lastKnown?.coords) {
+        setLocationNotice("Using your last known location while GPS updates.");
+        return {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+        };
+      }
+
+      setLocationNotice("Using Danao City forecast because current GPS is unavailable.");
+      return DANAO_COORDS;
+    }
+  };
 
   const registerForNotifications = async () => {
     try {
@@ -176,42 +226,38 @@ export default function Weather() {
     });
   };
 
-  const fetchWeather = async () => {
+  const fetchWeather = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       notificationSentRef.current = false;
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(t("permission_denied"), t("location_required"));
-        setLoading(false);
-        return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = loc.coords;
+      const { latitude, longitude } = await getWeatherCoords();
       setUserCoords({ latitude, longitude });
 
       // Save coords for background task
       const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
       await AsyncStorage.setItem("lastKnownCoords", JSON.stringify({ latitude, longitude }));
 
-      const weatherRes = await fetch(
+      const weatherData = await fetchWithTimeout(
         `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
       );
-      const weatherData = await weatherRes.json();
 
-      if (weatherData.cod !== 200) {
+      if (Number(weatherData.cod) !== 200) {
         setError(`API Error: ${weatherData.message}`);
         setLoading(false);
         return;
       }
 
-      const forecastRes = await fetch(
+      const forecastData = await fetchWithTimeout(
         `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&cnt=8`
       );
-      const forecastData = await forecastRes.json();
+
+      if (Number(forecastData.cod) !== 200) {
+        setError(`Forecast Error: ${forecastData.message || "Unable to load forecast"}`);
+        setLoading(false);
+        return;
+      }
 
       setWeather(weatherData);
       setForecast(forecastData?.list || []);
@@ -221,14 +267,17 @@ export default function Weather() {
 
     } catch (err) {
       console.log(err);
-      setError(t("could_not_fetch_weather"));
+      setError(err.name === "AbortError" ? "Weather request timed out. Please try again." : t("could_not_fetch_weather"));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => { setRefreshing(true); fetchWeather(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchWeather({ silent: true });
+  };
 
   const getWarningFromData = (data) => {
     if (!data?.wind || !data?.weather?.[0]) return null;
@@ -350,6 +399,13 @@ export default function Weather() {
           style={[styles.container, { backgroundColor: bg }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#B00020"]} />}
         >
+          {locationNotice && (
+            <View style={[styles.locationNotice, { backgroundColor: card, borderColor: border }]}>
+              <Ionicons name="location" size={16} color="#E65100" />
+              <Text style={[styles.locationNoticeText, { color: textMid }]}>{locationNotice}</Text>
+            </View>
+          )}
+
           {/* CURRENT WEATHER */}
           <View style={[styles.currentCard, { backgroundColor: card, borderColor: border }]}>
             <MaterialCommunityIcons name={icon} size={70} color="#B00020" style={styles.weatherIcon} />
@@ -539,6 +595,16 @@ const styles = StyleSheet.create({
   activeTab: { borderBottomWidth: 3, borderBottomColor: "#B00020" },
   tabText: { fontSize: 13, fontWeight: "bold" },
   activeTabText: { color: "#B00020", fontWeight: "bold" },
+  locationNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  locationNoticeText: { flex: 1, fontSize: 12, lineHeight: 17 },
   currentCard: { borderRadius: 20, padding: 25, alignItems: "center", marginBottom: 20, borderWidth: 1 },
   weatherIcon: { marginBottom: 2 },
   temperature: { fontSize: 60, fontWeight: "bold", color: "#B00020" },
