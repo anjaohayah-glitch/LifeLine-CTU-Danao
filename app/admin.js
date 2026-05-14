@@ -67,7 +67,8 @@ export default function Admin() {
       await sendPushToAllUsers(
         " EMERGENCY ALERT — LIFELINE",
         "A disaster alert has been issued for CTU Danao Campus. Stay safe!",
-        { screen: "/home" }
+        { screen: "home" },
+        "emergency"
       );
 
       Alert.alert("Alert Sent", " Emergency alert is now live!");
@@ -97,7 +98,8 @@ export default function Admin() {
       await sendPushToAllUsers(
         " New Announcement — LIFELINE",
         announcement,
-        { screen: "/home" }
+        { screen: "home" },
+        "lifeline_alerts"
       );
 
       setAnnouncement("");
@@ -120,7 +122,8 @@ export default function Admin() {
         await sendPushToAllUsers(
           " EARTHQUAKE DETECTED — LIFELINE",
           "A significant earthquake has been detected near Danao City. Take cover!",
-          { screen: "/home" }
+          { screen: "home" },
+          "emergency"
         );
         Alert.alert(
           " Earthquake Detected!",

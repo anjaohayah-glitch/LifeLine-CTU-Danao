@@ -9,8 +9,17 @@ import { useFCMToken } from "../hooks/useFCMToken";
 import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
 import { getNotifications, scheduleNotification } from "../utils/notifications";
 
+const isExpoPushToken = (token) =>
+  typeof token === "string" &&
+  (token.startsWith("ExponentPushToken") || token.startsWith("ExpoPushToken"));
+
+const normalizeScreen = (screen) => {
+  if (!screen || typeof screen !== "string") return null;
+  return screen.replace(/^\/+/, "");
+};
+
 const sendPushToMany = async (tokens, title, body, data = {}, channelId = "default") => {
-  const validTokens = tokens.filter(Boolean);
+  const validTokens = tokens.filter(isExpoPushToken);
   if (validTokens.length === 0) return;
 
   try {
@@ -22,7 +31,10 @@ const sendPushToMany = async (tokens, title, body, data = {}, channelId = "defau
           to: token,
           title,
           body,
-          data,
+          data: {
+            ...data,
+            screen: normalizeScreen(data.screen) || data.screen,
+          },
           sound: "default",
           priority: "high",
           channelId,
@@ -275,7 +287,7 @@ function AppLayout() {
       });
 
       responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-        const screen = response.notification.request.content.data?.screen;
+        const screen = normalizeScreen(response.notification.request.content.data?.screen);
         if (screen) {
           setTimeout(() => router.push(`/${screen}`), 500);
         }

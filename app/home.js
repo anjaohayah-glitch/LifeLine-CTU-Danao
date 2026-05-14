@@ -6,12 +6,12 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import * as TaskManager from "expo-task-manager";
 import { limitToLast, onValue, push, query, ref, set } from "firebase/database";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Linking,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -101,6 +101,17 @@ export default function Home() {
   const quickColumns = width < 360 ? 3 : 4;
   const quickGap = 10;
   const quickCardWidth = Math.floor((width - (horizontalPadding * 2) - (quickGap * (quickColumns - 1))) / quickColumns);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const floatingHeaderOpacity = scrollY.interpolate({
+    inputRange: [70, 120],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+  const floatingHeaderTranslateY = scrollY.interpolate({
+    inputRange: [70, 120],
+    outputRange: [-28, 0],
+    extrapolate: "clamp",
+  });
 
   const FEATURE_CARDS = QUICK_ACCESS.filter((item) => !item.adminOnly || isAdmin);
 
@@ -260,9 +271,37 @@ export default function Home() {
 
   return (
     <View style={[styles.wrapper, { backgroundColor: bg }]}>
-      <ScrollView
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.floatingHeader,
+          {
+            opacity: floatingHeaderOpacity,
+            transform: [{ translateY: floatingHeaderTranslateY }],
+          },
+        ]}
+      >
+        <View style={styles.floatingHeaderTop}>
+          <View style={styles.floatingHeaderTextBlock}>
+            <Text style={styles.floatingHeaderTitle}>LIFELINE</Text>
+            <Text style={styles.floatingHeaderDate} numberOfLines={1}>{formatDate(currentTime)}</Text>
+          </View>
+          <Text style={styles.floatingHeaderTime}>{formatTime(currentTime)}</Text>
+          <TouchableOpacity style={styles.floatingSosButton} onPress={handleSOS} activeOpacity={0.85}>
+            <Ionicons name="warning" size={16} color={COLORS.primary} />
+            <Text style={styles.floatingSosButtonText}>SOS</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      <Animated.ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -478,7 +517,7 @@ export default function Home() {
         </View>
 
         <View style={{ height: 120 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* ── BOTTOM NAV ─────────────────────────────── */}
       <View style={[styles.bottomNav, { backgroundColor: card, borderColor: border }]}>
@@ -520,6 +559,43 @@ export default function Home() {
 const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   container: { flex: 1 },
+  floatingHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    elevation: 30,
+    backgroundColor: COLORS.primary,
+    paddingTop: 44,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 12,
+  },
+  floatingHeaderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  floatingHeaderTextBlock: { flex: 1 },
+  floatingHeaderTitle: { color: "#fff", fontSize: 22, fontWeight: "bold", letterSpacing: 2 },
+  floatingHeaderDate: { color: "rgba(255,255,255,0.72)", fontSize: 11, marginTop: 1 },
+  floatingHeaderTime: { color: "#fff", fontSize: 24, fontWeight: "300", letterSpacing: 1 },
+  floatingSosButton: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    minWidth: 56,
+  },
+  floatingSosButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 11, marginTop: 1 },
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 55, paddingBottom: 30,

@@ -7,16 +7,62 @@ import { getNotifications, isAndroidExpoGo } from "../utils/notifications";
 
 const PROJECT_ID = "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df";
 
+const createAndroidChannels = async (Notifications) => {
+  if (Platform.OS !== "android") return;
+
+  await Notifications.setNotificationChannelAsync("lifeline_alerts", {
+    name: "LIFELINE Alerts",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 500, 200, 500],
+    lightColor: "#B00020",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+  });
+
+  await Notifications.setNotificationChannelAsync("lifeline_emergency", {
+    name: "LIFELINE Emergency",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
+    lightColor: "#B00020",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+    bypassDnd: true,
+  });
+
+  await Notifications.setNotificationChannelAsync("emergency", {
+    name: "Emergency Alerts",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
+    lightColor: "#B00020",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+    bypassDnd: true,
+  });
+
+  await Notifications.setNotificationChannelAsync("sos", {
+    name: "SOS Alerts",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 300, 100, 300, 100, 300, 100, 300],
+    lightColor: "#B00020",
+    sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+    bypassDnd: true,
+  });
+};
+
 export function useFCMToken() {
   useEffect(() => {
-    const saveToken = async () => {
+    const saveToken = async (user) => {
       try {
         if (isAndroidExpoGo) {
           console.log("Skipping push token save in Android Expo Go.");
           return;
         }
 
-        const user = auth.currentUser;
         if (!user) {
           console.log("No user logged in - skipping token save");
           return;
@@ -31,28 +77,7 @@ export function useFCMToken() {
           return;
         }
 
-        if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("lifeline_alerts", {
-            name: "LIFELINE Alerts",
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 500, 200, 500],
-            lightColor: "#B00020",
-            sound: "default",
-            enableVibrate: true,
-            showBadge: true,
-          });
-
-          await Notifications.setNotificationChannelAsync("lifeline_emergency", {
-            name: "LIFELINE Emergency",
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
-            lightColor: "#B00020",
-            sound: "default",
-            enableVibrate: true,
-            showBadge: true,
-            bypassDnd: true,
-          });
-        }
+        await createAndroidChannels(Notifications);
 
         const tokenData = await Notifications.getExpoPushTokenAsync({
           projectId: PROJECT_ID,
@@ -75,7 +100,15 @@ export function useFCMToken() {
       }
     };
 
-    const timer = setTimeout(saveToken, 2000);
-    return () => clearTimeout(timer);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        saveToken(user);
+      } else {
+        AsyncStorage.removeItem("expoPushToken").catch(() => {});
+        AsyncStorage.removeItem("userUID").catch(() => {});
+      }
+    });
+
+    return unsubscribe;
   }, []);
 }

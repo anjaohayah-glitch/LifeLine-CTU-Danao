@@ -1,0 +1,82 @@
+name: LIFELINE Notifications
+
+on:
+  schedule:
+    # 1 AM, 6 AM, 11 AM, 4 PM, 9 PM Asia/Manila in UTC.
+    - cron: "0 3,8,13,17,22 * * *"
+    # 8 PM Asia/Manila tomorrow forecast in UTC.
+    - cron: "0 12 * * *"
+    # Earthquake check every 15 minutes.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Notification job to run"
+        required: true
+        default: "weather"
+        type: choice
+        options:
+          - weather
+          - tomorrow
+          - earthquake
+
+jobs:
+  weather:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'weather' || github.event.schedule == '0 3,8,13,17,22 * * *'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: node githubNotifier.js weather
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
+  tomorrow:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'tomorrow' || github.event.schedule == '0 12 * * *'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: node githubNotifier.js tomorrow
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
+  earthquake:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'earthquake' || github.event.schedule == '*/15 * * * *'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: node githubNotifier.js earthquake
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}

@@ -2,27 +2,35 @@
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 
-export async function sendPushToAllUsers(title, body, data = {}) {
+const isExpoPushToken = (token) =>
+  typeof token === "string" &&
+  (token.startsWith("ExponentPushToken") || token.startsWith("ExpoPushToken"));
+
+const normalizeScreenData = (data) => {
+  if (!data?.screen || typeof data.screen !== "string") return data;
+  return { ...data, screen: data.screen.replace(/^\/+/, "") };
+};
+
+export async function sendPushToAllUsers(title, body, data = {}, channelId = "emergency") {
   try {
     const snapshot = await get(ref(db, "users"));
     if (!snapshot.exists()) {
-      console.log("❌ No users found");
+      console.log("No users found");
       return;
     }
 
     const users = snapshot.val();
     const tokens = Object.values(users)
-      .map((u) => u.expoPushToken)
-      .filter((t) => t && t.startsWith("ExponentPushToken"));
+      .map((user) => user.expoPushToken)
+      .filter(isExpoPushToken);
 
-    console.log("📤 Sending to", tokens.length, "devices");
+    console.log("Sending push to", tokens.length, "devices");
 
     if (tokens.length === 0) {
-      console.log("❌ No valid tokens found");
+      console.log("No valid Expo push tokens found");
       return;
     }
 
-    // Send in batches of 100
     for (let i = 0; i < tokens.length; i += 100) {
       const chunk = tokens.slice(i, i + 100);
       const messages = chunk.map((token) => ({
@@ -31,9 +39,9 @@ export async function sendPushToAllUsers(title, body, data = {}) {
         body,
         sound: "default",
         priority: "high",
-        channelId: "emergency",
-        data,
-        ttl: 86400, // 24 hours
+        channelId,
+        data: normalizeScreenData(data),
+        ttl: 86400,
         expiration: Math.floor(Date.now() / 1000) + 86400,
         badge: 1,
       }));
@@ -42,16 +50,16 @@ export async function sendPushToAllUsers(title, body, data = {}) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
           "Accept-Encoding": "gzip, deflate",
         },
         body: JSON.stringify(messages),
       });
 
       const result = await response.json();
-      console.log("📬 Push result:", JSON.stringify(result));
+      console.log("Push result:", JSON.stringify(result));
     }
   } catch (e) {
-    console.log("❌ Push send error:", e.message);
+    console.log("Push send error:", e.message);
   }
 }
