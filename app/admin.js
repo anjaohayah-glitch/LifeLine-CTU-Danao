@@ -20,6 +20,8 @@ import { db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
 
+const SIREN_URL = "https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3";
+
 export default function Admin() {
   const { isAdmin, loading } = useAdmin();
   const [sosRequests, setSosRequests] = useState([]);
@@ -56,7 +58,6 @@ export default function Admin() {
     return () => unsubscribe();
   }, []);
 
-  // ── CLEANUP siren on unmount ──────────────────────────
   useEffect(() => {
     return () => {
       if (sirenRef.current) {
@@ -65,27 +66,24 @@ export default function Admin() {
     };
   }, []);
 
-  // ── PLAY SIREN ───────────────────────────────────────
   const playSiren = async () => {
     try {
-      // Set audio mode to play even on silent
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
         shouldDuckAndroid: false,
       });
 
-      // Stop existing siren if playing
       if (sirenRef.current) {
         await sirenRef.current.unloadAsync();
         sirenRef.current = null;
       }
 
       const { sound } = await Audio.Sound.createAsync(
-        require("../assets/sounds/siren.mp3"),
+        { uri: SIREN_URL },
         {
           shouldPlay: true,
-          isLooping: true, // loops until stopped
+          isLooping: true,
           volume: 1.0,
         }
       );
@@ -94,10 +92,10 @@ export default function Admin() {
       setSirenPlaying(true);
     } catch (e) {
       console.log("Siren play error:", e);
+      Alert.alert("Siren Error", "Could not play siren. Check internet connection.");
     }
   };
 
-  // ── STOP SIREN ───────────────────────────────────────
   const stopSiren = async () => {
     try {
       if (sirenRef.current) {
@@ -111,7 +109,6 @@ export default function Admin() {
     }
   };
 
-  // ── SEND EMERGENCY ALERT ─────────────────────────────
   const sendAlert = async () => {
     try {
       await set(ref(db, "emergencyAlert"), {
@@ -119,10 +116,7 @@ export default function Admin() {
         message: "Emergency alert issued!",
         timestamp: Date.now(),
       });
-
-      // Play siren when alert is sent
       await playSiren();
-
       Alert.alert(
         "Alert Sent",
         "Emergency alert is now live for ALL users!\n\nSiren is playing. Tap CLEAR ALERT to stop.",
@@ -133,17 +127,12 @@ export default function Admin() {
     }
   };
 
-  // ── CLEAR EMERGENCY ALERT ────────────────────────────
   const clearAlert = async () => {
     await set(ref(db, "emergencyAlert"), { active: false, message: "" });
-
-    // Stop siren when alert is cleared
     await stopSiren();
-
     Alert.alert("Alert Cleared", "Emergency alert has been turned off.");
   };
 
-  // ── SEND ANNOUNCEMENT ────────────────────────────────
   const sendAnnouncement = async () => {
     if (!announcement.trim()) {
       Alert.alert("Empty", "Please type an announcement first.");
@@ -170,7 +159,7 @@ export default function Admin() {
     try {
       const found = await checkEarthquakes();
       if (found) {
-        await playSiren(); // also play siren for earthquake
+        await playSiren();
         Alert.alert(
           "Earthquake Detected!",
           "A significant earthquake has been detected near Danao City.\n\nEmergency alert activated for ALL users.\nSiren is playing."
@@ -284,9 +273,7 @@ export default function Admin() {
                 color={sirenPlaying ? COLORS.primary : textLight}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.sirenStatusTitle, { color: textDark }]}>
-                  Siren Status
-                </Text>
+                <Text style={[styles.sirenStatusTitle, { color: textDark }]}>Siren Status</Text>
                 <Text style={[styles.sirenStatusDesc, { color: sirenPlaying ? COLORS.primary : textLight }]}>
                   {sirenPlaying ? "ACTIVE — Siren is playing" : "Inactive — No alert active"}
                 </Text>
@@ -530,26 +517,18 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
-
-  // SIREN BANNER
   sirenBanner: { backgroundColor: COLORS.primary, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   sirenBannerText: { flex: 1, color: "#fff", fontWeight: "bold", fontSize: 13 },
   sirenStopBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   sirenStopText: { color: "#fff", fontWeight: "bold", fontSize: 12 },
-
-  // SIREN STATUS CARD
   sirenStatusCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 15, borderWidth: 1, gap: 12 },
   sirenStatusTitle: { fontWeight: "bold", fontSize: 14, marginBottom: 2 },
   sirenStatusDesc: { fontSize: 12 },
   sirenStopCardBtn: { backgroundColor: COLORS.primary, borderRadius: 20, padding: 8 },
-
-  // SIREN CONTROLS
   sirenLabel: { fontSize: 12, fontWeight: "600", marginTop: 16, marginBottom: 8 },
   sirenControls: { flexDirection: "row", gap: 10 },
   sirenPlayBtn: { flex: 1, backgroundColor: "#E65100", padding: 14, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 },
   sirenStopBtnFull: { flex: 1, backgroundColor: "#37474F", padding: 14, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 },
-
-  // TABS
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginHorizontal: 20 },
   tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
   tabInner: { alignItems: "center", gap: 3 },
