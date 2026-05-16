@@ -20,8 +20,6 @@ import { db } from "../firebase";
 import { useAdmin } from "../hooks/useAdmin";
 import { checkEarthquakes } from "../hooks/useWeatherNotifications";
 
-const SIREN_URL = "https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3";
-
 export default function Admin() {
   const { isAdmin, loading } = useAdmin();
   const [sosRequests, setSosRequests] = useState([]);
@@ -66,6 +64,7 @@ export default function Admin() {
     };
   }, []);
 
+  // ── PLAY SIREN ───────────────────────────────────────
   const playSiren = async () => {
     try {
       await Audio.setAudioModeAsync({
@@ -80,7 +79,7 @@ export default function Admin() {
       }
 
       const { sound } = await Audio.Sound.createAsync(
-        { uri: SIREN_URL },
+        require("../assets/sounds/siren.mp3"),
         {
           shouldPlay: true,
           isLooping: true,
@@ -92,10 +91,11 @@ export default function Admin() {
       setSirenPlaying(true);
     } catch (e) {
       console.log("Siren play error:", e);
-      Alert.alert("Siren Error", "Could not play siren. Check internet connection.");
+      Alert.alert("Siren Error", "Could not play siren. Make sure siren.mp3 is in assets/sounds/");
     }
   };
 
+  // ── STOP SIREN ───────────────────────────────────────
   const stopSiren = async () => {
     try {
       if (sirenRef.current) {
@@ -109,6 +109,7 @@ export default function Admin() {
     }
   };
 
+  // ── SEND EMERGENCY ALERT ─────────────────────────────
   const sendAlert = async () => {
     try {
       await set(ref(db, "emergencyAlert"), {
@@ -127,12 +128,14 @@ export default function Admin() {
     }
   };
 
+  // ── CLEAR EMERGENCY ALERT ────────────────────────────
   const clearAlert = async () => {
     await set(ref(db, "emergencyAlert"), { active: false, message: "" });
     await stopSiren();
     Alert.alert("Alert Cleared", "Emergency alert has been turned off.");
   };
 
+  // ── SEND ANNOUNCEMENT ────────────────────────────────
   const sendAnnouncement = async () => {
     if (!announcement.trim()) {
       Alert.alert("Empty", "Please type an announcement first.");
@@ -265,31 +268,33 @@ export default function Admin() {
               Sending an alert will notify ALL users instantly and activate the siren on this device.
             </Text>
 
-            {/* SIREN STATUS */}
+            {/* SIREN STATUS CARD */}
             <View style={[styles.sirenStatusCard, { backgroundColor: card, borderColor: border }]}>
               <MaterialCommunityIcons
                 name="volume-high"
-                size={24}
+                size={28}
                 color={sirenPlaying ? COLORS.primary : textLight}
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sirenStatusTitle, { color: textDark }]}>Siren Status</Text>
                 <Text style={[styles.sirenStatusDesc, { color: sirenPlaying ? COLORS.primary : textLight }]}>
-                  {sirenPlaying ? "ACTIVE — Siren is playing" : "Inactive — No alert active"}
+                  {sirenPlaying ? "ACTIVE — Siren is playing loudly" : "Inactive — No alert active"}
                 </Text>
               </View>
               {sirenPlaying && (
                 <TouchableOpacity style={styles.sirenStopCardBtn} onPress={stopSiren}>
-                  <Ionicons name="stop-circle" size={20} color="#fff" />
+                  <Ionicons name="stop-circle" size={22} color="#fff" />
                 </TouchableOpacity>
               )}
             </View>
 
+            {/* SEND ALERT */}
             <TouchableOpacity style={styles.sosButton} onPress={sendAlert}>
               <MaterialCommunityIcons name="alarm-light" size={16} color="#fff" />
               <Text style={styles.buttonText}>SEND EMERGENCY ALERT + SIREN</Text>
             </TouchableOpacity>
 
+            {/* CLEAR ALERT */}
             <TouchableOpacity style={styles.clearButton} onPress={clearAlert}>
               <Ionicons name="checkmark-circle" size={16} color="#fff" />
               <Text style={styles.buttonText}>CLEAR ALERT + STOP SIREN</Text>
@@ -304,7 +309,7 @@ export default function Admin() {
                 disabled={sirenPlaying}
               >
                 <Ionicons name="volume-high" size={16} color="#fff" />
-                <Text style={styles.buttonText}>PLAY SIREN</Text>
+                <Text style={styles.buttonText}>PLAY</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.sirenStopBtnFull, !sirenPlaying && { opacity: 0.5 }]}
@@ -312,7 +317,7 @@ export default function Admin() {
                 disabled={!sirenPlaying}
               >
                 <Ionicons name="stop-circle" size={16} color="#fff" />
-                <Text style={styles.buttonText}>STOP SIREN</Text>
+                <Text style={styles.buttonText}>STOP</Text>
               </TouchableOpacity>
             </View>
           </View>
