@@ -1,5 +1,6 @@
 // app/guides.js
 import NetInfo from "@react-native-community/netinfo";
+import * as Speech from "expo-speech";
 import { useEffect, useState } from "react";
 import {
   ScrollView,
@@ -156,7 +157,7 @@ export default function Guides() {
   const [isOnline, setIsOnline] = useState(true);
   const [selectedDisaster, setSelectedDisaster] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState("before");
-  const { theme, t } = useSettings();
+  const { language, voiceSpeed, theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight } = theme;
 
   useEffect(() => {
@@ -165,6 +166,15 @@ export default function Guides() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => () => Speech.stop(), []);
+
+  const speakText = (text) => {
+    Speech.stop();
+    const langCode = language === "en" ? "en-US" : "fil-PH";
+    const rate = voiceSpeed === "slow" ? 0.72 : voiceSpeed === "fast" ? 1.0 : 0.85;
+    Speech.speak(text, { language: langCode, rate, pitch: 1.0 });
+  };
 
   if (selectedDisaster) {
     const disaster = DISASTERS.find((d) => d.id === selectedDisaster);
@@ -239,6 +249,14 @@ export default function Guides() {
                 <Text style={[styles.tipNumber, { color: textLight }]}>{t("step")} {index + 1}</Text>
                 <Text style={[styles.tipText, { color: textDark }]}>{tip.tip}</Text>
               </View>
+              <TouchableOpacity
+                style={[styles.listenButton, { backgroundColor: PHASE_COLORS[selectedPhase] }]}
+                onPress={() => speakText(`${t("step")} ${index + 1}. ${tip.tip}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t("listen")}: ${tip.tip}`}
+              >
+                <MaterialCommunityIcons name="volume-high" size={17} color="#fff" />
+              </TouchableOpacity>
             </View>
           ))}
           <View style={{ height: 40 }} />
@@ -289,6 +307,8 @@ export default function Guides() {
             key={disaster.id}
             style={[styles.disasterCard, { backgroundColor: card, borderLeftColor: disaster.color }]}
             onPress={() => { setSelectedDisaster(disaster.id); setSelectedPhase("before"); }}
+            accessibilityRole="button"
+            accessibilityLabel={`${disaster.title}. ${t("topics_tap")}`}
           >
             <View style={[styles.disasterIconBox, { backgroundColor: disaster.color + "20" }]}>
               <MaterialCommunityIcons name={disaster.icon} size={30} color={disaster.color} />
@@ -364,4 +384,5 @@ const styles = StyleSheet.create({
   tipContent: { flex: 1 },
   tipNumber: { fontSize: 11, marginBottom: 3 },
   tipText: { fontSize: 14, lineHeight: 20 },
+  listenButton: { width: 38, height: 38, borderRadius: 12, justifyContent: "center", alignItems: "center", marginLeft: 8 },
 });

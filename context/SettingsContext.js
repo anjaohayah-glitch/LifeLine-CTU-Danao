@@ -11,7 +11,7 @@ const TRANSLATIONS = {
     home: "Home", evacuate: "Evacuate", hotlines: "Hotlines",
     weather: "Weather", profile: "Profile",
     admin: "Admin", first_aid: "First Aid", checklist: "Checklist",
-    drrm: "DRRM", voice: "Voice", settings: "Settings",
+    drrm: "DRRM", voice: "Voice", game: "Game", settings: "Settings",
     // HOME
     good_morning: "Good Morning", good_afternoon: "Good Afternoon",
     good_evening: "Good Evening",
@@ -88,6 +88,9 @@ const TRANSLATIONS = {
     privacy: "Privacy Policy", logout: "Logout",
     version_info: "Version info and credits", data_handling: "How we handle your data",
     active: "Active", close: "Close", display_name: "Display name",
+    easy_language_access: "Large language buttons for quick access",
+    listen: "Listen",
+    tap_to_open: "Tap to open",
     current_password: "Current password", new_password: "New password",
     confirm_new_password: "Confirm new password", saving: "Saving...",
     // PROFILE
@@ -165,7 +168,7 @@ const TRANSLATIONS = {
     home: "Panimalay", evacuate: "Likas", hotlines: "Hotlines",
     weather: "Panahon", profile: "Profile",
     admin: "Admin", first_aid: "Unang Bulig", checklist: "Checklist",
-    drrm: "DRRM", voice: "Tingog", settings: "Settings",
+    drrm: "DRRM", voice: "Tingog", game: "Dula", settings: "Settings",
     // HOME
     good_morning: "Maayong Buntag", good_afternoon: "Maayong Hapon",
     good_evening: "Maayong Gabii",
@@ -242,6 +245,9 @@ const TRANSLATIONS = {
     privacy: "Polisiya sa Privacy", logout: "Logout",
     version_info: "Impormasyon sa bersyon ug credits", data_handling: "Giunsa namo pagdumala ang imong data",
     active: "Aktibo", close: "Sirado", display_name: "Display name",
+    easy_language_access: "Dagkong language buttons para dali ma-access",
+    listen: "Paminaw",
+    tap_to_open: "I-tap para buksan",
     current_password: "Karon nga password", new_password: "Bag-ong password",
     confirm_new_password: "Kumpirmaha ang bag-ong password", saving: "Nag-save...",
     // PROFILE
@@ -317,7 +323,7 @@ const TRANSLATIONS = {
     home: "Tahanan", evacuate: "Lumikas", hotlines: "Hotlines",
     weather: "Panahon", profile: "Profile",
     admin: "Admin", first_aid: "Unang Lunas", checklist: "Checklist",
-    drrm: "DRRM", voice: "Boses", settings: "Settings",
+    drrm: "DRRM", voice: "Boses", game: "Laro", settings: "Settings",
     // HOME
     good_morning: "Magandang Umaga", good_afternoon: "Magandang Tanghali",
     good_evening: "Magandang Gabi",
@@ -394,6 +400,9 @@ const TRANSLATIONS = {
     privacy: "Patakaran sa Privacy", logout: "Mag-logout",
     version_info: "Impormasyon sa bersyon at credits", data_handling: "Paano namin hinahawakan ang iyong data",
     active: "Aktibo", close: "Isara", display_name: "Display name",
+    easy_language_access: "Malalaking pindutan ng wika para madaling gamitin",
+    listen: "Pakinggan",
+    tap_to_open: "I-tap para buksan",
     current_password: "Kasalukuyang password", new_password: "Bagong password",
     confirm_new_password: "Kumpirmahin ang bagong password", saving: "Sine-save...",
     // PROFILE
@@ -492,7 +501,7 @@ export function SettingsProvider({ children }) {
   const updateNotifications = async (val) => { setNotifications(val); await AsyncStorage.setItem("notifications", String(val)); };
   const updateVoiceSpeed = async (val) => { setVoiceSpeed(val); await AsyncStorage.setItem("voiceSpeed", String(val)); };
 
-  // Translate function — t("key") returns the string in the current language
+  // Translate function: t("key") returns the string in the current language.
   const t = (key) => TRANSLATIONS[language]?.[key] ?? TRANSLATIONS["en"][key] ?? key;
 
   const theme = {

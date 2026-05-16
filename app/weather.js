@@ -283,10 +283,10 @@ export default function Weather() {
     if (!data?.wind || !data?.weather?.[0]) return null;
     const condition = data.weather[0].main;
     const windSpeed = data.wind.speed || 0;
-    if (windSpeed >= 17.2) return { text: "Typhoon Warning — Winds above 62km/h! Take shelter immediately!", color: "#B00020" };
-    if (windSpeed >= 10.8) return { text: "Strong Wind Warning — Stay cautious and avoid open areas!", color: "#E65100" };
-    if (condition === "Thunderstorm") return { text: "Thunderstorm Warning — Stay indoors and away from windows!", color: "#B00020" };
-    if (condition === "Rain") return { text: "Heavy Rain Advisory — Avoid flood-prone areas!", color: "#1565C0" };
+    if (windSpeed >= 17.2) return { text: "Typhoon Warning - Winds above 62km/h! Take shelter immediately!", color: "#B00020" };
+    if (windSpeed >= 10.8) return { text: "Strong Wind Warning - Stay cautious and avoid open areas!", color: "#555555" };
+    if (condition === "Thunderstorm") return { text: "Thunderstorm Warning - Stay indoors and away from windows!", color: "#B00020" };
+    if (condition === "Rain") return { text: "Heavy Rain Advisory - Avoid flood-prone areas!", color: "#555555" };
     return null;
   };
 
@@ -401,7 +401,7 @@ export default function Weather() {
         >
           {locationNotice && (
             <View style={[styles.locationNotice, { backgroundColor: card, borderColor: border }]}>
-              <Ionicons name="location" size={16} color="#E65100" />
+              <Ionicons name="location" size={16} color="#555555" />
               <Text style={[styles.locationNoticeText, { color: textMid }]}>{locationNotice}</Text>
             </View>
           )}
@@ -446,7 +446,7 @@ export default function Weather() {
                       <MaterialCommunityIcons name={itemIcon} size={24} color="#B00020" style={styles.hourIcon} />
                       <Text style={[styles.hourTemp, { color: "#B00020" }]}>{Math.round(item?.main?.temp ?? 0)}°C</Text>
                       <View style={styles.hourRainRow}>
-                        <MaterialCommunityIcons name="water-percent" size={12} color="#1565C0" />
+                        <MaterialCommunityIcons name="water-percent" size={12} color="#555555" />
                         <Text style={styles.hourRain}>{Math.round((item?.pop ?? 0) * 100)}%</Text>
                       </View>
                     </View>
@@ -517,10 +517,10 @@ export default function Weather() {
               <Text style={[styles.sectionTitle, { color: "#B00020" }]}>{t("official_updates")}</Text>
             </View>
             {[
-              { icon: "weather-rainy", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#1565C0" },
-              { icon: "volcano", label: "PHIVOLCS Earthquake Bulletin", url: "https://earthquake.phivolcs.dost.gov.ph/", color: "#4527A0" },
+              { icon: "weather-rainy", label: "PAGASA Weather Bulletin", url: "https://www.pagasa.dost.gov.ph/weather#daily-weather-forecast", color: "#555555" },
+              { icon: "volcano", label: "PHIVOLCS Earthquake Bulletin", url: "https://earthquake.phivolcs.dost.gov.ph/", color: "#555555" },
               { icon: "weather-tornado", label: "PAGASA Typhoon Updates", url: "https://www.pagasa.dost.gov.ph/tropical-cyclone/active-tropical-cyclone", color: "#B00020" },
-              { icon: "earth", label: "USGS Earthquake Feed", url: "https://earthquake.usgs.gov/earthquakes/map/", color: "#2E7D32" },
+              { icon: "earth", label: "USGS Earthquake Feed", url: "https://earthquake.usgs.gov/earthquakes/map/", color: "#555555" },
             ].map((link, i) => (
               <TouchableOpacity
                 key={i}
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, textAlign: "center", marginBottom: 20 },
   retryButton: { backgroundColor: "#B00020", padding: 15, borderRadius: 10, alignItems: "center", justifyContent: "center", width: "60%", flexDirection: "row", gap: 6 },
   retryText: { color: "#fff", fontWeight: "bold" },
-  header: { backgroundColor: "#B00020", paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, marginBottom: 5 },
+  header: { backgroundColor: "#B00020", paddingTop: 55, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, marginBottom: 5 },
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSubRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   locationNoticeText: { flex: 1, fontSize: 12, lineHeight: 17 },
-  currentCard: { borderRadius: 20, padding: 25, alignItems: "center", marginBottom: 20, borderWidth: 1 },
+  currentCard: { borderRadius: 14, padding: 25, alignItems: "center", marginBottom: 20, borderWidth: 1 },
   weatherIcon: { marginBottom: 2 },
   temperature: { fontSize: 60, fontWeight: "bold", color: "#B00020" },
   condition: { fontSize: 18, textTransform: "capitalize", marginTop: 5 },
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   hourIcon: { marginVertical: 6 },
   hourTemp: { fontWeight: "bold" },
   hourRainRow: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 3 },
-  hourRain: { fontSize: 11, color: "#1565C0" },
+  hourRain: { fontSize: 11, color: "#555555" },
   sunRow: { flexDirection: "row", gap: 10 },
   sunCard: { flex: 1, borderRadius: 12, padding: 15, alignItems: "center", borderWidth: 1 },
   sunIcon: {},
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   quakeTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   quakeTitle: { fontWeight: "bold", fontSize: 14 },
   quakeDesc: { fontSize: 13, lineHeight: 20, marginBottom: 12 },
-  quakeButton: { backgroundColor: "#4527A0", padding: 12, borderRadius: 10, alignItems: "center" },
+  quakeButton: { backgroundColor: "#555555", padding: 12, borderRadius: 10, alignItems: "center" },
   quakeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
   buttonTextRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   linkCard: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1 },

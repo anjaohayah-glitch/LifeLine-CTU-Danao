@@ -184,7 +184,7 @@ export default function Profile() {
           {program ? (
             <View style={styles.photoMetaRow}>
               <MaterialCommunityIcons name="book-open-variant" size={12} color={textMid} />
-              <Text style={[styles.photoProgram, { color: textMid }]}>{program} {yearLevel ? `· ${yearLevel}` : ""}</Text>
+              <Text style={[styles.photoProgram, { color: textMid }]}>{program} {yearLevel ? `- ${yearLevel}` : ""}</Text>
             </View>
           ) : null}
         </View>
@@ -271,7 +271,7 @@ export default function Profile() {
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.btn, styles.btnFull, { backgroundColor: "#1565C0" }]}
+          style={[styles.btn, styles.btnFull, { backgroundColor: "#555555" }]}
           onPress={() => setEditing(true)}
         >
           <MaterialCommunityIcons name="pencil" size={17} color="#fff" />
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 55, paddingBottom: 24, paddingHorizontal: 24,
-    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 18, borderBottomRightRadius: 18,
     marginBottom: 16,
   },
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13 },
   rolePill: {
     backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 20, paddingHorizontal: 12,
+    borderRadius: 12, paddingHorizontal: 12,
     paddingVertical: 5, alignSelf: "flex-start", marginTop: 10, flexDirection: "row", alignItems: "center", gap: 5,
   },
   rolePillText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
@@ -317,13 +317,13 @@ const styles = StyleSheet.create({
   photoCard: {
     flexDirection: "row", alignItems: "center",
     marginHorizontal: 20, marginBottom: 12,
-    borderRadius: 20, padding: 16, borderWidth: 1, gap: 16,
-    elevation: 2, shadowColor: "#000",
-    shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    borderRadius: 14, padding: 16, borderWidth: 1, gap: 16,
+    elevation: 0, shadowColor: "#000",
+    shadowOpacity: 0, shadowOffset: { width: 0, height: 0 }, shadowRadius: 0,
   },
   photoWrap: { position: "relative" },
-  photo: { width: 80, height: 80, borderRadius: 22, borderWidth: 2, borderColor: COLORS.primary },
-  photoPlaceholder: { width: 80, height: 80, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
+  photo: { width: 80, height: 80, borderRadius: 18, borderWidth: 1, borderColor: COLORS.primary },
+  photoPlaceholder: { width: 80, height: 80, borderRadius: 18, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   photoInitial: { color: "#fff", fontSize: 34, fontWeight: "bold" },
   photoBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: "#fff", borderRadius: 10, padding: 3, borderWidth: 1.5, borderColor: COLORS.primary },
   photoInfo: { flex: 1 },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   // SECTION CARD
   sectionCard: {
     marginHorizontal: 20, marginBottom: 12,
-    borderRadius: 18, padding: 16, borderWidth: 1,
+    borderRadius: 14, padding: 16, borderWidth: 1,
   },
   sectionCardTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
   sectionCardTitle: { fontWeight: "bold", fontSize: 15 },
@@ -352,12 +352,12 @@ const styles = StyleSheet.create({
 
   // FIELD
   fieldGroup: { marginBottom: 12 },
-  fieldLabel: { fontSize: 11, fontWeight: "600", marginBottom: 5, letterSpacing: 0.3 },
-  fieldInput: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14 },
+  fieldLabel: { fontSize: 11, fontWeight: "600", marginBottom: 5, letterSpacing: 0 },
+  fieldInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14 },
 
   // BUTTONS
   buttonRow: { flexDirection: "row", gap: 10, marginHorizontal: 20, marginBottom: 10 },
-  btn: { padding: 15, borderRadius: 14, alignItems: "center", justifyContent: "center", elevation: 2, shadowColor: "#000", shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, flexDirection: "row", gap: 7 },
+  btn: { padding: 15, borderRadius: 12, alignItems: "center", justifyContent: "center", elevation: 0, shadowColor: "#000", shadowOpacity: 0, shadowOffset: { width: 0, height: 0 }, shadowRadius: 0, flexDirection: "row", gap: 7 },
   btnFull: { marginHorizontal: 20, marginBottom: 10 },
   btnText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });

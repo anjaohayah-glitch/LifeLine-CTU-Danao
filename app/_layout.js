@@ -7,6 +7,7 @@ import { auth, db } from "../firebase";
 import { fetchNearbyEarthquake, handleQuakeFound } from "../hooks/useEarthquakeCheck";
 import { useFCMToken } from "../hooks/useFCMToken";
 import { registerWeatherBackgroundFetch } from "../hooks/useWeatherNotifications";
+import { EMERGENCY_CHANNEL_ID, EMERGENCY_SOUND } from "../utils/notificationChannels";
 import { getNotifications, scheduleNotification } from "../utils/notifications";
 
 const isExpoPushToken = (token) =>
@@ -21,6 +22,7 @@ const normalizeScreen = (screen) => {
 const sendPushToMany = async (tokens, title, body, data = {}, channelId = "default") => {
   const validTokens = tokens.filter(isExpoPushToken);
   if (validTokens.length === 0) return;
+  const sound = channelId === EMERGENCY_CHANNEL_ID ? EMERGENCY_SOUND : "default";
 
   try {
     await fetch("https://exp.host/--/api/v2/push/send", {
@@ -35,7 +37,7 @@ const sendPushToMany = async (tokens, title, body, data = {}, channelId = "defau
             ...data,
             screen: normalizeScreen(data.screen) || data.screen,
           },
-          sound: "default",
+          sound,
           priority: "high",
           channelId,
         }))
@@ -130,7 +132,7 @@ function AppLayout() {
             content: {
               title,
               body,
-              sound: true,
+              sound: EMERGENCY_SOUND,
               vibrate: [0, 1000, 300, 1000, 300, 1000],
               data: { type: "emergency", screen: "evacuation" },
             },
@@ -138,7 +140,7 @@ function AppLayout() {
           });
 
           const allTokens = await getAllFCMTokens();
-          await sendPushToMany(allTokens, title, body, { type: "emergency", screen: "evacuation" }, "emergency");
+          await sendPushToMany(allTokens, title, body, { type: "emergency", screen: "evacuation" }, EMERGENCY_CHANNEL_ID);
 
           await AsyncStorage.setItem("lastEmergencyNotif", String(alertTime));
         }
@@ -328,6 +330,7 @@ function AppLayout() {
       <Stack.Screen name="drrm" />
       <Stack.Screen name="preparedness" />
       <Stack.Screen name="voiceguide" />
+      <Stack.Screen name="game" />
       <Stack.Screen name="earthqauake" />
       <Stack.Screen name="admin" />
     </Stack>

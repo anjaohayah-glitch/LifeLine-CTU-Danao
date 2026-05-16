@@ -284,26 +284,26 @@ const styles = StyleSheet.create({
 
   // TOP
   topSection: { flex: 0.45, alignItems: "center", justifyContent: "center", overflow: "hidden", paddingHorizontal: 20 },
-  circle1: { position: "absolute", width: 350, height: 350, borderRadius: 175, backgroundColor: "rgba(255,255,255,0.06)", top: -120, right: -100 },
-  circle2: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.06)", bottom: -60, left: -60 },
-  circle3: { position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)", top: 20, left: 20 },
-  logoBox: { width: 88, height: 88, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.25)", elevation: 8 },
-  logoText: { fontSize: 34, fontWeight: "bold", color: "#fff", letterSpacing: 6, marginBottom: 4 },
+  circle1: { display: "none" },
+  circle2: { display: "none" },
+  circle3: { display: "none" },
+  logoBox: { width: 82, height: 82, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", justifyContent: "center", alignItems: "center", marginBottom: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", elevation: 0 },
+  logoText: { fontSize: 34, fontWeight: "bold", color: "#fff", letterSpacing: 0, marginBottom: 4 },
   logoSub: { color: "rgba(255,255,255,0.65)", fontSize: 12, marginBottom: 20 },
   pillsRow: { flexDirection: "row", gap: 8 },
-  pill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  pill: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.16)" },
   pillText: { color: "#fff", fontSize: 11, fontWeight: "600" },
 
   // BOTTOM
-  bottomSection: { flex: 0.55, backgroundColor: "#fff", borderTopLeftRadius: 36, borderTopRightRadius: 36 },
+  bottomSection: { flex: 0.55, backgroundColor: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18 },
   bottomContent: { paddingHorizontal: 28, paddingTop: 30, paddingBottom: 40 },
   welcomeText: { fontSize: 24, fontWeight: "bold", color: "#1A1A2E", marginBottom: 4 },
   welcomeSub: { color: "#90A4AE", fontSize: 13, marginBottom: 24 },
 
   // INPUTS
   inputGroup: { marginBottom: 14 },
-  inputLabel: { fontSize: 12, fontWeight: "700", color: "#546E7A", marginBottom: 6, letterSpacing: 0.5 },
-  inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#ECEFF1", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: "#F8FAFB" },
+  inputLabel: { fontSize: 12, fontWeight: "700", color: "#546E7A", marginBottom: 6, letterSpacing: 0 },
+  inputWrapper: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#ECEFF1", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: "#F8FAFB" },
   inputWrapperActive: { borderColor: COLORS.primary, backgroundColor: "#FFF5F5" },
   vectorInputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: "#1A1A2E" },
@@ -314,9 +314,9 @@ const styles = StyleSheet.create({
   forgotText: { color: COLORS.primary, fontWeight: "bold", fontSize: 13 },
 
   // LOGIN BUTTON
-  loginButton: { backgroundColor: COLORS.primary, borderRadius: 16, padding: 16, alignItems: "center", marginBottom: 16, elevation: 6, shadowColor: COLORS.primary, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12 },
+  loginButton: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: "center", marginBottom: 16, elevation: 1, shadowColor: COLORS.primary, shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6 },
   loginButtonInner: { flexDirection: "row", alignItems: "center", gap: 8 },
-  loginButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1.5 },
+  loginButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 0 },
 
   // DIVIDER
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   dividerText: { color: "#90A4AE", fontSize: 13 },
 
   // REGISTER
-  registerButton: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 16, padding: 15, alignItems: "center", marginBottom: 20 },
+  registerButton: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 12, padding: 15, alignItems: "center", marginBottom: 20 },
   registerButtonText: { color: COLORS.primary, fontWeight: "bold", fontSize: 15 },
 
   // FOOTER
@@ -334,10 +334,10 @@ const styles = StyleSheet.create({
 
   // MODAL
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 28, paddingBottom: 44 },
+  modalBox: { backgroundColor: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 28, paddingBottom: 44 },
   modalHandle: { width: 40, height: 4, backgroundColor: "#ECEFF1", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
   modalHeader: { alignItems: "center", marginBottom: 24 },
-  modalIconBox: { width: 70, height: 70, borderRadius: 20, backgroundColor: "#FFF5F5", justifyContent: "center", alignItems: "center", marginBottom: 12, borderWidth: 1.5, borderColor: "#FFCDD2" },
+  modalIconBox: { width: 70, height: 70, borderRadius: 16, backgroundColor: "#FFF5F5", justifyContent: "center", alignItems: "center", marginBottom: 12, borderWidth: 1, borderColor: "#FFCDD2" },
   modalTitle: { fontSize: 22, fontWeight: "bold", color: "#1A1A2E", marginBottom: 8 },
   modalSub: { color: "#90A4AE", textAlign: "center", fontSize: 13, lineHeight: 20 },
   cancelButton: { padding: 14, borderRadius: 14, alignItems: "center", marginTop: 10, borderWidth: 1.5, borderColor: "#ECEFF1" },

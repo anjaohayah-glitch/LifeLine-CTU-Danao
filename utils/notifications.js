@@ -15,11 +15,25 @@ export async function getNotifications() {
     notificationsPromise = import("expo-notifications").then((Notifications) => {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-          shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
         }),
       });
+
+      if (Platform.OS === "android") {
+        Notifications.setNotificationChannelAsync("default", {
+          name: "Default",
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 500, 200, 500],
+          lightColor: "#B00020",
+          sound: "default",
+          enableVibrate: true,
+          showBadge: true,
+        }).catch((e) => console.log("Default notification channel error:", e));
+      }
+
       return Notifications;
     });
   }

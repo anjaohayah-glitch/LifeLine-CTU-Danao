@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -45,10 +46,18 @@ const GUIDES = {
   },
 };
 
+const VA_QUICK_QUESTIONS = [
+  "What should I do during an earthquake?",
+  "What should I pack in a go bag?",
+  "What should I do during a flood?",
+];
+
 export default function VoiceGuide() {
   const [selectedDisaster, setSelectedDisaster] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("Hi, I am Lifeline VA. Ask me about earthquakes, floods, fire, typhoons, first aid, go bags, evacuation, or SOS.");
   const { language, updateLanguage, theme, t } = useSettings();
   const { bg, card, border, textDark, textMid, textLight, surface } = theme;
 
@@ -70,6 +79,55 @@ export default function VoiceGuide() {
   };
 
   const stopSpeaking = () => { Speech.stop(); setIsSpeaking(false); setCurrentStep(0); };
+
+  const speakText = (text) => {
+    Speech.stop();
+    const langCode = language === "en" ? "en-US" : "fil-PH";
+    Speech.speak(text, { language: langCode, rate: 0.85, pitch: 1.0 });
+  };
+
+  const getAnswer = (input) => {
+    const q = input.toLowerCase();
+
+    if (q.includes("earthquake") || q.includes("linog") || q.includes("lindol") || q.includes("shake")) {
+      return "During an earthquake, drop to the ground, cover your head and neck under sturdy furniture, and hold on until shaking stops. Stay away from windows.";
+    }
+    if (q.includes("go bag") || q.includes("kit") || q.includes("pack")) {
+      return "Pack water, ready-to-eat food, flashlight, batteries, first aid kit, whistle, power bank, IDs, cash, medicine, masks, clothes, and important documents.";
+    }
+    if (q.includes("flood") || q.includes("baha")) {
+      return "During a flood, move to higher ground, avoid walking or driving through floodwater, unplug appliances if safe, and follow evacuation orders.";
+    }
+    if (q.includes("fire") || q.includes("sunog") || q.includes("smoke")) {
+      return "During a fire, evacuate using stairs, stay low under smoke, never use elevators, and call emergency responders once you are safe.";
+    }
+    if (q.includes("typhoon") || q.includes("bagyo") || q.includes("storm")) {
+      return "During a typhoon, stay indoors, keep away from windows, charge your phone and power bank, prepare supplies, and monitor official updates.";
+    }
+    if (q.includes("first aid") || q.includes("bleed") || q.includes("wound") || q.includes("burn")) {
+      return "For first aid, keep the person calm. Apply firm pressure to bleeding, cool minor burns with running water, and call trained responders for serious injuries.";
+    }
+    if (q.includes("evacuate") || q.includes("evacuation") || q.includes("route")) {
+      return "For evacuation, bring your go bag, follow official routes, avoid danger zones, help others when safe, and check in with family after reaching safety.";
+    }
+    if (q.includes("sos") || q.includes("help") || q.includes("emergency")) {
+      return "If you need urgent help, use the SOS button or call 911. Share your location and stay in the safest nearby place while waiting for responders.";
+    }
+
+    return "I can answer questions about earthquakes, floods, fire, typhoons, first aid, go bags, evacuation, and SOS. Try asking about one of those topics.";
+  };
+
+  const askVA = (value = question) => {
+    const clean = value.trim();
+    if (!clean) {
+      speakText(answer);
+      return;
+    }
+    const nextAnswer = getAnswer(clean);
+    setQuestion(clean);
+    setAnswer(nextAnswer);
+    speakText(nextAnswer);
+  };
 
   const handleDisasterPress = (disaster) => {
     setSelectedDisaster(disaster); setCurrentStep(0); stopSpeaking();
@@ -136,7 +194,48 @@ export default function VoiceGuide() {
           <MaterialCommunityIcons name="account-voice" size={24} color="#fff" />
           <Text style={styles.headerTitle}>{t("voice_guide")}</Text>
         </View>
-        <Text style={styles.headerSub}>{t("voice_sub")}</Text>
+        <Text style={styles.headerSub}>Ask questions or play step-by-step safety instructions</Text>
+      </View>
+
+      <View style={[styles.vaCard, { backgroundColor: card, borderColor: border }]}>
+        <View style={[styles.vaIcon, { backgroundColor: surface }]}>
+          <MaterialCommunityIcons name="account-voice" size={26} color={COLORS.primary} />
+        </View>
+        <View style={styles.vaContent}>
+          <Text style={[styles.vaTitle, { color: textDark }]}>Lifeline VA</Text>
+          <Text style={[styles.vaAnswer, { color: textMid }]}>{answer}</Text>
+        </View>
+        <TouchableOpacity style={styles.vaSpeakButton} onPress={() => speakText(answer)}>
+          <Ionicons name="volume-high" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.askCard, { backgroundColor: card, borderColor: border }]}>
+        <View style={[styles.askInputRow, { backgroundColor: surface, borderColor: border }]}>
+          <TextInput
+            style={[styles.askInput, { color: textDark }]}
+            value={question}
+            onChangeText={setQuestion}
+            placeholder="Ask Lifeline VA..."
+            placeholderTextColor={textLight}
+            returnKeyType="send"
+            onSubmitEditing={() => askVA()}
+          />
+          <TouchableOpacity style={styles.askButton} onPress={() => askVA()}>
+            <Ionicons name="send" size={17} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.quickQuestionRow}>
+          {VA_QUICK_QUESTIONS.map((item) => (
+            <TouchableOpacity
+              key={item}
+              style={[styles.quickQuestion, { backgroundColor: surface, borderColor: border }]}
+              onPress={() => askVA(item)}
+            >
+              <Text style={[styles.quickQuestionText, { color: textDark }]}>{item}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* LANGUAGE SELECTOR */}
@@ -211,6 +310,56 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: "bold", color: "#fff" },
   headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
+  vaCard: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  vaIcon: { width: 46, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  vaContent: { flex: 1 },
+  vaTitle: { fontSize: 15, fontWeight: "bold", marginBottom: 3 },
+  vaAnswer: { fontSize: 12, lineHeight: 18 },
+  vaSpeakButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  askCard: {
+    marginHorizontal: 20,
+    marginBottom: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  askInputRow: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 12,
+  },
+  askInput: { flex: 1, fontSize: 14, paddingVertical: 10 },
+  askButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 4,
+  },
+  quickQuestionRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 10 },
+  quickQuestion: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
+  quickQuestionText: { fontSize: 11, fontWeight: "700" },
   langContainer: { paddingHorizontal: 20, marginBottom: 15 },
   langLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   langLabel: { fontWeight: "bold", fontSize: 14 },

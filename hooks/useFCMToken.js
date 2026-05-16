@@ -3,6 +3,7 @@ import { ref, set } from "firebase/database";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { auth, db } from "../firebase";
+import { EMERGENCY_CHANNEL_ID, EMERGENCY_SOUND } from "../utils/notificationChannels";
 import { getNotifications, isAndroidExpoGo } from "../utils/notifications";
 
 const PROJECT_ID = "a35b5dbd-7933-4073-b5e3-5e4d31ecf0df";
@@ -26,6 +27,17 @@ const createAndroidChannels = async (Notifications) => {
     vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
     lightColor: "#B00020",
     sound: "default",
+    enableVibrate: true,
+    showBadge: true,
+    bypassDnd: true,
+  });
+
+  await Notifications.setNotificationChannelAsync(EMERGENCY_CHANNEL_ID, {
+    name: "Emergency Alarm",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 1000, 300, 1000, 300, 1000],
+    lightColor: "#B00020",
+    sound: EMERGENCY_SOUND,
     enableVibrate: true,
     showBadge: true,
     bypassDnd: true,

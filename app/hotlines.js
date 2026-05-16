@@ -39,7 +39,7 @@ const HOTLINES = [
     ],
   },
   {
-    category: "Local — Danao City",
+    category: "Local - Danao City",
     icon: "fire-truck",
     items: [
       { name: "Danao City Disaster Risk Reduction", number: "0917-723-6262", description: "Local DRRMO" },
@@ -82,8 +82,8 @@ export default function Hotlines() {
             <TouchableOpacity
               key={iIndex}
               style={[styles.card, {
-                backgroundColor: theme.bg === "#121212" ? "#2a1010" : "#fff0f0",
-                borderColor: theme.bg === "#121212" ? "#5a2020" : "#ffcccc",
+                backgroundColor: theme.bg === "#121212" ? "#1e1e1e" : "#ffffff",
+                borderColor: theme.bg === "#121212" ? "#333333" : "#e0e0e0",
               }]}
               onPress={() => handleCall(item.number)}
             >
@@ -116,12 +116,12 @@ const styles = StyleSheet.create({
   section: { marginBottom: 20 },
   categoryTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10, borderBottomWidth: 1, paddingBottom: 5 },
   categoryTitle: { fontSize: 16, fontWeight: "bold", color: "#B00020" },
-  card: { borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  card: { borderRadius: 10, padding: 14, marginBottom: 10, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardLeft: { flex: 1, paddingRight: 10 },
   name: { fontWeight: "bold", fontSize: 14 },
   description: { fontSize: 12, marginTop: 3 },
   cardRight: { alignItems: "flex-end" },
   number: { fontWeight: "bold", color: "#B00020", fontSize: 13 },
-  callBadge: { backgroundColor: "#B00020", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginTop: 5, flexDirection: "row", alignItems: "center", gap: 4 },
+  callBadge: { backgroundColor: "#B00020", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginTop: 5, flexDirection: "row", alignItems: "center", gap: 4 },
   callText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
 });

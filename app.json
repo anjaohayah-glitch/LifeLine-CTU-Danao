@@ -64,7 +64,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "sounds": []
+          "sounds": ["./assets/sounds/emergency_alarm.mp3"]
         }
       ],
       [

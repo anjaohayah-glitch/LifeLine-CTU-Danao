@@ -1,5 +1,6 @@
 import { ref, set } from "firebase/database";
 import { db } from "../firebase";
+import { EMERGENCY_SOUND } from "../utils/notificationChannels";
 import { scheduleNotification } from "../utils/notifications";
 
 const DANAO_LAT = 10.5207;
@@ -63,7 +64,7 @@ export async function handleQuakeFound(quake) {
     content: {
       title: "Earthquake Alert - LIFELINE",
       body: message,
-      sound: true,
+      sound: EMERGENCY_SOUND,
       data: { type: "earthquake", screen: "evacuation" },
     },
     trigger: null,

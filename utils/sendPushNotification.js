@@ -1,6 +1,7 @@
 // utils/sendPushNotification.js
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
+import { EMERGENCY_CHANNEL_ID, EMERGENCY_SOUND } from "./notificationChannels";
 
 const isExpoPushToken = (token) =>
   typeof token === "string" &&
@@ -11,33 +12,45 @@ const normalizeScreenData = (data) => {
   return { ...data, screen: data.screen.replace(/^\/+/, "") };
 };
 
+const getAllExpoPushTokens = async () => {
+  const [usersSnapshot, tokensSnapshot] = await Promise.all([
+    get(ref(db, "users")),
+    get(ref(db, "fcmTokens")),
+  ]);
+
+  const userTokens = usersSnapshot.exists()
+    ? Object.values(usersSnapshot.val())
+        .map((user) => user?.expoPushToken)
+        .filter(isExpoPushToken)
+    : [];
+
+  const fcmTokens = tokensSnapshot.exists()
+    ? Object.values(tokensSnapshot.val()).filter(isExpoPushToken)
+    : [];
+
+  return [...new Set([...userTokens, ...fcmTokens])];
+};
+
 export async function sendPushToAllUsers(title, body, data = {}, channelId = "emergency") {
   try {
-    const snapshot = await get(ref(db, "users"));
-    if (!snapshot.exists()) {
-      console.log("No users found");
-      return;
-    }
-
-    const users = snapshot.val();
-    const tokens = Object.values(users)
-      .map((user) => user.expoPushToken)
-      .filter(isExpoPushToken);
+    const tokens = await getAllExpoPushTokens();
 
     console.log("Sending push to", tokens.length, "devices");
 
     if (tokens.length === 0) {
       console.log("No valid Expo push tokens found");
-      return;
+      return { sent: 0, tickets: [] };
     }
 
+    const tickets = [];
     for (let i = 0; i < tokens.length; i += 100) {
       const chunk = tokens.slice(i, i + 100);
+      const sound = channelId === EMERGENCY_CHANNEL_ID ? EMERGENCY_SOUND : "default";
       const messages = chunk.map((token) => ({
         to: token,
         title,
         body,
-        sound: "default",
+        sound,
         priority: "high",
         channelId,
         data: normalizeScreenData(data),
@@ -58,8 +71,12 @@ export async function sendPushToAllUsers(title, body, data = {}, channelId = "em
 
       const result = await response.json();
       console.log("Push result:", JSON.stringify(result));
+      tickets.push(result);
     }
+
+    return { sent: tokens.length, tickets };
   } catch (e) {
     console.log("Push send error:", e.message);
+    return { sent: 0, error: e.message };
   }
 }
